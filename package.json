@@ -1,0 +1,23 @@
+{
+  "name": "smogon-stats-discord",
+  "version": "1.0.0",
+  "description": "Discord bot for Smogon usage stats",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pokemondev/smogon-stats-discord.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pokemondev/smogon-stats-discord/issues"
+  },
+  "homepage": "https://github.com/pokemondev/smogon-stats-discord#readme",
+  "dependencies": {
+    "discord.js": "^11.5.1",
+    "smogon-usage-fetch": "^4.3.0"
+  }
+}
