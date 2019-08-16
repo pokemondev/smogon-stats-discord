@@ -1,4 +1,4 @@
-const smogonStats = require('./smogon-stats.js');
+const smogonStats = require('./smogonStats.ts');
 const smogon = new smogonStats();
 
 const Discord = require('discord.js');
@@ -23,7 +23,6 @@ client.on('message', msg => {
         .setDescription('This is a Gen 7 OU top 10 leads')
         //.setAuthor('tmenezes', 'https://cdn.bulbagarden.net/upload/7/7e/006Charizard.png')
         .setColor('#f50057')
-        .setThumbnail('https://cdn.bulbagarden.net/upload/7/7e/006Charizard.png')
         .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${leads[0].name.toLowerCase()}.png`)
         //.setImage(`https://play.pokemonshowdown.com/sprites/xyani/${leads[0].name.toLowerCase()}.gif`)
         //.setFooter('Footer')

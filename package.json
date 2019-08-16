@@ -19,5 +19,8 @@
   "dependencies": {
     "discord.js": "^11.5.1",
     "smogon-usage-fetch": "^4.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^12.7.2"
   }
 }
