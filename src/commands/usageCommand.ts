@@ -3,11 +3,11 @@ import { Command } from "./command";
 import { AppDataSource } from "../appDataSource";
 import { ColorHelper } from '../pokemon/helpers';
 
-export class LeadsCommand implements Command {
+export class UsageCommand implements Command {
   name = "usage";
   description = "Lists the top 10 most used Pokémon";
 
-  private dataSource: AppDataSource;
+  dataSource: AppDataSource;
 
   constructor(dataSource: AppDataSource) {
     this.dataSource = dataSource;
@@ -17,7 +17,6 @@ export class LeadsCommand implements Command {
 
     const usageData = this.dataSource.smogonStats.getUsage();
     const firstMon = this.dataSource.pokemonDb.getPokemon(usageData[0].name);
-    console.log(usageData);
 
     const embed = new Discord.RichEmbed()
       .setColor(ColorHelper.getColorForType(firstMon.type1))

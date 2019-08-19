@@ -1,15 +1,15 @@
 import { CommandBase } from "./command";
 import { AppDataSource } from "../appDataSource";
 
-export class MovesCommand extends CommandBase {
-  name = "moves";
-  description = "Lists the most used moves of a given Pokémon";
+export class MegasCommand extends CommandBase {
+  name = "megas";
+  description = "Lists the 10 most common Mega Stone users";
 
   constructor(dataSource: AppDataSource) {
     super(dataSource);
   }
   
   execute(message: any, args: any) {
-    this.processMoveSetCommand(message, args, (moveset) => moveset.moves);
+    this.processFilterBasedCommand(message, args, (moveset) => moveset.moves);
   }
 }

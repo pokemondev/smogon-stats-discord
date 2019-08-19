@@ -1,7 +1,7 @@
 import { Command } from "./command";
 import { AppDataSource } from "../appDataSource";
 
-export class PingCommand implements Command {
+export class ServerCommand implements Command {
   public name = 'ping';
   public description = "Ping!";
   

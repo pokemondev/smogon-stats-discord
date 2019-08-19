@@ -11,6 +11,7 @@ export interface MoveSetUsage {
     moves: UsageData[];
     teamMates: UsageData[];
     checksAndCounters: any[];
+    usage?: number;
 }
 
 export interface PokemonUsage {
