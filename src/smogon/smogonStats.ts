@@ -5,15 +5,9 @@ type DbData = { [id: string] : any[]; }
 
 export class SmogonStats {
   
-  private leads: [];
-  private usage: [];
-  private moveSet: [];
   private database: { [id: string] : DbData; } = {};
   
   constructor() {
-    this.leads = [];
-    this.usage = [];
-    this.moveSet = [];
   }
   
   public getLeads(format = 'gen7ou'): PokemonUsage[] {

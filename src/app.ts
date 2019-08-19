@@ -1,8 +1,13 @@
-import * as smogon from './smogon/smogonStats';
 import Discord = require('discord.js');
-const smogonStats = new smogon.SmogonStats();
+import { SmogonStats } from './smogon/smogonStats';
+import { PokemonDb } from './pokemon/pokemonDb';
+import { ColorHelper } from './pokemon/helpers';
+import { PokemonType } from './pokemon/models';
+
+const smogonStats = new SmogonStats();
+const pokemonDb = new PokemonDb();
 const client = new Discord.Client();
-const token = 'NjEwOTQ1ODUwNTU3OTg4ODk0.XVidpA.WVzSlx65vtR08NeKigF-e9lgt1E';
+const token = 'NjEwOTQ1ODUwNTU3OTg4ODk0.XVp_Mw.eAGjaBqoQ5V7dkEyt9XdD-VMPDo';
 const prefix = '/';
 
 client.on('ready', () => {
@@ -36,11 +41,12 @@ client.on('message', msg => {
 
   if (msg.content === `${prefix}leads`) {
     let leads = smogonStats.getLeads();
+    const firstMon = pokemonDb.getPokemon(leads[0].name);
     console.log(leads);
 
     const embed = new Discord.RichEmbed()
-      .setColor('#f50057')
-      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${leads[0].name.toLowerCase()}.png`)
+      .setColor(ColorHelper.getColorForType(firstMon.type1))
+      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${firstMon.name.toLowerCase()}.png`)
 
     leads.forEach((mon, i) => {
       //embed.addField('Pokémon', mon, true)
@@ -52,14 +58,15 @@ client.on('message', msg => {
   }
 
   if (msg.content === `${prefix}usage`) {
-    let leads = smogonStats.getUsage();
-    console.log(leads);
+    const usageData = smogonStats.getUsage();
+    const firstMon = pokemonDb.getPokemon(usageData[0].name);
+    console.log(usageData);
 
     const embed = new Discord.RichEmbed()
-      .setColor('#f50057')
-      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${leads[0].name.toLowerCase()}.png`)
+      .setColor(ColorHelper.getColorForType(firstMon.type1))
+      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${firstMon.name.toLowerCase()}.png`)
 
-    leads.forEach((mon, i) => {
+    usageData.forEach((mon, i) => {
       embed.addField(`Rank ${i + 1}º ${mon.name}`, `Usage: ${mon.usageRaw.toFixed(2)}%`, true);
     });
 
@@ -72,16 +79,17 @@ client.on('message', msg => {
       return msg.channel.send(`You didn't provide the Pokémon, ${msg.author}!`);
     }
 
-    const pokemon = args.join(' ');
-    const moveset = smogonStats.getMoveSet(pokemon);
+    const pokemonArg = args.join(' ');
+    const moveset = smogonStats.getMoveSet(pokemonArg);
+    const pokemon = pokemonDb.getPokemon(pokemonArg);
 
     if (!moveset) {
-      return msg.channel.send(`Could not find moveset for the provided Pokémon: '${pokemon}', ${msg.author}!`);
+      return msg.channel.send(`Could not find moveset for the provided Pokémon: '${pokemonArg}', ${msg.author}!`);
     }
 
     const embed = new Discord.RichEmbed()
-      .setColor('#f50057')
-      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${pokemon.replace(/ /g, '').toLowerCase()}.png`)
+      .setColor(ColorHelper.getColorForType(pokemon.type1))
+      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${pokemonArg.replace(/ /g, '').toLowerCase()}.png`)
 
     moveset.moves.forEach((move, i) => {
       embed.addField(`${move.name}`, `Usage: ${move.percentage.toFixed(2)}%`, true);
