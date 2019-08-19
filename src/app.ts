@@ -1,15 +1,10 @@
-import Discord = require('discord.js');
 import fs = require("fs");
-import { SmogonStats } from './smogon/smogonStats';
-import { PokemonDb } from './pokemon/pokemonDb';
-import { ColorHelper } from './pokemon/helpers';
+import Discord = require('discord.js');
 import { Command } from './commands/command';
 import { AppDataSource } from './appDataSource';
 
 // setup & load config
 require('dotenv').config();
-const smogonStats = new SmogonStats();
-const pokemonDb = new PokemonDb();
 const dataSource = new AppDataSource();
 const prefix = '/';
 
@@ -36,25 +31,6 @@ client.on('message', msg => {
 
   const args = msg.content.slice(prefix.length).split(/ +/);
   const commandName = args.shift().toLowerCase();
-  console.log(commandName);
-  console.log(args);
-
-  // test commands
-  if (commandName === 'ping') {
-    (commands.get('ping') as Command).execute(msg, args);
-  }
-
-  if (commandName === 'server') {
-    msg.channel.send(`Server name: ${msg.guild.name}\nTotal members: ${msg.guild.memberCount}`);
-  }
-
-  if (commandName === 'args-info') {
-    if (!args.length) {
-      return msg.channel.send(`You didn't provide any arguments, ${msg.author}!`);
-    }
-
-    msg.channel.send(`Command name: ${commandName}\nArguments: ${args}`);
-  }
 
   // all commands
   if (!commands.has(commandName)) return;
