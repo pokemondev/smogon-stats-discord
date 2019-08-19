@@ -2,12 +2,13 @@ import Discord = require('discord.js');
 import { SmogonStats } from './smogon/smogonStats';
 import { PokemonDb } from './pokemon/pokemonDb';
 import { ColorHelper } from './pokemon/helpers';
-import { PokemonType } from './pokemon/models';
+
+// load config variables
+require('dotenv').config();
 
 const smogonStats = new SmogonStats();
 const pokemonDb = new PokemonDb();
 const client = new Discord.Client();
-const token = 'NjEwOTQ1ODUwNTU3OTg4ODk0.XVp_Mw.eAGjaBqoQ5V7dkEyt9XdD-VMPDo';
 const prefix = '/';
 
 client.on('ready', () => {
@@ -100,5 +101,5 @@ client.on('message', msg => {
   }
 });
 
-client.login(token);
+client.login(process.env.TOKEN);
 //console.log(smogonStats.getLeads());
