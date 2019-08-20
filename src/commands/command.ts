@@ -1,12 +1,12 @@
 import Discord = require('discord.js');
 import { AppDataSource } from "../appDataSource";
-import { Pokemon } from "../pokemon/models";
 import { MoveSetUsage, UsageData } from "../smogon/models";
 import { ColorHelper } from '../pokemon/helpers';
 
 export interface Command {
   name: string;
   description: string;
+  aliases: string[];
 	execute(message, args);
 }
 
@@ -14,15 +14,18 @@ export class CommandBase implements Command {
   name: string;
   description: string;
   dataSource: AppDataSource;
+  aliases: string[] = [];
   
-  constructor(dataSource: AppDataSource){
+  constructor(dataSource: AppDataSource) {
     this.dataSource = dataSource;
   }
-
+  
   execute(message: any, args: any) {
     throw new Error("Method not implemented.");
   }
   
+  get usage() { return `${this.name} <pokémon name>`; }
+
   get displayName(): string {
     return this.name
       ? this.name.charAt(0).toUpperCase() + this.name.slice(1)
@@ -33,7 +36,9 @@ export class CommandBase implements Command {
                                args: string[], 
                                targetData: (data: MoveSetUsage) => UsageData[]) {
     if (!args.length) {
-      return message.channel.send(`You didn't provide the Pokémon, ${message.author}!`);
+      let reply = `You didn't provide the Pokémon, ${message.author}!`;
+      reply += `\nThe proper usage would be: \`/${this.usage}\``;
+      return message.channel.send(reply);
     }
 
     const pokemonArg = args.join(' ');
@@ -57,8 +62,8 @@ export class CommandBase implements Command {
   }
 
   public processFilterBasedCommand(message, 
-                                       args: string[], 
-                                       targetData: (data: MoveSetUsage) => UsageData[]){
+                                   args: string[], 
+                                   targetData: (data: MoveSetUsage) => UsageData[]){
     const pokemonArg = args.join(' ');
     const movesets = this.dataSource.smogonStats.getMegasMoveSets();
     // .getMoveSets(

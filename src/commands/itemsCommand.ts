@@ -1,10 +1,10 @@
-import { Command, CommandBase } from "./command";
+import { CommandBase } from "./command";
 import { AppDataSource } from "../appDataSource";
-import { ColorHelper } from '../pokemon/helpers';
 
 export class ItemsCommand extends CommandBase {
   name = "items";
   description = "Lists the most used items of a given the Pokémon";
+  aliases = [ 'i', 'item', 'itens' ];
 
   constructor(dataSource: AppDataSource) {
     super(dataSource);

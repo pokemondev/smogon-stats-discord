@@ -2,8 +2,9 @@ import { Command } from "./command";
 import { AppDataSource } from "../appDataSource";
 
 export class ServerCommand implements Command {
-  public name = 'ping';
-  public description = "Ping!";
+  name = 'ping';
+  description = "Ping!";
+  aliases = [];
   
   private appDataSource: AppDataSource;
 

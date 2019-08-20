@@ -6,6 +6,7 @@ import { ColorHelper } from '../pokemon/helpers';
 export class UsageCommand implements Command {
   name = "usage";
   description = "Lists the top 10 most used Pokémon";
+  aliases = [ 'u', 'usages', 'uso' ];
 
   dataSource: AppDataSource;
 

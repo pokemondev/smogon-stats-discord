@@ -4,6 +4,7 @@ import { AppDataSource } from "../appDataSource";
 export class MegasCommand extends CommandBase {
   name = "megas";
   description = "Lists the 10 most common Mega Stone users";
+  aliases = [ 'mega', 'mega-stone' ];
 
   constructor(dataSource: AppDataSource) {
     super(dataSource);

@@ -32,12 +32,14 @@ client.on('message', msg => {
   const args = msg.content.slice(prefix.length).split(/ +/);
   const commandName = args.shift().toLowerCase();
 
-  // all commands
-  if (!commands.has(commandName)) return;
-
   try {
-    (commands.get(commandName) as Command).execute(msg, args);
-  } catch (error) {
+    const command = commands.get(commandName) as Command || 
+                    commands.find(c => (c as Command).aliases && (c as Command).aliases.includes(commandName)) as Command;
+    if (!command) return;
+
+    command.execute(msg, args);
+  } 
+  catch (error) {
     console.error(error);
     msg.reply('there was an error trying to execute that command!');
   }  

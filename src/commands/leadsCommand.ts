@@ -6,6 +6,7 @@ import { ColorHelper } from '../pokemon/helpers';
 export class LeadsCommand implements Command {
   name = "leads";
   description = "Lists the top 10 leads Pokémon";
+  aliases = [ 'l', 'lead', 'lider' ];
 
   private dataSource: AppDataSource;
 
