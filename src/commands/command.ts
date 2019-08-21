@@ -1,6 +1,6 @@
 import Discord = require('discord.js');
 import { AppDataSource } from "../appDataSource";
-import { MoveSetUsage, UsageData } from "../smogon/models";
+import { MoveSetUsage, UsageData, ChecksAndCountersUsageData } from "../smogon/models";
 import { ColorHelper } from '../pokemon/helpers';
 
 export interface Command {
@@ -34,7 +34,7 @@ export class CommandBase implements Command {
 
   public processMoveSetCommand(message, 
                                args: string[], 
-                               targetData: (data: MoveSetUsage) => UsageData[]) {
+                               targetData: (data: MoveSetUsage) => UsageData[] | ChecksAndCountersUsageData[]) {
     if (!args.length) {
       let reply = `You didn't provide the Pokémon, ${message.author}!`;
       reply += `\nThe proper usage would be: \`/${this.usage}\``;
@@ -53,8 +53,12 @@ export class CommandBase implements Command {
       .setColor(ColorHelper.getColorForType(pokemon.type1))
       .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${pokemon.name.replace(/ /g, '').toLowerCase()}.png`)
 
-      targetData(moveset).forEach((move, i) => {
-      embed.addField(`${move.name}`, `Usage: ${move.percentage.toFixed(2)}%`, true);
+    targetData(moveset).forEach((data, i) => {
+      const value = this.isCheckAndCounters(data)
+        ? `Knocked out : ${data.kOed.toFixed(2)}%\nSwitched out: ${data.switchedOut.toFixed(2)}%`
+        : `Usage: ${data.percentage.toFixed(2)}%`;
+
+      embed.addField(`${data.name}`, value, true);
     });
 
     const msgHeader = `**__${moveset.name} ${this.displayName}:__**`;
@@ -87,5 +91,9 @@ export class CommandBase implements Command {
 
     const msgHeader = `**__${this.displayName}:__** Top 10 ${this.displayName} users of Gen 7 OU`;
     message.channel.send(msgHeader, embed);
+  }
+
+  private isCheckAndCounters(obj: any): obj is ChecksAndCountersUsageData {
+    return obj.kOed !== undefined; 
   }
 }

@@ -3,6 +3,12 @@ export interface UsageData {
     percentage: number;
 }
 
+export interface ChecksAndCountersUsageData extends UsageData {
+    name: string;
+    kOed: number;
+    switchedOut: number;
+}
+
 export interface MoveSetUsage {
     name: string;
     abilities: UsageData[];
@@ -10,7 +16,7 @@ export interface MoveSetUsage {
     spreads: UsageData[];
     moves: UsageData[];
     teamMates: UsageData[];
-    checksAndCounters: any[];
+    checksAndCounters: ChecksAndCountersUsageData[];
     usage?: number;
 }
 
