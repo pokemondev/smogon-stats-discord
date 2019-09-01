@@ -9,7 +9,8 @@
     "start": "npm-run-all --parallel watch:*",
     "watch:build": "tsc --watch",
     "watch:app": "node ./dist/app.js",
-    "bot": "node ./dist/app.js"
+    "bot": "node ./dist/app.js",
+    "build": "tsc -b ./"
   },
   "repository": {
     "type": "git",
