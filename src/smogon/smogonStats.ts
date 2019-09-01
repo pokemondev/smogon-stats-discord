@@ -1,5 +1,6 @@
 import fs = require("fs");
-import { PokemonUsage, MoveSetUsage } from "./models";
+import { PokemonUsage, MoveSetUsage, SmogonFormat } from "./models";
+import { FormatHelper } from "./helpers";
 
 type DbData = { [id: string] : any[]; }
 
@@ -10,16 +11,17 @@ export class SmogonStats {
   constructor() {
   }
   
-  public getLeads(format = 'gen7ou'): PokemonUsage[] {
+  public getLeads(format: SmogonFormat): PokemonUsage[] {
     const statsType = 'leads';
-    this.loadData(statsType, format, (data) => {
+    this.loadData2(statsType, format, (data) => {
       return data.data.rows
         .sort((a, b) => (a[4] - b[4]) * -1) // reverse
         .slice(0, 10)
         .map(mon => { return { name: mon[1], usageRaw: mon[4] } as PokemonUsage});
     });
 
-    return this.database[statsType][format];
+    const fmt = FormatHelper.toString(format);
+    return this.database[statsType][fmt];
   }
 
   public getUsage(format = 'gen7ou', top10: boolean = false): PokemonUsage[] {
@@ -81,8 +83,30 @@ export class SmogonStats {
     }
   }
 
+  private loadData2(statsType, format: SmogonFormat, callback: (data: any) => any = undefined): void {
+    const fmt = FormatHelper.toString(format);
+    const dataLoaded = this.database[statsType] && this.database[statsType][fmt];
+    if (!dataLoaded) {
+      console.log('loading ' + statsType)
+      let fileData = this.loadFileData2(statsType, format);
+      
+      if (callback)
+        fileData = callback(fileData);
+      
+      const data = this.database[statsType] || {} as DbData;
+      data[fmt] = fileData;
+      this.database[statsType] = data;
+    }
+  }
+
   private loadFileData(statsType, format = '') {
-    const rawdata = fs.readFileSync(`data/smogon-stats/${statsType}-${format}.json`).toString();
+    const rawdata = fs.readFileSync(`data/smogon-stats/gen7/ou/${statsType}-${format}.json`).toString();
+    return JSON.parse(rawdata);
+  }
+
+  private loadFileData2(statsType, format: SmogonFormat) {
+    const filename = `${statsType}-${FormatHelper.toString(format)}`;
+    const rawdata = fs.readFileSync(`data/smogon-stats/${format.generation}/${format.tier}/${filename}.json`).toString();
     return JSON.parse(rawdata);
   }
 }

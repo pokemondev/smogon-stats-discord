@@ -27,3 +27,8 @@ export interface PokemonUsage {
     usageRaw: number;
 }
 
+export interface SmogonFormat {
+    generation: string;
+    tier: string;
+}
+
