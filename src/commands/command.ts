@@ -1,7 +1,10 @@
 import Discord = require('discord.js');
 import { AppDataSource } from "../appDataSource";
-import { MoveSetUsage, UsageData, ChecksAndCountersUsageData } from "../smogon/models";
+import { MoveSetUsage, UsageData, ChecksAndCountersUsageData, SmogonFormat } from "../smogon/models";
 import { ColorHelper } from '../pokemon/helpers';
+import { type } from 'os';
+import { format } from 'path';
+import { FormatHelper } from '../smogon/helpers';
 
 export interface Command {
   name: string;
@@ -9,6 +12,8 @@ export interface Command {
   aliases: string[];
 	execute(message, args);
 }
+
+type ArgData = { valid: boolean, pokemon: string, format: SmogonFormat };
 
 export class CommandBase implements Command {
   name: string;
@@ -24,7 +29,7 @@ export class CommandBase implements Command {
     throw new Error("Method not implemented.");
   }
   
-  get usage() { return `${this.name} <pokémon name>`; }
+  get usage() { return `${this.name} <pokémon name> [gen] | [tier]`; }
 
   get displayName(): string {
     return this.name
@@ -38,15 +43,20 @@ export class CommandBase implements Command {
     if (!args.length) {
       let reply = `You didn't provide the Pokémon, ${message.author}!`;
       reply += `\nThe proper usage would be: \`/${this.usage}\``;
+      reply += `\neg.:`;
+      reply += `\n/${this.name} magearna`;
+      reply += `\n/${this.name} alakazam gen6`;
+      reply += `\n/${this.name} scizor uu`;
+      reply += `\n/${this.name} machamp gen6 uu`;
       return message.channel.send(reply);
     }
 
-    const pokemonArg = args.join(' ');
-    const moveset = this.dataSource.smogonStats.getMoveSet(pokemonArg);
-    const pokemon = this.dataSource.pokemonDb.getPokemon(pokemonArg);
+    var argData = this.parseArgs(args);
+    const moveset = this.dataSource.smogonStats.getMoveSet(argData.pokemon, argData.format);
+    const pokemon = this.dataSource.pokemonDb.getPokemon(argData.pokemon);
 
     if (!moveset) {
-      return message.channel.send(`Could not find moveset for the provided Pokémon: '${pokemonArg}', ${message.author}!`);
+      return message.channel.send(`Could not find moveset for the provided Pokémon: '${argData.pokemon}', ${message.author}!`);
     }
 
     const embed = new Discord.RichEmbed()
@@ -61,7 +71,7 @@ export class CommandBase implements Command {
       embed.addField(`${data.name}`, value, true);
     });
 
-    const msgHeader = `**__${moveset.name} ${this.displayName}:__**`;
+    const msgHeader = `**__${moveset.name} ${this.displayName}:__** ${FormatHelper.toReadableString(argData.format)}`;
     message.channel.send(msgHeader, embed);
   }
 
@@ -95,5 +105,23 @@ export class CommandBase implements Command {
 
   private isCheckAndCounters(obj: any): obj is ChecksAndCountersUsageData {
     return obj.kOed !== undefined; 
+  }
+
+  private parseArgs(args: string[]): ArgData {
+    if (args.length == 0)
+      return { valid: false, pokemon: undefined, format: undefined };
+    
+    if (args.length == 1)
+      return { valid: true, pokemon: args[0], format: FormatHelper.getDefault() };
+
+    const hasPokemonSecondName = !FormatHelper.isValidGen(args[1]) && !FormatHelper.isValidTier(args[1]);
+    
+    const pokemonName = hasPokemonSecondName
+      ? `${args[0]} ${args[1]}`
+      : args[0]
+
+    const format = FormatHelper.getFormat(args.slice(hasPokemonSecondName ? 2 : 1));
+
+    return { valid: true, pokemon: pokemonName, format: format };
   }
 }

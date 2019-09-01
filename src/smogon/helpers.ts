@@ -13,7 +13,19 @@ export class FormatHelper {
     return {
       generation: (gen || "gen7").toLowerCase(),
       tier: (tier || "ou").toLowerCase()
-    };    
+    };
+  }
+
+  public static isValidGen(gen: string): boolean {
+    return this.Generations.some(g => g == gen.toLowerCase());
+  }
+
+  public static isValidTier(tier: string): boolean {
+    return this.Tiers.some(t => t == tier.toLowerCase());
+  }
+
+  public static getDefault(): SmogonFormat {
+    return { generation: "gen7", tier: "ou" }; 
   }
 
   public static toString(format: SmogonFormat): string {

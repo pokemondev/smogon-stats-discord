@@ -13,7 +13,7 @@ export class SmogonStats {
   
   public getLeads(format: SmogonFormat): PokemonUsage[] {
     const statsType = 'leads';
-    this.loadData2(statsType, format, (data) => {
+    this.loadData(statsType, format, (data) => {
       return data.data.rows
         .sort((a, b) => (a[4] - b[4]) * -1) // reverse
         .slice(0, 10)
@@ -26,7 +26,7 @@ export class SmogonStats {
 
   public getUsage(format: SmogonFormat, top10: boolean = true): PokemonUsage[] {
     const statsType = 'usage';
-    this.loadData2(statsType, format, (data) => {
+    this.loadData(statsType, format, (data) => {
       return data.data.rows
         .sort((a, b) => (a[6] - b[6]) * -1) // reverse        
         .map(mon => { return { name: mon[1], usageRaw: mon[6] } as PokemonUsage});
@@ -38,25 +38,26 @@ export class SmogonStats {
       : this.database[statsType][fmt]
   }
 
-  public getMoveSets(format = 'gen7ou', 
+  public getMoveSets(format: SmogonFormat, 
                      filter: (pkm: MoveSetUsage) => boolean = undefined): MoveSetUsage[] {
     const statsType = 'moveset';
     this.loadData(statsType, format);
 
-    const sets = this.database[statsType][format] as MoveSetUsage[];
+    const fmt = FormatHelper.toString(format);
+    const sets = this.database[statsType][fmt] as MoveSetUsage[];
     return filter
       ? sets.filter(filter)
       : sets;
   }
 
-  public getMoveSet(pokemon: string, format = 'gen7ou'): MoveSetUsage {
+  public getMoveSet(pokemon: string, format: SmogonFormat): MoveSetUsage {
     const sets = this.getMoveSets(format);
     return sets.find(e => e.name.toLowerCase() == pokemon.toLowerCase());
   }
 
   public getMegasMoveSets(format = 'gen7ou'): MoveSetUsage[] {
     const sets = this.getMoveSets(
-      format,
+      { generation: "gen7", tier: "ou" },
       (e) => e.items.some(i => e.name.endsWith("-Mega") && i.name.endsWith('ite'))
     ).slice(0, 10);
 
@@ -70,27 +71,13 @@ export class SmogonStats {
       .slice(0, 10);
   }
 
-  private loadData(statsType, format = '', callback: (data: any) => any = undefined): void {
-    if (!this.database[statsType]) {
-      console.log('loading ' + statsType)
-      let fileData = this.loadFileData(statsType, format);
-      
-      if (callback)
-        fileData = callback(fileData);
-      
-      const data = {} as DbData;
-      data[format] = fileData;
-      this.database[statsType] = data;
-    }
-  }
-
-  private loadData2(statsType, format: SmogonFormat, callback: (data: any) => any = undefined): void {
+  private loadData(statsType, format: SmogonFormat, callback: (data: any) => any = undefined): void {
     const fmt = FormatHelper.toString(format);
     const dataLoaded = this.database[statsType] && this.database[statsType][fmt];
     if (!dataLoaded) {
       console.log('loading ' + statsType)
-      let fileData = this.loadFileData2(statsType, format);
-      
+      let fileData = this.loadFileData(statsType, format);
+
       if (callback)
         fileData = callback(fileData);
       
@@ -100,12 +87,7 @@ export class SmogonStats {
     }
   }
 
-  private loadFileData(statsType, format = '') {
-    const rawdata = fs.readFileSync(`data/smogon-stats/gen7/ou/${statsType}-${format}.json`).toString();
-    return JSON.parse(rawdata);
-  }
-
-  private loadFileData2(statsType, format: SmogonFormat) {
+  private loadFileData(statsType, format: SmogonFormat) {
     const filename = `${statsType}-${FormatHelper.toString(format)}`;
     const rawdata = fs.readFileSync(`data/smogon-stats/${format.generation}/${format.tier}/${filename}.json`).toString();
     return JSON.parse(rawdata);
