@@ -78,15 +78,15 @@ export class CommandBase implements Command {
   public processFilterBasedCommand(message, 
                                    args: string[], 
                                    targetData: (data: MoveSetUsage) => UsageData[]){
-    const pokemonArg = args.join(' ');
-    const movesets = this.dataSource.smogonStats.getMegasMoveSets();
+    const format = FormatHelper.getFormat(args);
+    const movesets = this.dataSource.smogonStats.getMegasMoveSets(format);
     // .getMoveSets(
     //   undefined,
     //   (e) => e.items.some(i => e.name.endsWith("-Mega") && i.name.endsWith('ite'))
     // ).slice(0, 10);
     
     if (!movesets || movesets.length == 0) {
-      return message.channel.send(`Could not find moveset for the provided Pokémon: '${pokemonArg}', ${message.author}!`);
+      return message.channel.send(`Could not find moveset for the provided data: '${FormatHelper.toReadableString(format)}', ${message.author}!`);
     }
     
     const pokemon = this.dataSource.pokemonDb.getPokemon(movesets[0].name);
@@ -99,7 +99,7 @@ export class CommandBase implements Command {
       embed.addField(`${set.name}`, `Usage: ${set.usage.toFixed(2)}%`, true);
     });
 
-    const msgHeader = `**__${this.displayName}:__** Top 10 ${this.displayName} users of Gen 7 OU`;
+    const msgHeader = `**__${this.displayName}:__** Top 10 ${this.displayName} users of ${FormatHelper.toReadableString(format)}`;
     message.channel.send(msgHeader, embed);
   }
 

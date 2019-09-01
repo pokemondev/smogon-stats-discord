@@ -8,9 +8,6 @@ export class SmogonStats {
   
   private database: { [id: string] : DbData; } = {};
   
-  constructor() {
-  }
-  
   public getLeads(format: SmogonFormat): PokemonUsage[] {
     const statsType = 'leads';
     this.loadData(statsType, format, (data) => {
@@ -55,13 +52,13 @@ export class SmogonStats {
     return sets.find(e => e.name.toLowerCase() == pokemon.toLowerCase());
   }
 
-  public getMegasMoveSets(format = 'gen7ou'): MoveSetUsage[] {
+  public getMegasMoveSets(format: SmogonFormat): MoveSetUsage[] {
     const sets = this.getMoveSets(
-      { generation: "gen7", tier: "ou" },
+      format,
       (e) => e.items.some(i => e.name.endsWith("-Mega") && i.name.endsWith('ite'))
     ).slice(0, 10);
 
-    const usage = this.getUsage({generation: 'gen7', tier: 'ou'}, false)
+    const usage = this.getUsage(format, false)
                       .filter(e => sets.some(s => s.name == e.name));
     sets.forEach(set => {
       set.usage = usage.find(e=> e.name == set.name).usageRaw
