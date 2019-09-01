@@ -2,6 +2,7 @@ import Discord = require('discord.js');
 import { Command } from "./command";
 import { AppDataSource } from "../appDataSource";
 import { ColorHelper } from '../pokemon/helpers';
+import { FormatHelper } from '../smogon/helpers';
 
 export class UsageCommand implements Command {
   name = "usage";
@@ -15,8 +16,8 @@ export class UsageCommand implements Command {
   }
   
   execute(message: any, args: any) {
-
-    const usageData = this.dataSource.smogonStats.getUsage();
+    const format = FormatHelper.getFormat(args);
+    const usageData = this.dataSource.smogonStats.getUsage(format);
     const firstMon = this.dataSource.pokemonDb.getPokemon(usageData[0].name);
 
     const embed = new Discord.RichEmbed()
@@ -27,7 +28,7 @@ export class UsageCommand implements Command {
       embed.addField(`Rank ${i + 1}º ${mon.name}`, `Usage: ${mon.usageRaw.toFixed(2)}%`, true);
     });
 
-    const msgHeader = '**__Usage:__** Top 10 most used Pokémon of Gen 7 OU';
+    const msgHeader = `**__Usage:__** Top 10 most used Pokémon of ${FormatHelper.toReadableString(format)}`;
     message.channel.send(msgHeader, embed);
   }
 }

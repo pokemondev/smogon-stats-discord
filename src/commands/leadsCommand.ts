@@ -2,6 +2,7 @@ import Discord = require('discord.js');
 import { Command } from "./command";
 import { AppDataSource } from "../appDataSource";
 import { ColorHelper } from '../pokemon/helpers';
+import { FormatHelper } from '../smogon/helpers';
 
 export class LeadsCommand implements Command {
   name = "leads";
@@ -15,8 +16,8 @@ export class LeadsCommand implements Command {
   }
   
   execute(message: any, args: any) {
-
-    let leads = this.dataSource.smogonStats.getLeads();
+    const format = FormatHelper.getFormat(args);
+    const leads = this.dataSource.smogonStats.getLeads(format);
     const firstMon = this.dataSource.pokemonDb.getPokemon(leads[0].name);
 
     const embed = new Discord.RichEmbed()
@@ -27,7 +28,7 @@ export class LeadsCommand implements Command {
       embed.addField(`Lead ${i + 1}º ${mon.name}`, `Usage: ${mon.usageRaw.toFixed(2)}%`, true);
     });
 
-    const msgHeader = '**__Leads:__** Top 10 leads of Gen 7 OU';
+    const msgHeader = `**__Leads:__** Top 10 leads of ${FormatHelper.toReadableString(format)}`;
     message.channel.send(msgHeader, embed);
   }
 }
