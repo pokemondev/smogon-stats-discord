@@ -17,7 +17,7 @@ export class UsageCommand implements Command {
   
   execute(message: any, args: any) {
     const format = FormatHelper.getFormat(args);
-    const usageData = this.dataSource.smogonStats.getUsage(format);
+    const usageData = this.dataSource.smogonStats.getUsages(format);
     const firstMon = this.dataSource.pokemonDb.getPokemon(usageData[0].name);
 
     const embed = new Discord.RichEmbed()

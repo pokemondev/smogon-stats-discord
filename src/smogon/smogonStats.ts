@@ -21,7 +21,7 @@ export class SmogonStats {
     return this.database[statsType][fmt];
   }
 
-  public getUsage(format: SmogonFormat, top10: boolean = true): PokemonUsage[] {
+  public getUsages(format: SmogonFormat, top10: boolean = true): PokemonUsage[] {
     const statsType = 'usage';
     this.loadData(statsType, format, (data) => {
       return data.data.rows
@@ -33,6 +33,11 @@ export class SmogonStats {
     return top10
       ? this.database[statsType][fmt].slice(0, 10)
       : this.database[statsType][fmt]
+  }
+
+  public getUsage(pokemon: string, format: SmogonFormat): PokemonUsage {
+    const usages = this.getUsages(format, false);
+    return usages.find(u => u.name == pokemon);
   }
 
   public getMoveSets(format: SmogonFormat, 
@@ -58,7 +63,7 @@ export class SmogonStats {
       (e) => e.items.some(i => e.name.endsWith("-Mega") && i.name.endsWith('ite'))
     ).slice(0, 10);
 
-    const usage = this.getUsage(format, false)
+    const usage = this.getUsages(format, false)
                       .filter(e => sets.some(s => s.name == e.name));
     sets.forEach(set => {
       set.usage = usage.find(e=> e.name == set.name).usageRaw

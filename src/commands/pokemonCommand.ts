@@ -30,20 +30,34 @@ export class PokemonCommand extends CommandBase {
     const baseStatsData = `${baseStatsL1}\n${baseStatsL2}`;
     embed.addField("Base Stats Total: " + stats.tot, baseStatsData, true);
 
+    // general info
+    const usage = this.dataSource.smogonStats.getUsage(cmd.pokemon.name, cmd.format);
+    const info1 = `Tier: \`${cmd.pokemon.tier}\``;
+    const info2 = `Generation: \`${cmd.pokemon.generation}\``;
+    const info3 = `Type: \`${cmd.pokemon.type1} ${(cmd.pokemon.type2 ? '/ ' + cmd.pokemon.type2 : '' )}\``;
+    const info4 = `Usage: \`${(usage ? usage.usageRaw.toFixed(2) + '%' : '')}\``;
+    const infoX = `${info1}\n${info2}\n${info3}\n${info4}`;
+    embed.addField("General Info", infoX, true);
+
+    // moveset usage stats
     const abilities = cmd.moveSet.abilities.map(a => `${a.name}: \`${a.percentage.toFixed(2)}%\``).join('\n');
     embed.addField("Abilities", abilities, true);
 
-    const weak = "**Weak:** type1, type2, xxxxxxxx\n**Resist:** type4, yyyyy"
+    const weak = "**Weak:** \ntype1, type2, xxxxxxxx\n**Resist:** \ntype4, yyyyy\n**Imune:**\nEletric, Fairy, Normal, Fighting"
     embed.addField("Weak/Resist", weak, true);
 
-    const moves = cmd.moveSet.moves.slice(0, 6).map(m => `\`${m.name}: ${m.percentage.toFixed(2)}%\``).join('\n');
+    const moves = cmd.moveSet.moves.slice(0, 6).map(m => `${m.name}: \`${m.percentage.toFixed(2)}%\``).join('\n');
     embed.addField("Moves", moves, true);
 
-    const items = cmd.moveSet.items.slice(0, 6).map(i => `\`${i.name}: ${i.percentage.toFixed(2)}%\``).join('\n');
+    const items = cmd.moveSet.items.slice(0, 6).map(i => `${i.name}: \`${i.percentage.toFixed(2)}%\``).join('\n');
     embed.addField("Items", items, true);
 
     const spreads = cmd.moveSet.spreads.slice(0, 6).map(iv => `\`${iv.name}: ${iv.percentage.toFixed(2)}%\``).join('\n');
     embed.addField("Nature/IV spread", spreads, true);
+
+    let countersChecks = cmd.moveSet.checksAndCounters.slice(0, 6).map(iv => `\`${iv.name}: KOed ${iv.kOed.toFixed(1)}% / Swed ${iv.switchedOut.toFixed(1)}%\``).join('\n');
+    countersChecks = countersChecks ? countersChecks : "-";
+    embed.addField("Counters & Checks", countersChecks, true);
 
     const msgHeader = `**__${cmd.pokemon.name}:__** ${FormatHelper.toReadableString(cmd.format)}`;
     message.channel.send(msgHeader, embed);
