@@ -42,3 +42,23 @@ export enum PokemonType {
     Steel    = "Steel",
     Water    = "Water"
 }
+
+export enum EffectivenessType {
+    None = 0,
+    Normal = 1,
+    SuperEffective = 2 ,
+    SuperEffective2x = 4,
+    NotVeryEffective = 0.5,
+    NotVeryEffective2x = 0.25
+}
+
+export type EffectivenessMap = { [id: string] : EffectivenessItem };
+export type EffectivenessItem = { type: PokemonType, effect: EffectivenessType };
+
+export interface TypeEffectiveness {
+    name: string;
+    atk_effectives: any[][];
+    def_effectives: EffectivenessMap;
+    genfamily: string[];
+    description: string;
+}
