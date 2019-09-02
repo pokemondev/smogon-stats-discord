@@ -1,5 +1,5 @@
-import fs = require("fs");
 import { Pokemon } from "./models";
+import { FileHelper } from "../common/fileHelper";
 
 export class PokemonDb {
 
@@ -14,8 +14,7 @@ export class PokemonDb {
   }
 
   private loadFileData(): Pokemon[] {
-    const rawdata = fs.readFileSync(`data/pokemon-db.json`).toString();
-    const data:Pokemon[] = JSON.parse(rawdata);
+    const data = FileHelper.loadFileData<Pokemon[]>("pokemon-db.json");
     return data;
   }
 }

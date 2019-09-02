@@ -1,6 +1,6 @@
 import { PokemonType, TypeEffectiveness, Pokemon, EffectivenessItem, EffectivenessType } from "./models";
 import { FileHelper } from "../common/fileHelper";
-import { getMapValues, groupBy } from "../common/mapHelper";
+import { getMapValues } from "../common/mapHelper";
 
 export class TypeService {
 
