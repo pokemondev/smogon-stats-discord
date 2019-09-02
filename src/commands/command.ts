@@ -14,7 +14,7 @@ export interface Command {
 }
 
 type ArgData = { valid: boolean, pokemon: string, format: SmogonFormat };
-type MovesetCommandData = { valid: boolean, pokemon: Pokemon, moveSet: MoveSetUsage, format: SmogonFormat };
+export type MovesetCommandData = { valid: boolean, pokemon: Pokemon, moveSet: MoveSetUsage, format: SmogonFormat };
 
 export class CommandBase implements Command {
   name: string;

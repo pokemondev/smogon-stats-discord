@@ -1,0 +1,92 @@
+[{
+    "name" : "Bug",
+    "atk_effectives" : [["Bug", 1], ["Dark", 2], ["Dragon", 1], ["Electric", 1], ["Fairy", 0.5], ["Fighting", 0.5], ["Fire", 0.5], ["Flying", 0.5], ["Ghost", 0.5], ["Grass", 2], ["Ground", 1], ["Ice", 1], ["Normal", 1], ["Poison", 0.5], ["Psychic", 2], ["Rock", 1], ["Steel", 0.5], ["Water", 1]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : ""
+}, {
+    "name" : "Dark",
+    "atk_effectives" : [["Bug", 1], ["Dark", 0.5], ["Dragon", 1], ["Electric", 1], ["Fairy", 0.5], ["Fighting", 0.5], ["Fire", 1], ["Flying", 1], ["Ghost", 2], ["Grass", 1], ["Ground", 1], ["Ice", 1], ["Normal", 1], ["Poison", 1], ["Psychic", 2], ["Rock", 1], ["Steel", 1], ["Water", 1]],
+    "genfamily" : ["GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : "Pokemon of this type are immune to Status moves used by a Pokemon with the Prankster Ability, unless the Pokemon is an ally. These Pokemon can be hit by Psychic-type attacks if they are under the effect of Miracle Eye."
+}, {
+    "name" : "Dragon",
+    "atk_effectives" : [["Bug", 1], ["Dark", 1], ["Dragon", 2], ["Electric", 1], ["Fairy", 0], ["Fighting", 1], ["Fire", 1], ["Flying", 1], ["Ghost", 1], ["Grass", 1], ["Ground", 1], ["Ice", 1], ["Normal", 1], ["Poison", 1], ["Psychic", 1], ["Rock", 1], ["Steel", 0.5], ["Water", 1]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : ""
+}, {
+    "name" : "Electric",
+    "atk_effectives" : [["Bug", 1], ["Dark", 1], ["Dragon", 0.5], ["Electric", 0.5], ["Fairy", 1], ["Fighting", 1], ["Fire", 1], ["Flying", 2], ["Ghost", 1], ["Grass", 0.5], ["Ground", 0], ["Ice", 1], ["Normal", 1], ["Poison", 1], ["Psychic", 1], ["Rock", 1], ["Steel", 1], ["Water", 2]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : "Pokemon of this type cannot become paralyzed."
+}, {
+    "name" : "Fairy",
+    "atk_effectives" : [["Bug", 1], ["Dark", 2], ["Dragon", 2], ["Electric", 1], ["Fairy", 1], ["Fighting", 2], ["Fire", 0.5], ["Flying", 1], ["Ghost", 1], ["Grass", 1], ["Ground", 1], ["Ice", 1], ["Normal", 1], ["Poison", 0.5], ["Psychic", 1], ["Rock", 1], ["Steel", 0.5], ["Water", 1]],
+    "genfamily" : ["XY", "SM"],
+    "description" : ""
+}, {
+    "name" : "Fighting",
+    "atk_effectives" : [["Bug", 0.5], ["Dark", 2], ["Dragon", 1], ["Electric", 1], ["Fairy", 0.5], ["Fighting", 1], ["Fire", 1], ["Flying", 0.5], ["Ghost", 0], ["Grass", 1], ["Ground", 1], ["Ice", 2], ["Normal", 2], ["Poison", 0.5], ["Psychic", 0.5], ["Rock", 2], ["Steel", 2], ["Water", 1]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : ""
+}, {
+    "name" : "Fire",
+    "atk_effectives" : [["Bug", 2], ["Dark", 1], ["Dragon", 0.5], ["Electric", 1], ["Fairy", 1], ["Fighting", 1], ["Fire", 0.5], ["Flying", 1], ["Ghost", 1], ["Grass", 2], ["Ground", 1], ["Ice", 2], ["Normal", 1], ["Poison", 1], ["Psychic", 1], ["Rock", 0.5], ["Steel", 2], ["Water", 0.5]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : "Pokemon of this type cannot become burned."
+}, {
+    "name" : "Flying",
+    "atk_effectives" : [["Bug", 2], ["Dark", 1], ["Dragon", 1], ["Electric", 0.5], ["Fairy", 1], ["Fighting", 2], ["Fire", 1], ["Flying", 1], ["Ghost", 1], ["Grass", 2], ["Ground", 1], ["Ice", 1], ["Normal", 1], ["Poison", 1], ["Psychic", 1], ["Rock", 0.5], ["Steel", 0.5], ["Water", 1]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : "Pokemon of this type are airborne and lose their Flying type until the end of the turn they use Roost. These Pokemon can be hit by Thousand Arrows despite it being a Ground-type attack."
+}, {
+    "name" : "Ghost",
+    "atk_effectives" : [["Bug", 1], ["Dark", 0.5], ["Dragon", 1], ["Electric", 1], ["Fairy", 1], ["Fighting", 1], ["Fire", 1], ["Flying", 1], ["Ghost", 2], ["Grass", 1], ["Ground", 1], ["Ice", 1], ["Normal", 0], ["Poison", 1], ["Psychic", 2], ["Rock", 1], ["Steel", 1], ["Water", 1]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : "Pokemon of this type cannot be prevented from switching out by any effect. These Pokemon can be hit by Normal- and Fighting-type attacks if they are under the effect of Foresight or Odor Sleuth, or if the attacker has the Scrappy Ability."
+}, {
+    "name" : "Psychic",
+    "atk_effectives" : [["Bug", 1], ["Dark", 0], ["Dragon", 1], ["Electric", 1], ["Fairy", 1], ["Fighting", 2], ["Fire", 1], ["Flying", 1], ["Ghost", 1], ["Grass", 1], ["Ground", 1], ["Ice", 1], ["Normal", 1], ["Poison", 2], ["Psychic", 0.5], ["Rock", 1], ["Steel", 0.5], ["Water", 1]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : ""
+}, {
+    "name" : "Grass",
+    "atk_effectives" : [["Bug", 0.5], ["Dark", 1], ["Dragon", 0.5], ["Electric", 1], ["Fairy", 1], ["Fighting", 1], ["Fire", 0.5], ["Flying", 0.5], ["Ghost", 1], ["Grass", 0.5], ["Ground", 2], ["Ice", 1], ["Normal", 1], ["Poison", 0.5], ["Psychic", 1], ["Rock", 2], ["Steel", 0.5], ["Water", 2]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : "Pokemon of this type cannot become affected by Leech Seed and are immune to powder moves and the Effect Spore Ability."
+}, {
+    "name" : "Ground",
+    "atk_effectives" : [["Bug", 0.5], ["Dark", 1], ["Dragon", 1], ["Electric", 2], ["Fairy", 1], ["Fighting", 1], ["Fire", 2], ["Flying", 0], ["Ghost", 1], ["Grass", 0.5], ["Ground", 1], ["Ice", 1], ["Normal", 1], ["Poison", 2], ["Psychic", 1], ["Rock", 2], ["Steel", 2], ["Water", 1]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : "Pokemon of this type are immune to damage from Sandstorm."
+}, {
+    "name" : "Ice",
+    "atk_effectives" : [["Bug", 1], ["Dark", 1], ["Dragon", 2], ["Electric", 1], ["Fairy", 1], ["Fighting", 1], ["Fire", 0.5], ["Flying", 2], ["Ghost", 1], ["Grass", 2], ["Ground", 2], ["Ice", 0.5], ["Normal", 1], ["Poison", 1], ["Psychic", 1], ["Rock", 1], ["Steel", 0.5], ["Water", 0.5]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : "Pokemon of this type cannot become frozen and are immune to Sheer Cold and damage from Hail."
+}, {
+    "name" : "Normal",
+    "atk_effectives" : [["Bug", 1], ["Dark", 1], ["Dragon", 1], ["Electric", 1], ["Fairy", 1], ["Fighting", 1], ["Fire", 1], ["Flying", 1], ["Ghost", 0], ["Grass", 1], ["Ground", 1], ["Ice", 1], ["Normal", 1], ["Poison", 1], ["Psychic", 1], ["Rock", 0.5], ["Steel", 0.5], ["Water", 1]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : ""
+}, {
+    "name" : "Poison",
+    "atk_effectives" : [["Bug", 1], ["Dark", 1], ["Dragon", 1], ["Electric", 1], ["Fairy", 2], ["Fighting", 1], ["Fire", 1], ["Flying", 1], ["Ghost", 0.5], ["Grass", 2], ["Ground", 0.5], ["Ice", 1], ["Normal", 1], ["Poison", 0.5], ["Psychic", 1], ["Rock", 0.5], ["Steel", 0], ["Water", 1]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : "Pokemon of this type cannot become poisoned, except by a Pokemon with the Corrosion Ability, and remove Toxic Spikes from their side of the field if they are grounded as they switch in. These Pokemon cannot miss when using Toxic, even if the target is in the middle of a two-turn move."
+}, {
+    "name" : "Rock",
+    "atk_effectives" : [["Bug", 2], ["Dark", 1], ["Dragon", 1], ["Electric", 1], ["Fairy", 1], ["Fighting", 0.5], ["Fire", 2], ["Flying", 2], ["Ghost", 1], ["Grass", 1], ["Ground", 0.5], ["Ice", 2], ["Normal", 1], ["Poison", 1], ["Psychic", 1], ["Rock", 1], ["Steel", 0.5], ["Water", 1]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : "Pokemon of this type are immune to damage from Sandstorm and have their Special Defense multiplied by 1.5 during Sandstorm."
+}, {
+    "name" : "Steel",
+    "atk_effectives" : [["Bug", 1], ["Dark", 1], ["Dragon", 1], ["Electric", 0.5], ["Fairy", 2], ["Fighting", 1], ["Fire", 0.5], ["Flying", 1], ["Ghost", 1], ["Grass", 1], ["Ground", 1], ["Ice", 2], ["Normal", 1], ["Poison", 1], ["Psychic", 1], ["Rock", 2], ["Steel", 0.5], ["Water", 0.5]],
+    "genfamily" : ["GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : "Pokemon of this type cannot become poisoned, except by a Pokemon with the Corrosion Ability, and are immune to damage from Sandstorm."
+}, {
+    "name" : "Water",
+    "atk_effectives" : [["Bug", 1], ["Dark", 1], ["Dragon", 0.5], ["Electric", 1], ["Fairy", 1], ["Fighting", 1], ["Fire", 2], ["Flying", 1], ["Ghost", 1], ["Grass", 0.5], ["Ground", 2], ["Ice", 1], ["Normal", 1], ["Poison", 1], ["Psychic", 1], ["Rock", 2], ["Steel", 1], ["Water", 0.5]],
+    "genfamily" : ["RB", "GS", "RS", "DP", "BW", "XY", "SM"],
+    "description" : "Freeze-Dry is super effective against this type."
+}
+]
