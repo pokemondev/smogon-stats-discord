@@ -1,7 +1,7 @@
 import Discord = require('discord.js');
 import { CommandBase } from "./command";
 import { AppDataSource } from "../appDataSource";
-import { ColorHelper } from '../pokemon/helpers';
+import { ColorService } from '../pokemon/colorService';
 import { FormatHelper } from '../smogon/helpers';
 
 export class PokemonCommand extends CommandBase {
@@ -18,7 +18,7 @@ export class PokemonCommand extends CommandBase {
     if (!cmd.valid) return;
 
     const embed = new Discord.RichEmbed()
-      .setColor(ColorHelper.getColorForType(cmd.pokemon.type1))
+      .setColor(ColorService.getColorForType(cmd.pokemon.type1))
       .setImage(`https://play.pokemonshowdown.com/sprites/xyani/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.gif`)
 
     // base stats
@@ -59,7 +59,7 @@ export class PokemonCommand extends CommandBase {
     countersChecks = countersChecks ? countersChecks : "-";
     embed.addField("Counters & Checks", countersChecks, true);
 
-    const msgHeader = `**__${cmd.pokemon.name}:__** ${FormatHelper.toReadableString(cmd.format)}`;
+    const msgHeader = `**__${cmd.pokemon.name}:__** ${FormatHelper.toString(cmd.format)}`;
     message.channel.send(msgHeader, embed);
   }
 }

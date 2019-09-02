@@ -1,6 +1,6 @@
 import { PokemonType } from "./models";
 
-export class ColorHelper {
+export class ColorService {
 
 	private static typeColorMap: { [id: number] : string; } = {};
 	private static versionColorMap: { [id: string] : string; } = {};
@@ -73,4 +73,4 @@ export class ColorHelper {
 		this.versionColorMap["ultramoon"] =  '#179CD7';
 	}
 }
-ColorHelper.initialize();
+ColorService.initialize();

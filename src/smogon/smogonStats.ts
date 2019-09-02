@@ -17,7 +17,7 @@ export class SmogonStats {
         .map(mon => { return { name: mon[1], usageRaw: mon[4] } as PokemonUsage});
     });
 
-    const fmt = FormatHelper.toString(format);
+    const fmt = FormatHelper.getKeyFrom(format);
     return this.database[statsType][fmt];
   }
 
@@ -29,7 +29,7 @@ export class SmogonStats {
         .map(mon => { return { name: mon[1], usageRaw: mon[6] } as PokemonUsage});
     });
 
-    const fmt = FormatHelper.toString(format);
+    const fmt = FormatHelper.getKeyFrom(format);
     return top10
       ? this.database[statsType][fmt].slice(0, 10)
       : this.database[statsType][fmt]
@@ -45,7 +45,7 @@ export class SmogonStats {
     const statsType = 'moveset';
     this.loadData(statsType, format);
 
-    const fmt = FormatHelper.toString(format);
+    const fmt = FormatHelper.getKeyFrom(format);
     const sets = this.database[statsType][fmt] as MoveSetUsage[];
     return filter
       ? sets.filter(filter)
@@ -74,7 +74,7 @@ export class SmogonStats {
   }
 
   private loadData(statsType, format: SmogonFormat, callback: (data: any) => any = undefined): void {
-    const fmt = FormatHelper.toString(format);
+    const fmt = FormatHelper.getKeyFrom(format);
     const dataLoaded = this.database[statsType] && this.database[statsType][fmt];
     if (!dataLoaded) {
       console.log('loading ' + statsType)
@@ -90,7 +90,7 @@ export class SmogonStats {
   }
 
   private loadFileData(statsType, format: SmogonFormat) {
-    const filename = `${statsType}-${FormatHelper.toString(format)}`;
+    const filename = `${statsType}-${FormatHelper.getKeyFrom(format)}`;
     const rawdata = fs.readFileSync(`data/smogon-stats/${format.generation}/${format.tier}/${filename}.json`).toString();
     return JSON.parse(rawdata);
   }

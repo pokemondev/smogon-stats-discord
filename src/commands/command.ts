@@ -1,7 +1,7 @@
 import Discord = require('discord.js');
 import { AppDataSource } from "../appDataSource";
 import { MoveSetUsage, UsageData, ChecksAndCountersUsageData, SmogonFormat } from "../smogon/models";
-import { ColorHelper } from '../pokemon/helpers';
+import { ColorService } from '../pokemon/colorService';
 import { FormatHelper } from '../smogon/helpers';
 import { Pokemon } from '../pokemon/models';
 import { format } from 'util';
@@ -57,7 +57,7 @@ export class CommandBase implements Command {
     const pokemon = this.dataSource.pokemonDb.getPokemon(argData.pokemon);
 
     if (!moveset) {
-      message.channel.send(`Could not find moveset for the provided Pokémon: '${argData.pokemon}' and format: ${FormatHelper.toReadableString(argData.format)}, ${message.author}!`);
+      message.channel.send(`Could not find moveset for the provided Pokémon: '${argData.pokemon}' and format: ${FormatHelper.toString(argData.format)}, ${message.author}!`);
       return { valid: false, pokemon: pokemon, moveSet: undefined, format: argData.format };
     }
 
@@ -71,7 +71,7 @@ export class CommandBase implements Command {
     if (!cmd.valid) return;
     
     const embed = new Discord.RichEmbed()
-      .setColor(ColorHelper.getColorForType(cmd.pokemon.type1))
+      .setColor(ColorService.getColorForType(cmd.pokemon.type1))
       .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.png`)
 
     targetData(cmd.moveSet).forEach((data, i) => {
@@ -82,7 +82,7 @@ export class CommandBase implements Command {
       embed.addField(`${data.name}`, value, true);
     });
 
-    const msgHeader = `**__${cmd.moveSet.name} ${this.displayName}:__** ${FormatHelper.toReadableString(cmd.format)}`;
+    const msgHeader = `**__${cmd.moveSet.name} ${this.displayName}:__** ${FormatHelper.toString(cmd.format)}`;
     message.channel.send(msgHeader, embed);
   }
 
@@ -97,20 +97,20 @@ export class CommandBase implements Command {
     // ).slice(0, 10);
     
     if (!movesets || movesets.length == 0) {
-      return message.channel.send(`Could not find moveset for the provided data: '${FormatHelper.toReadableString(format)}', ${message.author}!`);
+      return message.channel.send(`Could not find moveset for the provided data: '${FormatHelper.toString(format)}', ${message.author}!`);
     }
     
     const pokemon = this.dataSource.pokemonDb.getPokemon(movesets[0].name);
 
     const embed = new Discord.RichEmbed()
-      .setColor(ColorHelper.getColorForType(pokemon.type1))
+      .setColor(ColorService.getColorForType(pokemon.type1))
       .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${pokemon.name.replace(/ /g, '').toLowerCase()}.png`)
 
     movesets.forEach((set, i) => {
       embed.addField(`${set.name}`, `Usage: ${set.usage.toFixed(2)}%`, true);
     });
 
-    const msgHeader = `**__${this.displayName}:__** Top 10 ${this.displayName} users of ${FormatHelper.toReadableString(format)}`;
+    const msgHeader = `**__${this.displayName}:__** Top 10 ${this.displayName} users of ${FormatHelper.toString(format)}`;
     message.channel.send(msgHeader, embed);
   }
 

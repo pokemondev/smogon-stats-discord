@@ -28,11 +28,11 @@ export class FormatHelper {
     return { generation: "gen7", tier: "ou" }; 
   }
 
-  public static toString(format: SmogonFormat): string {
+  public static getKeyFrom(format: SmogonFormat): string {
     return format.generation + format.tier;
   }
 
-  public static toReadableString(format: SmogonFormat): string {
+  public static toString(format: SmogonFormat): string {
     return `Gen ${format.generation[format.generation.length-1]} ${format.tier.toUpperCase()}`;
   }
 }
