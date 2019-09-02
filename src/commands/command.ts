@@ -2,9 +2,9 @@ import Discord = require('discord.js');
 import { AppDataSource } from "../appDataSource";
 import { MoveSetUsage, UsageData, ChecksAndCountersUsageData, SmogonFormat } from "../smogon/models";
 import { ColorHelper } from '../pokemon/helpers';
-import { type } from 'os';
-import { format } from 'path';
 import { FormatHelper } from '../smogon/helpers';
+import { Pokemon } from '../pokemon/models';
+import { format } from 'util';
 
 export interface Command {
   name: string;
@@ -14,6 +14,7 @@ export interface Command {
 }
 
 type ArgData = { valid: boolean, pokemon: string, format: SmogonFormat };
+type MovesetCommandData = { valid: boolean, pokemon: Pokemon, moveSet: MoveSetUsage, format: SmogonFormat };
 
 export class CommandBase implements Command {
   name: string;
@@ -37,9 +38,7 @@ export class CommandBase implements Command {
       : '';
   }
 
-  public processMoveSetCommand(message, 
-                               args: string[], 
-                               targetData: (data: MoveSetUsage) => UsageData[] | ChecksAndCountersUsageData[]) {
+  public tryGetMoveSetCommand(message, args: string[]): MovesetCommandData {
     if (!args.length) {
       let reply = `You didn't provide the Pokémon, ${message.author}!`;
       reply += `\nThe proper usage would be: \`/${this.usage}\``;
@@ -48,7 +47,9 @@ export class CommandBase implements Command {
       reply += `\n/${this.name} alakazam gen6`;
       reply += `\n/${this.name} scizor uu`;
       reply += `\n/${this.name} machamp gen6 uu`;
-      return message.channel.send(reply);
+      message.channel.send(reply);
+
+      return { valid: false, pokemon: undefined, moveSet: undefined, format: undefined };
     }
 
     var argData = this.parseArgs(args);
@@ -56,14 +57,24 @@ export class CommandBase implements Command {
     const pokemon = this.dataSource.pokemonDb.getPokemon(argData.pokemon);
 
     if (!moveset) {
-      return message.channel.send(`Could not find moveset for the provided Pokémon: '${argData.pokemon}', ${message.author}!`);
+      message.channel.send(`Could not find moveset for the provided Pokémon: '${argData.pokemon}' and format: ${FormatHelper.toReadableString(argData.format)}, ${message.author}!`);
+      return { valid: false, pokemon: pokemon, moveSet: undefined, format: argData.format };
     }
 
-    const embed = new Discord.RichEmbed()
-      .setColor(ColorHelper.getColorForType(pokemon.type1))
-      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${pokemon.name.replace(/ /g, '').toLowerCase()}.png`)
+    return { valid: true, pokemon: pokemon, moveSet: moveset, format: argData.format };
+  }
 
-    targetData(moveset).forEach((data, i) => {
+  public processMoveSetCommand(message, 
+                               args: string[], 
+                               targetData: (data: MoveSetUsage) => UsageData[] | ChecksAndCountersUsageData[]) {
+    const cmd = this.tryGetMoveSetCommand(message, args);
+    if (!cmd.valid) return;
+    
+    const embed = new Discord.RichEmbed()
+      .setColor(ColorHelper.getColorForType(cmd.pokemon.type1))
+      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.png`)
+
+    targetData(cmd.moveSet).forEach((data, i) => {
       const value = this.isCheckAndCounters(data)
         ? `Knocked out : ${data.kOed.toFixed(2)}%\nSwitched out: ${data.switchedOut.toFixed(2)}%`
         : `Usage: ${data.percentage.toFixed(2)}%`;
@@ -71,7 +82,7 @@ export class CommandBase implements Command {
       embed.addField(`${data.name}`, value, true);
     });
 
-    const msgHeader = `**__${moveset.name} ${this.displayName}:__** ${FormatHelper.toReadableString(argData.format)}`;
+    const msgHeader = `**__${cmd.moveSet.name} ${this.displayName}:__** ${FormatHelper.toReadableString(cmd.format)}`;
     message.channel.send(msgHeader, embed);
   }
 
