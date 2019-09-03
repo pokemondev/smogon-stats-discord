@@ -52,10 +52,14 @@ export class CommandBase implements Command {
       return { valid: false, pokemon: undefined, moveSet: undefined, format: undefined };
     }
 
-    var argData = this.parseArgs(args);
-    const moveset = this.dataSource.smogonStats.getMoveSet(argData.pokemon, argData.format);
+    const argData = this.parseArgs(args);
     const pokemon = this.dataSource.pokemonDb.getPokemon(argData.pokemon);
-
+    if (!pokemon) {
+      message.channel.send(`Could not find moveset for the provided Pokémon: '${argData.pokemon}' and format: ${FormatHelper.toString(argData.format)}, ${message.author}!`);
+      return { valid: false, pokemon: undefined, moveSet: undefined, format: argData.format };
+    }
+    
+    const moveset = this.dataSource.smogonStats.getMoveSet(pokemon.name, argData.format);
     if (!moveset) {
       message.channel.send(`Could not find moveset for the provided Pokémon: '${argData.pokemon}' and format: ${FormatHelper.toString(argData.format)}, ${message.author}!`);
       return { valid: false, pokemon: pokemon, moveSet: undefined, format: argData.format };
