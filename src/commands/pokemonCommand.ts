@@ -20,42 +20,34 @@ export class PokemonCommand extends CommandBase {
     const cmd = this.tryGetMoveSetCommand(message, args);
     if (!cmd.valid) return;
 
+    const hasMovesetData = cmd.moveSet && cmd.moveSet.moves && cmd.moveSet.items;
+
     const embed = new Discord.RichEmbed()
       .setColor(ColorService.getColorForType(cmd.pokemon.type1))
       .setImage(`https://play.pokemonshowdown.com/sprites/xyani/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.gif`)
 
-    // base stats
+    // setup and get data
     const { stats, baseStatsData } = this.getBaseStatsData(cmd);
-    embed.addField("Base Stats Total: " + stats.tot, baseStatsData, true);
-
-    // general info
-    const infoX = this.getGeneralInfoData(cmd);
-    embed.addField("General Info", infoX, true);
-
-    // abilities
+    const info = this.getGeneralInfoData(cmd);
     const abilities = this.getData(cmd.moveSet.abilities);
-    embed.addField("Abilities", abilities, true);
-
-    // moves
     const moves = this.getData(cmd.moveSet.moves);
-    embed.addField("Moves", moves, true);
-
-    // items
     const items = this.getData(cmd.moveSet.items);
-    embed.addField("Items", items, true);
-
-    // effectiveness
     const weakResist = this.getWeakResistData(cmd);
-    embed.addField("Weak/Resist", weakResist, true);
-
-    // iv´s spread
     const spreads = this.getData(cmd.moveSet.spreads, 6, true);
-    embed.addField("Nature/IV spread", spreads, true);
-
-    // counters & checks
-    let countersChecks = cmd.moveSet.checksAndCounters.slice(0, 6).map(iv => `\`${iv.name}: KOed ${iv.kOed.toFixed(1)}% / Swed ${iv.switchedOut.toFixed(1)}%\``).join('\n');
-    countersChecks = countersChecks ? countersChecks : "-";
-    embed.addField("Counters & Checks", countersChecks, true);
+    const countersChecks = this.getCountersChecksData(cmd);
+    
+    embed.addField("Base Stats Total: " + stats.tot, baseStatsData, true);
+    embed.addField("General Info", info, true);
+    if (hasMovesetData) {
+      embed.addField("Abilities", abilities, true);
+      embed.addField("Moves", moves, true);
+      embed.addField("Items", items, true);
+      embed.addField("Weak/Resist", weakResist, true);
+      embed.addField("Nature/IV spread", spreads, true);
+      embed.addField("Counters & Checks", countersChecks, true);
+    } else {
+      embed.addField("Weak/Resist", weakResist, true);
+    }
 
     // title and send message
     const msgHeader = `**__${cmd.pokemon.name}:__** ${FormatHelper.toString(cmd.format)}`;
@@ -102,7 +94,14 @@ export class PokemonCommand extends CommandBase {
   private getData(usageData: UsageData[], limit: number = 6, highlighEverything: boolean = false): string {
     const hl1 = highlighEverything ? "\`" : "";
     const hl2 = highlighEverything ? ""   : "\`";
-    const data = usageData.slice(0, limit).map(iv => `${hl1}${iv.name}: ${hl2}${iv.percentage.toFixed(2)}%\``).join('\n');
-    return data;
+    const data = (usageData ? usageData : []).slice(0, limit).map(iv => `${hl1}${iv.name}: ${hl2}${iv.percentage.toFixed(2)}%\``).join('\n');
+    return data ? data : "-";
+  }
+
+  private getCountersChecksData(cmd: MovesetCommandData) {
+    const cc = (cmd.moveSet.checksAndCounters ? cmd.moveSet.checksAndCounters : []);
+    let countersChecks = cc.slice(0, 6).map(iv => `\`${iv.name}: KOed ${iv.kOed.toFixed(1)}% / Swed ${iv.switchedOut.toFixed(1)}%\``).join('\n');
+    countersChecks = countersChecks ? countersChecks : "-";
+    return countersChecks;
   }
 }

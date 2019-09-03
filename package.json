@@ -32,7 +32,6 @@
     "typescript": "^3.5.3"
   },
   "devDependencies": {
-    "@types/node": "^12.7.2",
-    "@types/fuzzy-matching": "^0.4.3"
+    "@types/node": "^12.7.2"
   }
 }

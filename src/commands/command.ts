@@ -59,11 +59,8 @@ export class CommandBase implements Command {
       return { valid: false, pokemon: undefined, moveSet: undefined, format: argData.format };
     }
     
-    const moveset = this.dataSource.smogonStats.getMoveSet(pokemon.name, argData.format);
-    if (!moveset) {
-      message.channel.send(`Could not find moveset for the provided Pokémon: '${argData.pokemon}' and format: ${FormatHelper.toString(argData.format)}, ${message.author}!`);
-      return { valid: false, pokemon: pokemon, moveSet: undefined, format: argData.format };
-    }
+    let moveset = this.dataSource.smogonStats.getMoveSet(pokemon.name, argData.format);
+    moveset = moveset ? moveset : { } as MoveSetUsage;
 
     return { valid: true, pokemon: pokemon, moveSet: moveset, format: argData.format };
   }
@@ -78,15 +75,18 @@ export class CommandBase implements Command {
       .setColor(ColorService.getColorForType(cmd.pokemon.type1))
       .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.png`)
 
-    targetData(cmd.moveSet).forEach((data, i) => {
-      const value = this.isCheckAndCounters(data)
-        ? `Knocked out : ${data.kOed.toFixed(2)}%\nSwitched out: ${data.switchedOut.toFixed(2)}%`
-        : `Usage: ${data.percentage.toFixed(2)}%`;
+    const moveSetdata = targetData(cmd.moveSet);
+    if (moveSetdata) {
+      moveSetdata.forEach((data, i) => {
+        const value = this.isCheckAndCounters(data)
+          ? `Knocked out : ${data.kOed.toFixed(2)}%\nSwitched out: ${data.switchedOut.toFixed(2)}%`
+          : `Usage: ${data.percentage.toFixed(2)}%`;
+  
+        embed.addField(`${data.name}`, value, true);
+      });
+    }
 
-      embed.addField(`${data.name}`, value, true);
-    });
-
-    const msgHeader = `**__${cmd.moveSet.name} ${this.displayName}:__** ${FormatHelper.toString(cmd.format)}`;
+    const msgHeader = `**__${cmd.pokemon.name} ${this.displayName}:__** ${FormatHelper.toString(cmd.format)}`;
     message.channel.send(msgHeader, embed);
   }
 
@@ -131,10 +131,13 @@ export class CommandBase implements Command {
 
     const hasPokemonSecondName = !FormatHelper.isValidGen(args[1]) && !FormatHelper.isValidTier(args[1]);
     
-    const pokemonName = hasPokemonSecondName
+    let pokemonName = hasPokemonSecondName
       ? `${args[0]} ${args[1]}`
       : args[0]
 
+    if (pokemonName.toLowerCase().startsWith("mega"))
+      pokemonName = pokemonName.substring(4).trim().concat("-mega");
+      
     const format = FormatHelper.getFormat(args.slice(hasPokemonSecondName ? 2 : 1));
 
     return { valid: true, pokemon: pokemonName, format: format };
