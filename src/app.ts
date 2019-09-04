@@ -10,7 +10,7 @@ const prefix = '/';
 
 // setup client and commands
 const client = new Discord.Client();
-const commands = new Discord.Collection();
+const commands = new Discord.Collection<string, Command>();
 
 const commandFiles = fs.readdirSync(__dirname + '/commands').filter(file => file.endsWith('.js') && file !== 'command.js');
 console.log(commandFiles);
@@ -19,6 +19,7 @@ for (const file of commandFiles) {
   const command = new (<any>cmdModule)[Object.keys(cmdModule)[0]](dataSource) as Command;
 	commands.set(command.name, command);
 }
+dataSource.botCommands = commands;
 
 // discord events
 client.on('ready', () => {
