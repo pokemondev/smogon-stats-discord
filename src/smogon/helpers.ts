@@ -3,7 +3,7 @@ import { SmogonFormat } from "./models";
 export class FormatHelper {
   //public static Generations = [ 'gen1', 'gen2', 'gen3', 'gen4', 'gen5', 'gen6', 'gen7' ];
   //public static Tiers = [ 'ou', 'uu', 'ru', 'nu' ];
-  public static Generations = [ 'gen6', 'gen7' ];
+  public static Generations = [ 'gen6', 'gen7', 'gen8' ];
   public static Tiers = [ 'ou', 'uu' ];
   
   public static getFormat(args: string[]): SmogonFormat {

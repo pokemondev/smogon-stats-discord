@@ -59,9 +59,12 @@ export class CommandBase implements Command {
       return { valid: false, pokemon: undefined, moveSet: undefined, format: argData.format };
     }
     
-    let moveset = this.dataSource.smogonStats.getMoveSet(pokemon.name, argData.format);
-    moveset = moveset ? moveset : { } as MoveSetUsage;
+    if (pokemon.generation == "SwordShield") // fix for gen8 pokemon while we implement better solution
+      argData.format = { generation: "gen8", tier: "ou"};
 
+    let moveset = this.dataSource.smogonStats.getMoveSet(pokemon.name, argData.format);
+    moveset = moveset ? moveset : {} as MoveSetUsage;
+    
     return { valid: true, pokemon: pokemon, moveSet: moveset, format: argData.format };
   }
 
@@ -137,6 +140,9 @@ export class CommandBase implements Command {
 
     if (pokemonName.toLowerCase().startsWith("mega"))
       pokemonName = pokemonName.substring(4).trim().concat("-mega");
+
+    if (pokemonName.toLowerCase().startsWith("gmax"))
+      pokemonName = pokemonName.substring(4).trim().concat("-gmax");
       
     const format = FormatHelper.getFormat(args.slice(hasPokemonSecondName ? 2 : 1));
 
