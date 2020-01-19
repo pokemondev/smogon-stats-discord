@@ -144,6 +144,13 @@ export class CommandBase implements Command {
     if (pokemonName.toLowerCase().startsWith("gmax"))
       pokemonName = pokemonName.substring(4).trim().concat("-gmax");
       
+    if (pokemonName.toLowerCase().startsWith("galar"))
+      pokemonName = pokemonName.substring(5).trim().concat("-galar");
+
+    if (pokemonName.toLowerCase().startsWith("galarian"))
+      pokemonName = pokemonName.substring(8).trim().concat("-galar");
+      
+      
     const format = FormatHelper.getFormat(args.slice(hasPokemonSecondName ? 2 : 1));
 
     return { valid: true, pokemon: pokemonName, format: format };

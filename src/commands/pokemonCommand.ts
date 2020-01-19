@@ -23,7 +23,7 @@ export class PokemonCommand extends CommandBase {
     const hasMovesetData = cmd.moveSet && cmd.moveSet.moves && cmd.moveSet.items;
 
     const image = cmd.pokemon.generation == "SwordShield"
-      ? `https://play.pokemonshowdown.com/sprites/bw/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.png`
+      ? `https://www.smogon.com/dex/media/sprites/xy/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.gif`
       : `https://play.pokemonshowdown.com/sprites/xyani/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.gif`
 
     const embed = new Discord.RichEmbed()
