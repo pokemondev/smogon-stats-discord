@@ -13,7 +13,7 @@ export class SmogonStats {
     this.loadData(statsType, format, (data) => {
       return data.data.rows
         .sort((a, b) => (a[4] - b[4]) * -1) // reverse
-        .slice(0, 10)
+        .slice(0, 15)
         .map(mon => { return { name: mon[1], usageRaw: mon[4] } as PokemonUsage});
     });
 
@@ -21,7 +21,7 @@ export class SmogonStats {
     return this.database[statsType][fmt];
   }
 
-  public getUsages(format: SmogonFormat, top10: boolean = true): PokemonUsage[] {
+  public getUsages(format: SmogonFormat, top15: boolean = true): PokemonUsage[] {
     const statsType = 'usage';
     this.loadData(statsType, format, (data) => {
       return data.data.rows
@@ -30,8 +30,8 @@ export class SmogonStats {
     });
 
     const fmt = FormatHelper.getKeyFrom(format);
-    return top10
-      ? this.database[statsType][fmt].slice(0, 10)
+    return top15
+      ? this.database[statsType][fmt].slice(0, 15)
       : this.database[statsType][fmt]
   }
 
@@ -61,7 +61,7 @@ export class SmogonStats {
     const sets = this.getMoveSets(
       format,
       (e) => e.items.some(i => e.name.endsWith("-Mega") && i.name.endsWith('ite'))
-    ).slice(0, 10);
+    ).slice(0, 15);
 
     const usage = this.getUsages(format, false)
                       .filter(e => sets.some(s => s.name == e.name));
@@ -70,7 +70,7 @@ export class SmogonStats {
     })
     return sets
       .sort((a, b) => (a.usage - b.usage) * -1) // reverse        
-      .slice(0, 10);
+      .slice(0, 15);
   }
 
   private loadData(statsType, format: SmogonFormat, callback: (data: any) => any = undefined): void {
