@@ -28,7 +28,7 @@ export class LeadsCommand implements Command {
       embed.addField(`Lead ${i + 1}º ${mon.name}`, `Usage: ${mon.usageRaw.toFixed(2)}%`, true);
     });
 
-    const msgHeader = `**__Leads:__** Top 10 leads of ${FormatHelper.toString(format)}`;
+    const msgHeader = `**__Leads:__** Top ${leads.length} leads of ${FormatHelper.toString(format)}`;
     message.channel.send(msgHeader, embed);
   }
 }

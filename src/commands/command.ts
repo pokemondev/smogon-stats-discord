@@ -98,11 +98,7 @@ export class CommandBase implements Command {
                                    targetData: (data: MoveSetUsage) => UsageData[]){
     const format = FormatHelper.getFormat(args);
     const movesets = this.dataSource.smogonStats.getMegasMoveSets(format);
-    // .getMoveSets(
-    //   undefined,
-    //   (e) => e.items.some(i => e.name.endsWith("-Mega") && i.name.endsWith('ite'))
-    // ).slice(0, 10);
-    
+        
     if (!movesets || movesets.length == 0) {
       return message.channel.send(`Could not find moveset for the provided data: '${FormatHelper.toString(format)}', ${message.author}!`);
     }
@@ -117,7 +113,7 @@ export class CommandBase implements Command {
       embed.addField(`${set.name}`, `Usage: ${set.usage.toFixed(2)}%`, true);
     });
 
-    const msgHeader = `**__${this.displayName}:__** Top 10 ${this.displayName} users of ${FormatHelper.toString(format)}`;
+    const msgHeader = `**__${this.displayName}:__** Top ${movesets.length} ${this.displayName} users of ${FormatHelper.toString(format)}`;
     message.channel.send(msgHeader, embed);
   }
 
