@@ -16,23 +16,19 @@ export class PokemonCommand extends CommandBase {
     super(dataSource);
   }
   
-  execute(message: any, args: any) {
-    const cmd = this.tryGetMoveSetCommand(message, args);
+  async execute(message: any, args: any) {
+    const cmd = await this.tryGetMoveSetCommand(message, args);
     if (!cmd.valid) return;
 
     const hasMovesetData = cmd.moveSet && cmd.moveSet.moves && cmd.moveSet.items;
 
-    const image = cmd.pokemon.generation == "SwordShield"
-      ? `https://www.smogon.com/dex/media/sprites/xy/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.gif`
-      : `https://play.pokemonshowdown.com/sprites/xyani/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.gif`
-
     const embed = new Discord.RichEmbed()
       .setColor(ColorService.getColorForType(cmd.pokemon.type1))
-      .setImage(image);
+      .setImage(`https://play.pokemonshowdown.com/sprites/xyani/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.gif`);
 
     // setup and get data
     const { stats, baseStatsData } = this.getBaseStatsData(cmd);
-    const info = this.getGeneralInfoData(cmd);
+    const info = await this.getGeneralInfoData(cmd);
     const abilities = this.getData(cmd.moveSet.abilities);
     const moves = this.getData(cmd.moveSet.moves);
     const items = this.getData(cmd.moveSet.items);
@@ -68,8 +64,8 @@ export class PokemonCommand extends CommandBase {
     return { stats, baseStatsData };
   }
 
-  private getGeneralInfoData(cmd: MovesetCommandData) {
-    const usage = this.dataSource.smogonStats.getUsage(cmd.pokemon.name, cmd.format);
+  private async getGeneralInfoData(cmd: MovesetCommandData) {
+    const usage = await this.dataSource.smogonStats.getUsage(cmd.pokemon.name, cmd.format);
     const info1 = `Tier: \`${cmd.pokemon.tier}\``;
     const info2 = `Generation: \`${cmd.pokemon.generation}\``;
     const info3 = `Type: \`${cmd.pokemon.type1} ${(cmd.pokemon.type2 ? '/ ' + cmd.pokemon.type2 : '')}\``;

@@ -15,9 +15,9 @@ export class LeadsCommand implements Command {
     this.dataSource = dataSource;
   }
   
-  execute(message: any, args: any) {
+  async execute(message: any, args: any) {
     const format = FormatHelper.getFormat(args);
-    const leads = this.dataSource.smogonStats.getLeads(format);
+    const leads = await this.dataSource.smogonStats.getLeads(format);
     const firstMon = this.dataSource.pokemonDb.getPokemon(leads[0].name);
 
     const embed = new Discord.RichEmbed()
