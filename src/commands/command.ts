@@ -38,7 +38,7 @@ export class CommandBase implements Command {
       : '';
   }
 
-  public tryGetMoveSetCommand(message, args: string[]): MovesetCommandData {
+  public async tryGetMoveSetCommand(message, args: string[]): Promise<MovesetCommandData> {
     if (!args.length) {
       let reply = `You didn't provide the Pokémon, ${message.author}!`;
       reply += `\nThe proper usage would be: \`/${this.usage}\``;
@@ -59,19 +59,19 @@ export class CommandBase implements Command {
       return { valid: false, pokemon: undefined, moveSet: undefined, format: argData.format };
     }
     
-    if (pokemon.generation == "SwordShield") // fix for gen8 pokemon while we implement better solution
-      argData.format = { generation: "gen8", tier: "ou"};
+    if (pokemon.generation == "SwordShield") // fix for gen8 pokemon while better solution is implement 
+      argData.format = { generation: "gen8", tier: argData.format.tier };
 
-    let moveset = this.dataSource.smogonStats.getMoveSet(pokemon.name, argData.format);
+    let moveset = await this.dataSource.smogonStats.getMoveSet(pokemon.name, argData.format);
     moveset = moveset ? moveset : {} as MoveSetUsage;
     
     return { valid: true, pokemon: pokemon, moveSet: moveset, format: argData.format };
   }
 
-  public processMoveSetCommand(message, 
-                               args: string[], 
-                               targetData: (data: MoveSetUsage) => UsageData[] | ChecksAndCountersUsageData[]) {
-    const cmd = this.tryGetMoveSetCommand(message, args);
+  public async processMoveSetCommand(message, 
+                                     args: string[], 
+                                     targetData: (data: MoveSetUsage) => UsageData[] | ChecksAndCountersUsageData[]) {
+    const cmd = await this.tryGetMoveSetCommand(message, args);
     if (!cmd.valid) return;
     
     const embed = new Discord.RichEmbed()
@@ -93,11 +93,11 @@ export class CommandBase implements Command {
     message.channel.send(msgHeader, embed);
   }
 
-  public processFilterBasedCommand(message, 
-                                   args: string[], 
-                                   targetData: (data: MoveSetUsage) => UsageData[]){
+  public async processFilterBasedCommand(message, 
+                                         args: string[], 
+                                         targetData: (data: MoveSetUsage) => UsageData[]){
     const format = FormatHelper.getFormat(args);
-    const movesets = this.dataSource.smogonStats.getMegasMoveSets(format);
+    const movesets = await this.dataSource.smogonStats.getMegasMoveSets(format);
         
     if (!movesets || movesets.length == 0) {
       return message.channel.send(`Could not find moveset for the provided data: '${FormatHelper.toString(format)}', ${message.author}!`);
@@ -117,6 +117,7 @@ export class CommandBase implements Command {
     message.channel.send(msgHeader, embed);
   }
 
+  // helpers
   private isCheckAndCounters(obj: any): obj is ChecksAndCountersUsageData {
     return obj.kOed !== undefined; 
   }
