@@ -6,7 +6,7 @@ import { FormatHelper } from '../smogon/helpers';
 
 export class UsageCommand implements Command {
   name = "usage";
-  description = "Lists the top 10 most used Pokémon";
+  description = "Lists the top most used Pokémon";
   aliases = [ 'u', 'usages', 'uso' ];
 
   dataSource: AppDataSource;
@@ -28,7 +28,7 @@ export class UsageCommand implements Command {
       embed.addField(`Rank ${i + 1}º ${mon.name}`, `Usage: ${mon.usageRaw.toFixed(2)}%`, true);
     });
 
-    const msgHeader = `**__Usage:__** Top 10 most used Pokémon of ${FormatHelper.toString(format)}`;
+    const msgHeader = `**__Usage:__** Top ${usageData.length} most used Pokémon of ${FormatHelper.toString(format)}`;
     message.channel.send(msgHeader, embed);
   }
 }
