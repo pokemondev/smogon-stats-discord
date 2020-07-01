@@ -1,9 +1,10 @@
 # Smogon Stats - Discord Bot ![Smogon Stats](https://cdn.discordapp.com/avatars/610945850557988894/2680da85a519a5d856e7a90cc449ef4e.png?size=64 "Smogon Stats")
-
-A Discord Smogon usage statistics bot that aims to show Pokémon Showdown battles usage data like Pokémon, movesets (moves, items, abilities...), tiers, generations.
-
-## Discord 
 [![Discord Bots](https://discordbots.org/api/widget/status/610945850557988894.svg)](https://discordbots.org/bot/610945850557988894) 
+[![Invite Smogon Stats](https://img.shields.io/badge/Discord-Get%20Smogon%20Stats%20Bot-blueviolet?logo=discord)](https://discordapp.com/api/oauth2/authorize?client_id=610945850557988894&permissions=280576&scope=bot)
+[![Join to the community at https://discord.gg/cJR3ZF](https://img.shields.io/badge/Discord-Join%20the%20community-blueviolet?logo=discord)](https://discord.gg/cJR3ZF)
+
+## Overview
+A Discord Smogon usage statistics bot that aims to show Pokémon Showdown battles usage data like Pokémon, movesets (moves, items, abilities...), tiers, generations.
 
 [Invite Smogon Stats](https://discordapp.com/api/oauth2/authorize?client_id=610945850557988894&permissions=280576&scope=bot) to your own Discord server!
 
@@ -13,25 +14,27 @@ A Discord Smogon usage statistics bot that aims to show Pokémon Showdown battle
 -->
 
 ## Features
-* Access to useful Pokémon battling data based on Smogon
-* Movesets data from Smogon for the most popular formats (tiers & generations)
-* Type Weakness/Move Coverage Tools
-* Fuzzy search on pokémon names (miss spelling awareness)
+* Access to useful Pokémon battling data based on Smogon/Pokemon Showdown;
+* Movesets data from Smogon for the most popular formats (tiers & generations);
+* Type Weakness/Move Coverage Tools;
+* Fuzzy search on pokémon names (miss spelling awareness);
+* Support to Generation 8, 7 and 6;
+* Support to VGC, OU and UU metagames (more coming...)
 <!-- * Learnsets and Standard Movesets (from All Generations and Smogon Metas) -->
 
 ## Commands
-| Command       | Aliases                  | Descrition                                                                 |
-|---------------|--------------------------|----------------------------------------------------------------------------|
-| `/pokemon`    | `/p`, `/pkm`, `/mon`     | Shows a pokémon summary of all relevant battling information               |
-| `/moves`      | `/m`, `/move`            | Shows most used pokémon's moves and its usage percentage                   |
-| `/items`      | `/i`, `/item`            | Shows most used pokémon's items and its usage percentage                   |
-| `/abilities`  | `/a`, `/ability`         | Shows most used pokémon's abilities and its usage percentage               |
-| `/spreads`    | `/iv`, `/ivs`, `natures` | Shows most used pokémon's IV's spreads & natures with its usage percentage |
-| `/team-mates` | `/tm`, `/mates`          | Shows most used pokémon's team mates and its usage percentage              |
-| `/counters`   | `/cc`, `/checks`         | Shows most used pokémon's counters and checks and its usage percentage     |
-| `/usages`     | `/u`, `usages`           | Shows most used pokémons and their usage percentages                       |
-| `/leads`      | `/l`, `/lead`            | Shows most used leading pokémon' and its usage percentage                  |
-| `/megas`      | `/m`, `/mega`            | Shows most used Mega evolutioned pokémon and their usage percentages       |
+| Command       | Aliases                  | Descrition                                                                     |
+|---------------|--------------------------|--------------------------------------------------------------------------------|
+| `/pokemon`    | `/p`, `/pkm`, `/mon`     | Shows a pokémon summary of all relevant battling information                   |
+| `/usage`      | `/u`, `/usages`          | Shows most used pokémons at a format and their usage percentages               |
+| `/leads`      | `/l`, `/lead`            | Shows most used leading pokémon' and its lead percentage                       |
+| `/moves`      | `/m`, `/move`            | Shows most used pokémon's **moves** and its usage percentage                   |
+| `/items`      | `/i`, `/item`            | Shows most used pokémon's **items** and its usage percentage                   |
+| `/abilities`  | `/a`, `/ability`         | Shows most used pokémon's **abilities** and its usage percentage               |
+| `/spreads`    | `/iv`, `/ivs`, `/natures`| Shows most used pokémon's **IV's spreads & natures** with its usage percentage |
+| `/team-mates` | `/tm`, `/mates`          | Shows most used pokémon's **team mates** and its usage percentage              |
+| `/counters`   | `/cc`, `/checks`         | Shows most used pokémon's **counters and checks** and its usage percentage     |
+| `/megas`      | `/m`, `/mega`            | Shows most used Mega evolutioned pokémon and their usage percentages           |
 
 ## Screen shots
 `/pokemon greninja-ash`
