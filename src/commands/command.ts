@@ -59,9 +59,6 @@ export class CommandBase implements Command {
       return { valid: false, pokemon: undefined, moveSet: undefined, format: argData.format };
     }
     
-    if (pokemon.generation == "SwordShield") // fix for gen8 pokemon while better solution is implement 
-      argData.format = { generation: "gen8", tier: argData.format.tier };
-
     let moveset = await this.dataSource.smogonStats.getMoveSet(pokemon.name, argData.format);
     moveset = moveset ? moveset : {} as MoveSetUsage;
     
@@ -80,7 +77,7 @@ export class CommandBase implements Command {
 
     const moveSetdata = targetData(cmd.moveSet);
     if (moveSetdata) {
-      moveSetdata.forEach((data, i) => {
+      moveSetdata.slice(0, 24).forEach((data, i) => {
         const value = this.isCheckAndCounters(data)
           ? `Knocked out : ${data.kOed.toFixed(2)}%\nSwitched out: ${data.switchedOut.toFixed(2)}%`
           : `Usage: ${data.percentage.toFixed(2)}%`;
@@ -109,7 +106,7 @@ export class CommandBase implements Command {
       .setColor(ColorService.getColorForType(pokemon.type1))
       .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${pokemon.name.replace(/ /g, '').toLowerCase()}.png`)
 
-    movesets.forEach((set, i) => {
+    movesets.slice(0, 24).forEach((set, i) => {
       embed.addField(`${set.name}`, `Usage: ${set.usage.toFixed(2)}%`, true);
     });
 

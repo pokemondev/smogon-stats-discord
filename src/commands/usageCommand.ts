@@ -22,7 +22,7 @@ export class UsageCommand implements Command {
 
     const embed = new Discord.RichEmbed()
       .setColor(ColorService.getColorForType(firstMon.type1))
-      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${firstMon.name.toLowerCase()}.png`)
+      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${firstMon.name.replace(/\s/g, '').toLowerCase()}.png`)
 
     usageData.forEach((mon, i) => {
       embed.addField(`Rank ${i + 1}º ${mon.name}`, `Usage: ${mon.usageRaw.toFixed(2)}%`, true);

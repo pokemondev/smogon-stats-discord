@@ -5,6 +5,7 @@ export class FormatHelper {
   public static Tiers = [ 'ou', 'uu', 'vgc', 'vgc2021', 'vgc2020', 'vgc2019' ];
   public static VgcSeasons = [
     { gen: 'gen8', year: '2021'},
+    { gen: 'gen8', year: '2020'},
     { gen: 'gen7', year: '2019'},
    ];
   
