@@ -2,9 +2,9 @@ import { SmogonFormat } from "./models";
 
 export class FormatHelper {
   public static Generations = [ 'gen8', 'gen7', 'gen6' ];
-  public static Tiers = [ 'ou', 'uu', 'vgc', 'vgc2020', 'vgc2019' ];
+  public static Tiers = [ 'ou', 'uu', 'vgc', 'vgc2021', 'vgc2020', 'vgc2019' ];
   public static VgcSeasons = [
-    { gen: 'gen8', year: '2020'},
+    { gen: 'gen8', year: '2021'},
     { gen: 'gen7', year: '2019'},
    ];
   
@@ -17,8 +17,8 @@ export class FormatHelper {
     }
 
     return {
-      generation: (gen || "gen7").toLowerCase(),
-      tier: (tier || "ou").toLowerCase()
+      generation: (gen || this.getDefault().generation).toLowerCase(),
+      tier: (tier || this.getDefault().tier).toLowerCase()
     };
   }
 
@@ -31,7 +31,7 @@ export class FormatHelper {
   }
 
   public static getDefault(): SmogonFormat {
-    return { generation: "gen7", tier: "ou" }; 
+    return { generation: "gen8", tier: "ou" }; 
   }
 
   public static getKeyFrom(format: SmogonFormat): string {
@@ -48,9 +48,9 @@ export class FormatHelper {
       gen = this.getValidVgcGen(gen, tier.substring(3));
     }
     else {
+      gen = this.getDefault().generation;
       const year = FormatHelper.getValidVgcYear(gen);
       tier = "vgc" + year;
-      gen = this.getValidVgcGen(gen, year);
     }
     return { tier, gen };
   }
@@ -82,6 +82,6 @@ export class FormatHelper {
     }
     
     const vgcByYear = this.VgcSeasons.find(i => i.year == year);
-    return vgcByYear ? vgcByYear.gen : 'gen8';
+    return vgcByYear ? vgcByYear.gen : this.getDefault().generation;
   }
 }
