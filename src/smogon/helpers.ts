@@ -1,4 +1,6 @@
-import { SmogonFormat } from "./models";
+import { SmogonFormat } from "./usageModels";
+import { PokemonSet, Evs } from "./setsModels";
+import { Pokemon } from "../pokemon/models";
 
 export class FormatHelper {
   public static Generations = [ 'gen8', 'gen7', 'gen6' ];
@@ -43,6 +45,35 @@ export class FormatHelper {
     return `Gen ${format.generation[format.generation.length-1]} ${format.tier.toUpperCase()}`;
   }
 
+  public static getSmogonSet(pokemon: Pokemon, set: PokemonSet): string {
+    var evCounter = 0;
+    var pkmSetText = "";
+    pkmSetText = pokemon.name + (set.item ? " @ " + set.item : "") + "\n";
+    pkmSetText += set.nature + " Nature" + "\n";
+    pkmSetText += set.ability ? "Ability: " + set.ability + "\n" : "";
+    
+    pkmSetText += "EVs: ";
+    var evsArray = [];
+    for (var stat in set.evs) {
+      if (set.evs[stat]) {
+        evsArray.push(set.evs[stat] + " " + this.getDisplayStatName(stat));
+        evCounter += set.evs[stat];
+        if (evCounter > 510) break;
+      }
+    }
+    pkmSetText += evsArray.reduce((a,b) => `${a} / ${b}`); // serialize(evsArray, " / ");
+    pkmSetText += "\n";
+    
+    for (var i = 0; i < 4; i++) {
+      var moveName = set.moves[i];
+      if (moveName !== "(No Move)") {
+        pkmSetText += "- " + moveName + "\n";
+      }
+    }
+    pkmSetText = pkmSetText.trim();
+    return pkmSetText;
+  }
+
   // helpers
   private static ensureValidVgc(tier: string, gen: string) {
     if (this.hasValidVgcYear(tier)) {
@@ -84,5 +115,16 @@ export class FormatHelper {
     
     const vgcByYear = this.VgcSeasons.find(i => i.year == year);
     return vgcByYear ? vgcByYear.gen : this.getDefault().generation;
+  }
+
+  private static getDisplayStatName(stat: string) {
+    switch (stat) {
+      case 'hp': return 'HP';
+      case 'at': return 'Atk';
+      case 'df': return 'Def';
+      case 'sa': return 'SpA';
+      case 'sd': return 'SpD';
+      case 'sp': return 'Spe';
+    }
   }
 }
