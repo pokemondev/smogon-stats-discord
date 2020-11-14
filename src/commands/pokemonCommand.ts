@@ -4,8 +4,8 @@ import { AppDataSource } from "../appDataSource";
 import { ColorService } from '../pokemon/colorService';
 import { FormatHelper } from '../smogon/helpers';
 import { TypeService } from '../pokemon/typeService';
-import { EffectivenessType, Pokemon } from '../pokemon/models';
-import { UsageData, SmogonFormat, MoveSetUsage } from '../smogon/models';
+import { EffectivenessType } from '../pokemon/models';
+import { UsageData } from '../smogon/usageModels';
 
 export class PokemonCommand extends CommandBase {
   name = "pokemon";

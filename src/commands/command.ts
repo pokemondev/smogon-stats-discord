@@ -1,10 +1,11 @@
 import Discord = require('discord.js');
 import { AppDataSource } from "../appDataSource";
-import { MoveSetUsage, UsageData, ChecksAndCountersUsageData, SmogonFormat } from "../smogon/models";
+import { MoveSetUsage, UsageData, ChecksAndCountersUsageData, SmogonFormat } from "../smogon/usageModels";
 import { ColorService } from '../pokemon/colorService';
 import { FormatHelper } from '../smogon/helpers';
 import { Pokemon } from '../pokemon/models';
-import { format } from 'util';
+import { ImageService } from '../pokemon/imageService';
+import { PokemonCommand } from './pokemonCommand';
 
 export interface Command {
   name: string;
@@ -73,7 +74,7 @@ export class CommandBase implements Command {
     
     const embed = new Discord.RichEmbed()
       .setColor(ColorService.getColorForType(cmd.pokemon.type1))
-      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.png`)
+      .setThumbnail(ImageService.getPngUrl(cmd.pokemon))
 
     const moveSetdata = targetData(cmd.moveSet);
     if (moveSetdata) {
@@ -104,7 +105,7 @@ export class CommandBase implements Command {
 
     const embed = new Discord.RichEmbed()
       .setColor(ColorService.getColorForType(pokemon.type1))
-      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${pokemon.name.replace(/ /g, '').toLowerCase()}.png`)
+      .setThumbnail(ImageService.getPngUrl(pokemon))
 
     movesets.slice(0, 24).forEach((set, i) => {
       embed.addField(`${set.name}`, `Usage: ${set.usage.toFixed(2)}%`, true);
