@@ -1,6 +1,6 @@
 import fs = require("fs");
 import cacheManager = require('cache-manager');
-import { PokemonUsage, MoveSetUsage, SmogonFormat } from "./models";
+import { PokemonUsage, MoveSetUsage, SmogonFormat } from "./usageModels";
 import { FormatHelper } from "./helpers";
 
 export class SmogonStats {
