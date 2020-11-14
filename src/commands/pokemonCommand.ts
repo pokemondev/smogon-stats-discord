@@ -84,10 +84,10 @@ export class PokemonCommand extends CommandBase {
                                           || e.effect == EffectivenessType.NotVeryEffective2x)
                                 .map((w, i) => ((i + 1) % 4 === 0 ? '\n' : '') + (w.effect == EffectivenessType.NotVeryEffective2x ? `**${w.type}**` : w.type))
                                 .join(', ');
-    const imune = effectiveness.filter(e => e.effect == EffectivenessType.None)
-                               .map(w => w.type)
-                               .join(', ');
-    const weakResist = `__Weak:__ \n${weakss}\n__Resist:__ \n${resist}\n__Imune:__\n${imune}`;
+    const immune = effectiveness.filter(e => e.effect == EffectivenessType.None)
+                                .map(w => w.type)
+                                .join(', ');
+    const weakResist = `__Weak to:__ \n${weakss}\n__Resists to:__ \n${resist  || 'None'}\n__Immune to:__\n${immune || 'None'}`;
     return weakResist;
   }
 
