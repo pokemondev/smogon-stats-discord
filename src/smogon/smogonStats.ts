@@ -1,7 +1,7 @@
-import fs = require("fs");
 import cacheManager = require('cache-manager');
 import { PokemonUsage, MoveSetUsage, SmogonFormat } from "./usageModels";
 import { FormatHelper } from "./formatHelper";
+import { FileHelper } from "../common/fileHelper";
 
 export class SmogonStats {
 
@@ -89,7 +89,7 @@ export class SmogonStats {
 
   private loadFileData(statsType, format: SmogonFormat) {
     const filename = `${statsType}-${FormatHelper.getKeyFrom(format)}`;
-    const rawdata = fs.readFileSync(`data/smogon-stats/${format.generation}/${format.tier}/${filename}.json`).toString();
-    return JSON.parse(rawdata);
+    const filePath = `smogon-stats/${format.generation}/${format.tier}/${filename}.json`;
+    return FileHelper.loadFileDataAsAny(filePath);
   }
 }
