@@ -2,7 +2,7 @@ import Discord = require('discord.js');
 import { Command } from "./command";
 import { AppDataSource } from "../appDataSource";
 import { ColorService } from '../pokemon/colorService';
-import { FormatHelper } from '../smogon/helpers';
+import { FormatHelper } from '../smogon/formatHelper';
 import { ImageService } from '../pokemon/imageService';
 
 export class LeadsCommand implements Command {

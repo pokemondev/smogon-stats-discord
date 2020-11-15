@@ -3,7 +3,7 @@ import { FileHelper } from "../common/fileHelper";
 import { PokemonSet } from "./setsModels";
 import { Pokemon } from "../pokemon/models";
 import { getMap, areEquals } from "../common/objectHelper";
-import { FormatHelper } from "./helpers";
+import { FormatHelper } from "./formatHelper";
 import { SmogonFormat } from "./usageModels";
 
 type PokemonSetDb = Map<string, PokemonSet[]>;

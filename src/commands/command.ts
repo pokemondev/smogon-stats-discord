@@ -2,7 +2,7 @@ import Discord = require('discord.js');
 import { AppDataSource } from "../appDataSource";
 import { MoveSetUsage, UsageData, ChecksAndCountersUsageData, SmogonFormat } from "../smogon/usageModels";
 import { ColorService } from '../pokemon/colorService';
-import { FormatHelper } from '../smogon/helpers';
+import { FormatHelper } from '../smogon/formatHelper';
 import { Pokemon } from '../pokemon/models';
 import { ImageService } from '../pokemon/imageService';
 
