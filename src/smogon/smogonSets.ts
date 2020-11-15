@@ -1,4 +1,4 @@
-import { PokemonDb } from "../pokemon/PokemonDb";
+import { PokemonDb } from "../pokemon/pokemonDb";
 import { FileHelper } from "../common/fileHelper";
 import { PokemonSet } from "./setsModels";
 import { Pokemon } from "../pokemon/models";
