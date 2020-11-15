@@ -6,6 +6,7 @@ import { FormatHelper } from '../smogon/formatHelper';
 import { TypeService } from '../pokemon/typeService';
 import { EffectivenessType } from '../pokemon/models';
 import { UsageData } from '../smogon/usageModels';
+import { ImageService } from '../pokemon/imageService';
 
 export class PokemonCommand extends CommandBase {
   name = "pokemon";
@@ -24,7 +25,8 @@ export class PokemonCommand extends CommandBase {
 
     const embed = new Discord.RichEmbed()
       .setColor(ColorService.getColorForType(cmd.pokemon.type1))
-      .setImage(`https://play.pokemonshowdown.com/sprites/xyani/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.gif`);
+      .setImage(ImageService.getGifUrl(cmd.pokemon))
+      .setFooter(this.getFooterDetails(cmd));
 
     // setup and get data
     const { stats, baseStatsData } = this.getBaseStatsData(cmd);
@@ -35,7 +37,7 @@ export class PokemonCommand extends CommandBase {
     const weakResist = this.getWeakResistData(cmd);
     const spreads = this.getData(cmd.moveSet.spreads, 6, true);
     const countersChecks = this.getCountersChecksData(cmd);
-    
+
     embed.addField("Base Stats Total: " + stats.tot, baseStatsData, true);
     embed.addField("General Info", info, true);
     if (hasMovesetData) {
@@ -98,10 +100,18 @@ export class PokemonCommand extends CommandBase {
     return data ? data : "-";
   }
 
-  private getCountersChecksData(cmd: MovesetCommandData) {
+  private getCountersChecksData(cmd: MovesetCommandData): string {
     const cc = (cmd.moveSet.checksAndCounters ? cmd.moveSet.checksAndCounters : []);
     let countersChecks = cc.slice(0, 6).map(iv => `\`${iv.name}: KOed ${iv.kOed.toFixed(1)}% / Swed ${iv.switchedOut.toFixed(1)}%\``).join('\n');
     countersChecks = countersChecks ? countersChecks : "-";
     return countersChecks;
+  }
+
+  private getFooterDetails(cmd: MovesetCommandData): string {
+    const pokemonName = cmd.pokemon.name.toLowerCase();
+    const genArg = cmd.format.generation == FormatHelper.getDefault().generation ? "" : cmd.format.generation;
+    const tierArg = cmd.format.tier == FormatHelper.getDefault().tier ? "" : cmd.format.tier;
+    
+    return `Sets details on: /sets ${pokemonName} ${genArg} ${tierArg}`.trim();
   }
 }
