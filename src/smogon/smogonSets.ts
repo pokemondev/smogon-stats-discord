@@ -19,8 +19,11 @@ export class SmogonSets {
   }
 
   public get(pokemon: Pokemon, format: SmogonFormat): PokemonSet[] {
-    return this.setsDb.get(pokemon.name)
-                      .filter(set => areEquals(set.format, format));
+    const sets = this.setsDb.get(pokemon.name);
+
+    return sets
+      ? sets.filter(set => areEquals(set.format, format))
+      : [];
   }
 
   private loadFileData(): void {

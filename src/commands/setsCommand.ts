@@ -27,6 +27,7 @@ export class SetsCommand extends CommandBase {
     const embed = new Discord.RichEmbed()
       .setColor(ColorService.getColorForType(pokemon.type1))
       .setThumbnail(ImageService.getPngUrl(pokemon))
+      .setFooter("More details on smogon.com")
 
     sets.forEach((set) => {
       var setText = FormatHelper.getSmogonSet(pokemon, set);
