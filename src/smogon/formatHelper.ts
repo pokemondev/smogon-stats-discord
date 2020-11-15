@@ -4,7 +4,7 @@ import { Pokemon } from "../pokemon/models";
 
 export class FormatHelper {
   public static Generations = [ 'gen8', 'gen7', 'gen6' ];
-  public static Tiers = [ 'ou', 'uu', 'vgc', 'vgc2021', 'vgc2020', 'vgc2019' ];
+  public static Tiers = [ 'ubers', 'ou', 'uu', 'ru', 'nu', 'vgc', 'vgc2021', 'vgc2020', 'vgc2019' ];
   public static VgcSeasons = [
     { gen: 'gen8', year: '2021'},
     { gen: 'gen8', year: '2020'},
