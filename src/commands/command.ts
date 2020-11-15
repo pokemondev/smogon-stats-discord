@@ -13,7 +13,7 @@ export interface Command {
 	execute(message, args);
 }
 
-export type ArgData = { valid: boolean, pokemon?: Pokemon, format?: SmogonFormat, errorMessage?: string };
+export type ArgData = { valid: boolean, pokemon?: Pokemon, pokemonName?: string, format?: SmogonFormat, errorMessage?: string };
 export type MovesetCommandData = { valid: boolean, pokemon?: Pokemon, moveSet?: MoveSetUsage, format?: SmogonFormat };
 
 export class CommandBase implements Command {
@@ -39,7 +39,7 @@ export class CommandBase implements Command {
   }
 
   public async tryGetMoveSetCommand(message, args: string[]): Promise<MovesetCommandData> {
-    const argData = this.parseArgs(args);
+    const argData = this.tryParseCommandArgs(message, args);
     if (!argData.valid) {
       message.channel.send(argData.errorMessage);
       return { valid: false };
@@ -116,7 +116,7 @@ export class CommandBase implements Command {
     const pokemon = argData.pokemon;
     const isValid = argData.valid && pokemon;
     if (!isValid) {
-      const error = `Could not find the provided Pokémon: '${argData.pokemon}' / format: ${FormatHelper.toString(argData.format)}, ${message.author}!`;
+      const error = `Could not find the provided Pokémon: '${argData.pokemonName}' / format: ${FormatHelper.toString(argData.format)}, ${message.author}!`;
       return { valid: false, errorMessage: error };
     }
 
@@ -136,11 +136,11 @@ export class CommandBase implements Command {
 
   private parseArgs(args: string[]): ArgData {
     if (args.length == 0)
-      return { valid: false, pokemon: undefined, format: undefined };
+      return { valid: false };
     
-    if (args.length == 1){
+    if (args.length == 1) {
       const pokemon = this.dataSource.pokemonDb.getPokemon(args[0]);
-      return { valid: pokemon != null, pokemon: pokemon, format: FormatHelper.getDefault() };
+      return { valid: pokemon != null, pokemon: pokemon, pokemonName: args[0], format: FormatHelper.getDefault() };
     }
 
     const hasPokemonSecondName = !FormatHelper.isValidGen(args[1]) && !FormatHelper.isValidTier(args[1]);
@@ -165,6 +165,6 @@ export class CommandBase implements Command {
     const format = FormatHelper.getFormat(args.slice(hasPokemonSecondName ? 2 : 1));
     const pokemon = this.dataSource.pokemonDb.getPokemon(pokemonName);
     
-    return { valid: pokemon != null, pokemon: pokemon, format: format };
+    return { valid: pokemon != null, pokemon: pokemon, pokemonName: pokemonName, format: format };
   }
 }
