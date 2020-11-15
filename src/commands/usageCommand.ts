@@ -3,6 +3,7 @@ import { Command } from "./command";
 import { AppDataSource } from "../appDataSource";
 import { ColorService } from '../pokemon/colorService';
 import { FormatHelper } from '../smogon/helpers';
+import { ImageService } from '../pokemon/imageService';
 
 export class UsageCommand implements Command {
   name = "usage";
@@ -22,7 +23,7 @@ export class UsageCommand implements Command {
 
     const embed = new Discord.RichEmbed()
       .setColor(ColorService.getColorForType(firstMon.type1))
-      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${firstMon.name.replace(/\s/g, '').toLowerCase()}.png`)
+      .setThumbnail(ImageService.getPngUrl(firstMon))
 
     usageData.forEach((mon, i) => {
       embed.addField(`Rank ${i + 1}º ${mon.name}`, `Usage: ${mon.usageRaw.toFixed(2)}%`, true);

@@ -1,10 +1,10 @@
 import Discord = require('discord.js');
 import { AppDataSource } from "../appDataSource";
-import { MoveSetUsage, UsageData, ChecksAndCountersUsageData, SmogonFormat } from "../smogon/models";
+import { MoveSetUsage, UsageData, ChecksAndCountersUsageData, SmogonFormat } from "../smogon/usageModels";
 import { ColorService } from '../pokemon/colorService';
 import { FormatHelper } from '../smogon/helpers';
 import { Pokemon } from '../pokemon/models';
-import { format } from 'util';
+import { ImageService } from '../pokemon/imageService';
 
 export interface Command {
   name: string;
@@ -13,8 +13,8 @@ export interface Command {
 	execute(message, args);
 }
 
-type ArgData = { valid: boolean, pokemon: string, format: SmogonFormat };
-export type MovesetCommandData = { valid: boolean, pokemon: Pokemon, moveSet: MoveSetUsage, format: SmogonFormat };
+export type ArgData = { valid: boolean, pokemon?: Pokemon, format?: SmogonFormat, errorMessage?: string };
+export type MovesetCommandData = { valid: boolean, pokemon?: Pokemon, moveSet?: MoveSetUsage, format?: SmogonFormat };
 
 export class CommandBase implements Command {
   name: string;
@@ -39,26 +39,13 @@ export class CommandBase implements Command {
   }
 
   public async tryGetMoveSetCommand(message, args: string[]): Promise<MovesetCommandData> {
-    if (!args.length) {
-      let reply = `You didn't provide the Pokémon, ${message.author}!`;
-      reply += `\nThe proper usage would be: \`/${this.usage}\``;
-      reply += `\neg.:`;
-      reply += `\n/${this.name} magearna`;
-      reply += `\n/${this.name} alakazam gen6`;
-      reply += `\n/${this.name} scizor uu`;
-      reply += `\n/${this.name} machamp gen6 uu`;
-      message.channel.send(reply);
-
-      return { valid: false, pokemon: undefined, moveSet: undefined, format: undefined };
-    }
-
     const argData = this.parseArgs(args);
-    const pokemon = this.dataSource.pokemonDb.getPokemon(argData.pokemon);
-    if (!pokemon) {
-      message.channel.send(`Could not find moveset for the provided Pokémon: '${argData.pokemon}' and format: ${FormatHelper.toString(argData.format)}, ${message.author}!`);
-      return { valid: false, pokemon: undefined, moveSet: undefined, format: argData.format };
+    if (!argData.valid) {
+      message.channel.send(argData.errorMessage);
+      return { valid: false };
     }
     
+    const pokemon = argData.pokemon;
     let moveset = await this.dataSource.smogonStats.getMoveSet(pokemon.name, argData.format);
     moveset = moveset ? moveset : {} as MoveSetUsage;
     
@@ -73,7 +60,7 @@ export class CommandBase implements Command {
     
     const embed = new Discord.RichEmbed()
       .setColor(ColorService.getColorForType(cmd.pokemon.type1))
-      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${cmd.pokemon.name.replace(/ /g, '').toLowerCase()}.png`)
+      .setThumbnail(ImageService.getPngUrl(cmd.pokemon))
 
     const moveSetdata = targetData(cmd.moveSet);
     if (moveSetdata) {
@@ -104,7 +91,7 @@ export class CommandBase implements Command {
 
     const embed = new Discord.RichEmbed()
       .setColor(ColorService.getColorForType(pokemon.type1))
-      .setThumbnail(`https://play.pokemonshowdown.com/sprites/bw/${pokemon.name.replace(/ /g, '').toLowerCase()}.png`)
+      .setThumbnail(ImageService.getPngUrl(pokemon))
 
     movesets.slice(0, 24).forEach((set, i) => {
       embed.addField(`${set.name}`, `Usage: ${set.usage.toFixed(2)}%`, true);
@@ -119,12 +106,42 @@ export class CommandBase implements Command {
     return obj.kOed !== undefined; 
   }
 
+  protected tryParseCommandArgs(message: any, args: string[]): ArgData {
+    if (!args.length) {
+      const error = this.getNoPokemonInArgsErrorMessage(message);
+      return { valid: false, errorMessage: error };
+    }
+
+    const argData = this.parseArgs(args);
+    const pokemon = argData.pokemon;
+    const isValid = argData.valid && pokemon;
+    if (!isValid) {
+      const error = `Could not find the provided Pokémon: '${argData.pokemon}' / format: ${FormatHelper.toString(argData.format)}, ${message.author}!`;
+      return { valid: false, errorMessage: error };
+    }
+
+    return { valid: true, pokemon: pokemon, format: argData.format };
+  }
+
+  private getNoPokemonInArgsErrorMessage(message: any): string {
+    let msg = `You didn't provide the Pokémon, ${message.author}!`;
+    msg += `\nThe proper usage would be: \`/${this.usage}\``;
+    msg += `\neg.:`;
+    msg += `\n/${this.name} magearna`;
+    msg += `\n/${this.name} alakazam gen6`;
+    msg += `\n/${this.name} scizor uu`;
+    msg += `\n/${this.name} machamp gen6 uu`;
+    return msg;
+  }
+
   private parseArgs(args: string[]): ArgData {
     if (args.length == 0)
       return { valid: false, pokemon: undefined, format: undefined };
     
-    if (args.length == 1)
-      return { valid: true, pokemon: args[0], format: FormatHelper.getDefault() };
+    if (args.length == 1){
+      const pokemon = this.dataSource.pokemonDb.getPokemon(args[0]);
+      return { valid: pokemon != null, pokemon: pokemon, format: FormatHelper.getDefault() };
+    }
 
     const hasPokemonSecondName = !FormatHelper.isValidGen(args[1]) && !FormatHelper.isValidTier(args[1]);
     
@@ -146,7 +163,8 @@ export class CommandBase implements Command {
       
       
     const format = FormatHelper.getFormat(args.slice(hasPokemonSecondName ? 2 : 1));
-
-    return { valid: true, pokemon: pokemonName, format: format };
+    const pokemon = this.dataSource.pokemonDb.getPokemon(pokemonName);
+    
+    return { valid: pokemon != null, pokemon: pokemon, format: format };
   }
 }
