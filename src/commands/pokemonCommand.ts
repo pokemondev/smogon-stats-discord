@@ -68,10 +68,12 @@ export class PokemonCommand extends CommandBase {
 
   private async getGeneralInfoData(cmd: MovesetCommandData) {
     const usage = await this.dataSource.smogonStats.getUsage(cmd.pokemon.name, cmd.format);
+    const usageInfo = usage ? `${usage.rank}º (${usage.usageRaw.toFixed(2)}%)` : '';
+    
     const info1 = `Tier: \`${cmd.pokemon.tier}\``;
     const info2 = `Generation: \`${cmd.pokemon.generation}\``;
     const info3 = `Type: \`${cmd.pokemon.type1} ${(cmd.pokemon.type2 ? '/ ' + cmd.pokemon.type2 : '')}\``;
-    const info4 = `Usage: \`${(usage ? usage.usageRaw.toFixed(2) + '%' : '')}\``;
+    const info4 = `Usage: \`${usageInfo}\``;
     const infoX = `${info1}\n${info2}\n${info3}\n${info4}`;
     return infoX;
   }
@@ -89,7 +91,7 @@ export class PokemonCommand extends CommandBase {
     const immune = effectiveness.filter(e => e.effect == EffectivenessType.None)
                                 .map(w => w.type)
                                 .join(', ');
-    const weakResist = `__Weak to:__ \n${weakss}\n__Resists to:__ \n${resist  || 'None'}\n__Immune to:__\n${immune || 'None'}`;
+    const weakResist = `__Weak to:__ \n${weakss}\n__Resist to:__ \n${resist  || 'None'}\n__Immune to:__\n${immune || 'None'}`;
     return weakResist;
   }
 

@@ -25,7 +25,7 @@ export class SmogonStats {
     await this.loadData(statsType, format, (data) => {
       return data.data.rows
         .sort((a, b) => ((a[2]) - (b[2])) * -1) // uses percentages to sort in reverse        
-        .map(mon => { return { name: mon[1], usageRaw: mon[2] } as PokemonUsage });
+        .map(mon => { return { name: mon[1], rank: mon[0], usageRaw: mon[2] } as PokemonUsage });
     });
 
     const fmt = FormatHelper.getKeyFrom(format);
