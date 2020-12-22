@@ -1,14 +1,14 @@
 # Smogon Stats - Discord Bot ![Smogon Stats](https://cdn.discordapp.com/avatars/610945850557988894/2680da85a519a5d856e7a90cc449ef4e.png?size=64 "Smogon Stats")
 [![Discord Bots](https://discordbots.org/api/widget/status/610945850557988894.svg)](https://discordbots.org/bot/610945850557988894) 
 [![Invite Smogon Stats](https://img.shields.io/badge/Discord-Get%20Smogon%20Stats%20Bot-blueviolet?logo=discord)](https://discordapp.com/api/oauth2/authorize?client_id=610945850557988894&permissions=280576&scope=bot)
-[![Join to the community at https://discord.gg/cJR3ZF](https://img.shields.io/badge/Discord-Join%20the%20community-blueviolet?logo=discord)](https://discord.gg/cJR3ZF)
+[![Join to the community at https://discord.com/invite/BM7ZRNB](https://img.shields.io/badge/Discord-Join%20the%20community-blueviolet?logo=discord)](https://discord.com/invite/BM7ZRNB)
 
 ## Overview
 A Discord Smogon usage statistics bot that aims to show Pokémon Showdown battles usage data like Pokémon, movesets (moves, items, abilities...), tiers, generations.
 
 [Invite Smogon Stats](https://discordapp.com/api/oauth2/authorize?client_id=610945850557988894&permissions=280576&scope=bot) to your own Discord server!
 
-[Join Smogon Stats Support Server](https://discord.gg/cJR3ZF) to try out the bot and talk to the devs!
+[Join Smogon Stats Support Server](https://discord.com/invite/BM7ZRNB) to try out the bot and talk to the devs!
 <!--
 [![Discord Bots](https://discordbots.org/api/widget/servers/610945850557988894.svg)](https://discordbots.org/bot/610945850557988894)
 -->
