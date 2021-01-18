@@ -46,4 +46,11 @@ client.on('message', msg => {
   }  
 });
 
+const isDebug = process.argv.some(a=> a == "debug");
+if (isDebug)
+{
+  console.log("Debug Mode On!")
+  client.on('debug', console.log);
+}
+
 client.login(process.env.TOKEN);
