@@ -21,7 +21,7 @@ export class UsageCommand implements Command {
     const usageData = await this.dataSource.smogonStats.getUsages(format);
     const firstMon = this.dataSource.pokemonDb.getPokemon(usageData[0].name);
 
-    const embed = new Discord.RichEmbed()
+    const embed = new Discord.MessageEmbed()
       .setColor(ColorService.getColorForType(firstMon.type1))
       .setThumbnail(ImageService.getPngUrl(firstMon))
 

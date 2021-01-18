@@ -58,7 +58,7 @@ export class CommandBase implements Command {
     const cmd = await this.tryGetMoveSetCommand(message, args);
     if (!cmd.valid) return;
     
-    const embed = new Discord.RichEmbed()
+    const embed = new Discord.MessageEmbed()
       .setColor(ColorService.getColorForType(cmd.pokemon.type1))
       .setThumbnail(ImageService.getPngUrl(cmd.pokemon))
 
@@ -89,7 +89,7 @@ export class CommandBase implements Command {
     
     const pokemon = this.dataSource.pokemonDb.getPokemon(movesets[0].name);
 
-    const embed = new Discord.RichEmbed()
+    const embed = new Discord.MessageEmbed()
       .setColor(ColorService.getColorForType(pokemon.type1))
       .setThumbnail(ImageService.getPngUrl(pokemon))
 

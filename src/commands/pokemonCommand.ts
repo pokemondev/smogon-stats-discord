@@ -23,7 +23,7 @@ export class PokemonCommand extends CommandBase {
 
     const hasMovesetData = cmd.moveSet && cmd.moveSet.moves && cmd.moveSet.items;
 
-    const embed = new Discord.RichEmbed()
+    const embed = new Discord.MessageEmbed()
       .setColor(ColorService.getColorForType(cmd.pokemon.type1))
       .setImage(ImageService.getGifUrl(cmd.pokemon))
       .setFooter(this.getFooterDetails(cmd));

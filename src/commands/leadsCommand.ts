@@ -21,7 +21,7 @@ export class LeadsCommand implements Command {
     const leads = await this.dataSource.smogonStats.getLeads(format);
     const firstMon = this.dataSource.pokemonDb.getPokemon(leads[0].name);
 
-    const embed = new Discord.RichEmbed()
+    const embed = new Discord.MessageEmbed()
       .setColor(ColorService.getColorForType(firstMon.type1))
       .setThumbnail(ImageService.getPngUrl(firstMon))
 
