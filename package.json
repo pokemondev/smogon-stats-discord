@@ -24,7 +24,7 @@
   "homepage": "https://github.com/pokemondev/smogon-stats-discord#readme",
   "dependencies": {
     "cache-manager": "^3.2.1",
-    "discord.js": "^11.5.1",
+    "discord.js": "^12.5.1",
     "dotenv": "^8.1.0",
     "fuzzy-matching": "^0.4.3",
     "nodemon": "^1.19.1",
@@ -33,6 +33,7 @@
     "typescript": "^3.5.3"
   },
   "devDependencies": {
-    "@types/node": "^12.7.2"
+    "@types/node": "^12.7.2",
+    "@types/ws": "^7.4.0"
   }
 }

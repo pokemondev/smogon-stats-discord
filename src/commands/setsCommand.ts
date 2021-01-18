@@ -24,7 +24,7 @@ export class SetsCommand extends CommandBase {
     const pokemon = argsData.pokemon;
     const sets = this.dataSource.smogonSets.get(pokemon, format);
 
-    const embed = new Discord.RichEmbed()
+    const embed = new Discord.MessageEmbed()
       .setColor(ColorService.getColorForType(pokemon.type1))
       .setThumbnail(ImageService.getPngUrl(pokemon))
       .setFooter("More details on smogon.com")
