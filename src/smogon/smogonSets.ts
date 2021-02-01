@@ -31,7 +31,7 @@ export class SmogonSets {
   }
 
   private loadFileData(): void {
-    const gens = ["gen8", "gen7"];
+    const gens = [ "gen8", "gen7", "gen6" ];
     gens.forEach(gen => {
       const genSetMap: PokemonSetMap = new Map;
       const setsData = FileHelper.loadFileDataAsAny(`smogon-sets/${gen}-sets.json`);
