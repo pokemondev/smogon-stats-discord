@@ -5,33 +5,30 @@ import { FileHelper } from "../common/fileHelper";
 
 export class SmogonStats {
 
-  private database: { [id: string]: any; } = {};
+  private cachedDb: cacheManager.Cache = cacheManager.caching({ store: 'memory', max: 1000, ttl: 60 * 5 /* 5 min */ });
 
   public async getLeads(format: SmogonFormat): Promise<PokemonUsage[]> {
     const statsType = 'leads';
-    await this.loadData(statsType, format, (data) => {
-      return data.data.rows
-        .sort((a, b) => (a[4] - b[4]) * -1) // reverse
-        .slice(0, 15)
-        .map(mon => { return { name: mon[1], usageRaw: mon[4] } as PokemonUsage });
+    const leads = await this.getStatsData<PokemonUsage[]>(statsType, format, (stats) => {
+        return stats.data.rows
+          .sort((a, b) => (a[4] - b[4]) * -1) // reverse
+          .slice(0, 15)
+          .map(mon => { return { name: mon[1], usageRaw: mon[4] } as PokemonUsage })
     });
-
-    const fmt = FormatHelper.getKeyFrom(format);
-    return await this.database[statsType].get(fmt);
+    return leads;
   }
 
   public async getUsages(format: SmogonFormat, top15: boolean = true): Promise<PokemonUsage[]> {
     const statsType = 'usage';
-    await this.loadData(statsType, format, (data) => {
-      return data.data.rows
+    const usages = await this.getStatsData<PokemonUsage[]>(statsType, format, (stats) => {
+      return stats.data.rows
         .sort((a, b) => ((a[2]) - (b[2])) * -1) // uses percentages to sort in reverse        
         .map(mon => { return { name: mon[1], rank: mon[0], usageRaw: mon[2] } as PokemonUsage });
     });
 
-    const fmt = FormatHelper.getKeyFrom(format);
     return top15
-      ? (await this.database[statsType].get(fmt)).slice(0, 15)
-      : await this.database[statsType].get(fmt);
+      ? usages.slice(0, 15)
+      : usages;
   }
 
   public async getUsage(pokemon: string, format: SmogonFormat): Promise<PokemonUsage> {
@@ -42,10 +39,8 @@ export class SmogonStats {
   public async getMoveSets(format: SmogonFormat,
                            filter: (pkm: MoveSetUsage) => boolean = undefined): Promise<MoveSetUsage[]> {
     const statsType = 'moveset';
-    await this.loadData(statsType, format);
-
-    const fmt = FormatHelper.getKeyFrom(format);
-    const sets = await this.database[statsType].get(fmt) as MoveSetUsage[];
+    const sets = await this.getStatsData<MoveSetUsage[]>(statsType, format);
+    
     return filter
       ? sets.filter(filter)
       : sets;
@@ -71,23 +66,25 @@ export class SmogonStats {
       .slice(0, 15);
   }
 
-  private async loadData(statsType, format: SmogonFormat, callback: (data: any) => any = undefined): Promise<void> {
+  // private methods
+  private async getStatsData<T>(statsType: string, format: SmogonFormat, callback: (stats: any) => any = undefined): Promise<T> {
     const fmt = FormatHelper.getKeyFrom(format);
-    const dataLoaded = this.database[statsType] && await this.database[statsType].get(fmt);
-    if (!dataLoaded) {
+    const cacheKey = `${statsType}_${fmt}`;
+    const statsData = await this.cachedDb.wrap(cacheKey, function(cb) {
+      
       console.log('loading ' + statsType)
-      let fileData = this.loadFileData(statsType, format);
-
+      let fileData = SmogonStats.loadFileData(statsType, format);
+  
       if (callback)
         fileData = callback(fileData);
+      
+      return fileData;
+    });
 
-      const data = this.database[statsType] || cacheManager.caching({ store: 'memory', max: 1000, ttl: 60 * 5 /* 5 min */ });
-      await data.set(fmt, fileData);
-      this.database[statsType] = data;
-    }
+    return statsData as T;
   }
 
-  private loadFileData(statsType, format: SmogonFormat) {
+  private static loadFileData(statsType: string, format: SmogonFormat): any {
     const filename = `${statsType}-${FormatHelper.getKeyFrom(format)}`;
     const filePath = `smogon-stats/${format.generation}/${format.tier}/${filename}.json`;
     return FileHelper.loadFileDataAsAny(filePath);
