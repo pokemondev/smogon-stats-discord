@@ -17,7 +17,13 @@ console.log(commandFiles);
 for (const file of commandFiles) {
   const cmdModule = require(`${__dirname }/commands/${file}`);
   const command = new (<any>cmdModule)[Object.keys(cmdModule)[0]](dataSource) as Command;
-	commands.set(command.name, command);
+  
+  commands.set(command.name, command);
+  if (command.aliases.length > 0) {
+    for (const alias of command.aliases) {
+      commands.set(alias, command);
+    }
+  }
 }
 dataSource.botCommands = commands;
 
@@ -34,8 +40,7 @@ client.on('message', msg => {
   const commandName = args.shift().toLowerCase();
 
   try {
-    const command = commands.get(commandName) as Command || 
-                    commands.find(c => (c as Command).aliases && (c as Command).aliases.includes(commandName)) as Command;
+    const command = commands.get(commandName) as Command;
     if (!command) return;
 
     command.execute(msg, args);
