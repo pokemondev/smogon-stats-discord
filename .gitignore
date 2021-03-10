@@ -90,4 +90,4 @@ typings/
 # others
 package-lock.json
 dist
-dist
+.vs/
