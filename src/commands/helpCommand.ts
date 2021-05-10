@@ -19,8 +19,9 @@ export class HelpCommand implements Command {
 
     // general help - list all commands
     if (!args.length) {
+      var cmdNames = [...new Set(Array.from(commands.entries()).map(cmd => cmd[1].name))];
       data.push('Here\'s a list of all my commands:');
-      data.push( "```\n" + commands.map(command => command.name).join('\n') + "```");
+      data.push( "```\n" + cmdNames.join('\n') + "```");
       data.push(`You can send \`${prefix}help [command name]\` to get info on a specific command!`);
 
       return message.author.send(data, { split: true })
