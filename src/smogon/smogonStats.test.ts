@@ -10,7 +10,7 @@ interface TestCase {
 }
 
 function buildStatsFilePath(statsType: string, format: SmogonFormat): string {
-  return `smogon-stats/${format.generation}/${format.tier}/${statsType}-${format.generation}${format.tier}.json`;
+  return `smogon-stats/${format.generation}/${format.meta}/${statsType}-${format.generation}${format.meta}.json`;
 }
 
 function getStatsPayload(statsType: string): any {
@@ -95,7 +95,7 @@ const tests: TestCase[] = [
   {
     name: 'reuses cached stats inside the ttl window',
     run: async () => {
-      const format = { generation: 'gen9', tier: 'ou' } as SmogonFormat;
+      const format = { generation: 'gen9', meta: 'ou' } as SmogonFormat;
 
       await withStubbedLoader(async (calls) => {
         const stats = new SmogonStats();
@@ -110,35 +110,35 @@ const tests: TestCase[] = [
   {
     name: 'keeps gen9 ou cached for ten minutes',
     run: async () => {
-      await assertReloadsAfterTtl({ generation: 'gen9', tier: 'ou' }, 10 * 60 * 1000);
+      await assertReloadsAfterTtl({ generation: 'gen9', meta: 'ou' }, 10 * 60 * 1000);
     }
   },
   {
-    name: 'keeps gen9 vgc tiers cached for ten minutes',
+    name: 'keeps gen9 vgc metas cached for ten minutes',
     run: async () => {
-      await assertReloadsAfterTtl({ generation: 'gen9', tier: 'vgc2026regf' }, 10 * 60 * 1000);
-      await assertReloadsAfterTtl({ generation: 'gen9', tier: 'vgc2026regi' }, 10 * 60 * 1000);
+      await assertReloadsAfterTtl({ generation: 'gen9', meta: 'vgc2026regf' }, 10 * 60 * 1000);
+      await assertReloadsAfterTtl({ generation: 'gen9', meta: 'vgc2026regi' }, 10 * 60 * 1000);
     }
   },
   {
     name: 'keeps gen8 ou and vgc cached for five minutes',
     run: async () => {
-      await assertReloadsAfterTtl({ generation: 'gen8', tier: 'ou' }, 5 * 60 * 1000);
-      await assertReloadsAfterTtl({ generation: 'gen8', tier: 'vgc2021' }, 5 * 60 * 1000);
+      await assertReloadsAfterTtl({ generation: 'gen8', meta: 'ou' }, 5 * 60 * 1000);
+      await assertReloadsAfterTtl({ generation: 'gen8', meta: 'vgc2021' }, 5 * 60 * 1000);
     }
   },
   {
     name: 'expires every other format after two minutes',
     run: async () => {
-      await assertReloadsAfterTtl({ generation: 'gen9', tier: 'uu' }, 2 * 60 * 1000);
-      await assertReloadsAfterTtl({ generation: 'gen7', tier: 'ou' }, 2 * 60 * 1000);
+      await assertReloadsAfterTtl({ generation: 'gen9', meta: 'uu' }, 2 * 60 * 1000);
+      await assertReloadsAfterTtl({ generation: 'gen7', meta: 'ou' }, 2 * 60 * 1000);
     }
   },
   {
     name: 'keeps cache entries isolated by stats type and format',
     run: async () => {
-      const ou = { generation: 'gen9', tier: 'ou' } as SmogonFormat;
-      const vgc = { generation: 'gen9', tier: 'vgc2026regf' } as SmogonFormat;
+      const ou = { generation: 'gen9', meta: 'ou' } as SmogonFormat;
+      const vgc = { generation: 'gen9', meta: 'vgc2026regf' } as SmogonFormat;
 
       await withStubbedLoader(async (calls) => {
         const stats = new SmogonStats();
@@ -158,9 +158,9 @@ const tests: TestCase[] = [
     }
   },
   {
-    name: 'loads explicit regulation tiers from their own stats files',
+    name: 'loads explicit regulation metas from their own stats files',
     run: async () => {
-      const format = { generation: 'gen9', tier: 'vgc2026regi' } as SmogonFormat;
+      const format = { generation: 'gen9', meta: 'vgc2026regi' } as SmogonFormat;
 
       await withStubbedLoader(async (calls) => {
         const stats = new SmogonStats();
@@ -175,7 +175,7 @@ const tests: TestCase[] = [
     name: 'reports missing stats files with context',
     run: async () => {
       const stats = new SmogonStats();
-      const format = { generation: 'gen9', tier: 'vgc2026' } as SmogonFormat;
+      const format = { generation: 'gen9', meta: 'vgc2026' } as SmogonFormat;
       let thrownError: Error;
 
       try {

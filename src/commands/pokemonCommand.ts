@@ -247,7 +247,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const usage = await this.dataSource.smogonStats.getUsage(cmd.pokemon.name, cmd.format);
     const usageInfo = usage ? `${usage.rank}º (${usage.usageRaw.toFixed(2)}%)` : 'N/A';
     
-    const info1 = `Meta: \`${cmd.format.tier.toUpperCase()}\``;
+    const info1 = `Meta: \`${cmd.format.meta.toUpperCase()}\``;
     const info2 = `Generation: \`Gen ${cmd.format.generation.replace(/^gen/i, '')}\``;
     const info3 = `Type: \`${cmd.pokemon.type1} ${(cmd.pokemon.type2 ? '/ ' + cmd.pokemon.type2 : '')}\``;
     const info4 = `Usage: \`${usageInfo}\``;

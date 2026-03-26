@@ -174,8 +174,8 @@ export class CommandBase {
       args.push(`generation:${format.generation.replace(/^gen/i, '')}`);
     }
 
-    if (format.tier !== defaultFormat.tier) {
-      args.push(`meta:${format.tier}`);
+    if (format.meta !== defaultFormat.meta) {
+      args.push(`meta:${format.meta}`);
     }
 
     return args.join(' ');
