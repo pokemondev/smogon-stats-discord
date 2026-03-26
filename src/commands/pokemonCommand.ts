@@ -22,6 +22,7 @@ export class PokemonCommand extends CommandBase {
     if (!cmd.valid) return;
 
     const hasMovesetData = cmd.moveSet && cmd.moveSet.moves && cmd.moveSet.items;
+    const isGen9 = cmd.format.generation == 'gen9';
 
     const embed = new Discord.MessageEmbed()
       .setColor(ColorService.getColorForType(cmd.pokemon.type1))
@@ -34,7 +35,10 @@ export class PokemonCommand extends CommandBase {
     const abilities = this.getData(cmd.moveSet.abilities);
     const moves = this.getData(cmd.moveSet.moves);
     const items = this.getData(cmd.moveSet.items);
-    const weakResist = this.getWeakResistData(cmd);
+    const defensiveProfile = this.getWeakResistData(cmd);
+    const teraTypes = this.getTeraTypesData(cmd);
+    const typeFieldName = isGen9 ? "Tera Types" : "Weak/Resist";
+    const typeFieldData = isGen9 ? teraTypes : defensiveProfile;
     const spreads = this.getData(cmd.moveSet.spreads, 6, true);
     const countersChecks = this.getCountersChecksData(cmd);
 
@@ -44,11 +48,11 @@ export class PokemonCommand extends CommandBase {
       embed.addField("Abilities", abilities, true);
       embed.addField("Moves", moves, true);
       embed.addField("Items", items, true);
-      embed.addField("Weak/Resist", weakResist, true);
+      embed.addField(typeFieldName, typeFieldData, true);
       embed.addField("Nature/IV spread", spreads, true);
       embed.addField("Counters & Checks", countersChecks, true);
     } else {
-      embed.addField("Weak/Resist", weakResist, true);
+      embed.addField(typeFieldName, typeFieldData, true);
     }
 
     // title and send message
@@ -93,6 +97,10 @@ export class PokemonCommand extends CommandBase {
                                 .join(', ');
     const weakResist = `__Weak to:__ \n${weakss}\n__Resist to:__ \n${resist  || 'None'}\n__Immune to:__\n${immune || 'None'}`;
     return weakResist;
+  }
+
+  private getTeraTypesData(cmd: MovesetCommandData) {
+    return this.getData(cmd.moveSet.teraTypes);
   }
 
   private getData(usageData: UsageData[], limit: number = 6, highlighEverything: boolean = false): string {
