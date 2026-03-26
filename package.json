@@ -4,7 +4,7 @@
   "description": "Discord bot for Smogon usage stats",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run build && node ./dist/smogon/smogonStats.test.js && node ./dist/smogon/formatHelper.test.js",
     "clean": "rimraf dist",
     "start": "npm-run-all --parallel watch:*",
     "watch:build": "tsc --watch",
@@ -33,6 +33,7 @@
     "typescript": "^3.5.3"
   },
   "devDependencies": {
+    "@sinonjs/fake-timers": "^15.1.1",
     "@types/cache-manager": "^3.4.0",
     "@types/node": "^12.7.2",
     "@types/ws": "^7.4.0"

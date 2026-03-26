@@ -15,6 +15,7 @@ export interface MoveSetUsage {
     items: UsageData[];
     spreads: UsageData[];
     moves: UsageData[];
+    teraTypes: UsageData[];
     teamMates: UsageData[];
     checksAndCounters: ChecksAndCountersUsageData[];
     usage?: number;

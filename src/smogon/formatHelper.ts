@@ -2,21 +2,35 @@ import { SmogonFormat } from "./usageModels";
 import { PokemonSet, Evs } from "./setsModels";
 import { Pokemon } from "../pokemon/models";
 
+interface VgcSeason {
+  gen: string;
+  year: string;
+  tier: string;
+  aliases: string[];
+  regulation?: string;
+  isDefault?: boolean;
+}
+
 export class FormatHelper {
-  public static Generations = [ 'gen8', 'gen7', 'gen6' ];
-  public static Tiers = [ 'ubers', 'uber', 'ou', 'uu', 'ru', 'nu', 'vgc', 'vgc2021', 'vgc2020', 'vgc2019' ];
-  public static VgcSeasons = [
-    { gen: 'gen8', year: '2021'},
-    { gen: 'gen8', year: '2020'},
-    { gen: 'gen7', year: '2019'},
+  public static Generations = [ 'gen9', 'gen8', 'gen7', 'gen6' ];
+  public static VgcSeasons: VgcSeason[] = [
+    { gen: 'gen9', year: '2026', regulation: 'regf', tier: 'vgc2026regf', aliases: [ 'vgc2026', 'vgc2026regf' ], isDefault: true },
+    { gen: 'gen9', year: '2026', regulation: 'regi', tier: 'vgc2026regi', aliases: [ 'vgc2026regi' ] },
+    { gen: 'gen8', year: '2021', tier: 'vgc2021', aliases: [ 'vgc2021' ], isDefault: true },
+    { gen: 'gen8', year: '2020', tier: 'vgc2020', aliases: [ 'vgc2020' ], isDefault: true },
+    { gen: 'gen7', year: '2019', tier: 'vgc2019', aliases: [ 'vgc2019' ], isDefault: true },
    ];
+  public static Tiers = [ 'ubers', 'uber', 'ou', 'uu', 'ru', 'nu', 'vgc', ...FormatHelper.VgcSeasons.map(season => season.tier) ];
   
   public static getFormat(args: string[]): SmogonFormat {
-    let gen  = args.find(a => this.Generations.some(g => g == a.toLowerCase()));
-    let tier = args.find(a => this.Tiers.some(t => t == a.toLowerCase()));
+    const normalizedArgs = args.map(a => a.toLowerCase());
+    let gen  = normalizedArgs.find(a => this.Generations.some(g => g == a));
+    let tier = normalizedArgs.find(a => this.isValidTier(a) || a == 'vgc');
+    const vgcYear = normalizedArgs.find(a => /^\d{4}$/.test(a));
+    const vgcRegulation = normalizedArgs.find(a => /^reg[a-z0-9]+$/.test(a));
 
-    if (this.isVgc(tier)) {
-      ({ tier, gen } = this.ensureValidVgc(tier, gen));
+    if (this.isVgc(tier) || !!vgcYear) {
+      ({ tier, gen } = this.ensureValidVgc(tier, gen, vgcYear, vgcRegulation));
     }
 
     //TODO: refactor tiers to be enumeration 
@@ -36,11 +50,12 @@ export class FormatHelper {
   }
 
   public static isValidTier(tier: string): boolean {
-    return this.Tiers.some(t => t == tier.toLowerCase());
+    const normalizedTier = tier.toLowerCase();
+    return this.Tiers.some(t => t == normalizedTier) || this.isKnownVgcAlias(normalizedTier);
   }
 
   public static getDefault(): SmogonFormat {
-    return { generation: "gen8", tier: "ou" }; 
+    return { generation: "gen9", tier: "ou" }; 
   }
 
   public static getKeyFrom(format: SmogonFormat): string {
@@ -81,46 +96,67 @@ export class FormatHelper {
   }
 
   // helpers
-  private static ensureValidVgc(tier: string, gen: string) {
-    if (this.hasValidVgcYear(tier)) {
-      gen = this.getValidVgcGen(gen, tier.substring(3));
-    }
-    else {
-      gen = this.getDefault().generation;
-      const year = FormatHelper.getValidVgcYear(gen);
-      tier = "vgc" + year;
-    }
-    return { tier, gen };
+  private static ensureValidVgc(tier: string, gen: string, year?: string, regulation?: string) {
+    const season = this.getVgcSeason(tier, gen, year, regulation);
+    return { tier: season.tier, gen: season.gen };
   }
 
   private static isVgc(tier: string): boolean { return tier && tier.startsWith("vgc"); };
-  
-  private static hasValidVgcYear(tier: string): boolean {
-    // pre conditions
-    if (tier.length != 7) return false;
-    if (!this.isVgc(tier)) return false;
 
-    const endingTerm = tier.substring(3);
-    return this.VgcSeasons.some(t => t.year == endingTerm)
-  };
+  private static getVgcSeason(tier: string, gen: string, year?: string, regulation?: string): VgcSeason {
+    const normalizedTier = tier ? tier.toLowerCase() : '';
+    const normalizedGen = gen ? gen.toLowerCase() : '';
+    const normalizedYear = year ? year.toLowerCase() : this.getVgcYearFromTier(normalizedTier);
+    const normalizedRegulation = regulation ? regulation.toLowerCase() : this.getVgcRegulationFromTier(normalizedTier);
 
-  private static getValidVgcYear(gen: string): string {
-    const currentYear = new Date().getFullYear().toString();
-    if (gen) {
-      const vgcByGen = this.VgcSeasons.find(i => i.gen == gen);
-      return vgcByGen ? vgcByGen.year : currentYear;
-    }
-    return currentYear;
+    const seasonByTier = normalizedTier
+      ? this.VgcSeasons.find(season => season.tier == normalizedTier || season.aliases.some(alias => alias == normalizedTier))
+      : undefined;
+    if (seasonByTier) return seasonByTier;
+
+    const seasonByYearAndRegulation = normalizedYear && normalizedRegulation
+      ? this.VgcSeasons.find(season => season.year == normalizedYear && season.regulation == normalizedRegulation)
+      : undefined;
+    if (seasonByYearAndRegulation) return seasonByYearAndRegulation;
+
+    const seasonByGenAndRegulation = normalizedGen && normalizedRegulation
+      ? this.VgcSeasons.find(season => season.gen == normalizedGen && season.regulation == normalizedRegulation)
+      : undefined;
+    if (seasonByGenAndRegulation) return seasonByGenAndRegulation;
+
+    const seasonByYear = normalizedYear
+      ? this.getDefaultVgcSeason(season => season.year == normalizedYear)
+      : undefined;
+    if (seasonByYear) return seasonByYear;
+
+    const seasonByGen = normalizedGen
+      ? this.getDefaultVgcSeason(season => season.gen == normalizedGen)
+      : undefined;
+    return seasonByGen || this.getDefaultVgcSeason();
   }
 
-  private static getValidVgcGen(gen: string, year: string): string {
-    if (gen) {
-      const vgcByGen = this.VgcSeasons.find(i => i.gen == gen);
-      return vgcByGen ? vgcByGen.gen : gen;
-    }
-    
-    const vgcByYear = this.VgcSeasons.find(i => i.year == year);
-    return vgcByYear ? vgcByYear.gen : this.getDefault().generation;
+  private static isKnownVgcAlias(tier: string): boolean {
+    return this.VgcSeasons.some(season => season.tier == tier || season.aliases.some(alias => alias == tier));
+  }
+
+  private static getVgcYearFromTier(tier: string): string {
+    if (!tier || tier == 'vgc') return '';
+
+    const match = /^vgc(\d{4})/.exec(tier);
+    return match ? match[1] : '';
+  }
+
+  private static getVgcRegulationFromTier(tier: string): string {
+    if (!tier || tier == 'vgc') return '';
+
+    const match = /^vgc\d{4}(reg[a-z0-9]+)$/.exec(tier);
+    return match ? match[1] : '';
+  }
+
+  private static getDefaultVgcSeason(predicate: (season: VgcSeason) => boolean = () => true): VgcSeason {
+    return this.VgcSeasons.find(season => season.isDefault && predicate(season))
+      || this.VgcSeasons.find(predicate)
+      || this.VgcSeasons[0];
   }
 
   private static getDisplayStatName(stat: string) {
