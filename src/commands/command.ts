@@ -1,4 +1,11 @@
-import Discord = require('discord.js');
+import {
+  ChatInputCommandInteraction,
+  EmbedBuilder,
+  MessageFlags,
+  RESTPostAPIApplicationCommandsJSONBody,
+  SlashCommandStringOption,
+  SlashCommandSubcommandBuilder,
+} from 'discord.js';
 import { AppDataSource } from "../appDataSource";
 import { MoveSetUsage, UsageData, ChecksAndCountersUsageData, SmogonFormat } from "../smogon/usageModels";
 import { ColorService } from '../pokemon/colorService';
@@ -6,165 +13,189 @@ import { FormatHelper } from '../smogon/formatHelper';
 import { Pokemon } from '../pokemon/models';
 import { ImageService } from '../pokemon/imageService';
 
-export interface Command {
-  name: string;
-  description: string;
-  aliases: string[];
-	execute(message, args);
+const generationChoices = [
+  { name: 'Gen 9', value: '9' },
+  { name: 'Gen 8', value: '8' },
+  { name: 'Gen 7', value: '7' },
+  { name: 'Gen 6', value: '6' },
+] as const;
+
+const metaChoices = [
+  { name: 'UBERS', value: 'ubers' },
+  { name: 'OU', value: 'ou' },
+  { name: 'UU', value: 'uu' },
+  { name: 'RU', value: 'ru' },
+  { name: 'NU', value: 'nu' },
+  { name: 'VGC 2026 REG I', value: 'vgc2026regi' },
+  { name: 'VGC 2026 REG F', value: 'vgc2026regf' },
+  { name: 'VGC 2021', value: 'vgc2021' },
+  { name: 'VGC 2020', value: 'vgc2020' },
+  { name: 'VGC 2019', value: 'vgc2019' },
+] as const;
+
+export interface SlashCommandHandler {
+  data: SlashCommandData;
+  helpTopic: CommandHelpTopic;
+  execute(interaction: ChatInputCommandInteraction): Promise<void>;
 }
 
-export type ArgData = { valid: boolean, pokemon?: Pokemon, pokemonName?: string, format?: SmogonFormat, errorMessage?: string };
-export type MovesetCommandData = { valid: boolean, pokemon?: Pokemon, moveSet?: MoveSetUsage, format?: SmogonFormat };
-
-export class CommandBase implements Command {
+export interface SlashCommandData {
   name: string;
+  toJSON(): RESTPostAPIApplicationCommandsJSONBody;
+}
+
+export interface CommandHelpTopic {
   description: string;
-  dataSource: AppDataSource;
-  aliases: string[] = [];
-  
-  constructor(dataSource: AppDataSource) {
-    this.dataSource = dataSource;
-  }
-  
-  execute(message: any, args: any) {
-    throw new Error("Method not implemented.");
-  }
-  
-  get usage() { return `${this.name} <pokémon name> [gen] | [tier]`; }
+  command: string;
+  arguments?: string[];
+  examples: string[];
+}
 
-  get displayName(): string {
-    return this.name
-      ? this.name.charAt(0).toUpperCase() + this.name.slice(1)
-      : '';
+export type PokemonQuery = {
+  format: SmogonFormat;
+  pokemon: Pokemon;
+  requestedName: string;
+};
+
+export type MovesetCommandData = {
+  format: SmogonFormat;
+  moveSet: MoveSetUsage;
+  pokemon: Pokemon;
+};
+
+export function withNameOption(subcommand: SlashCommandSubcommandBuilder, description: string): SlashCommandSubcommandBuilder {
+  return subcommand.addStringOption(option =>
+    option
+      .setName('name')
+      .setDescription(description)
+      .setRequired(true)
+  );
+}
+
+export function withFormatOptions(subcommand: SlashCommandSubcommandBuilder): SlashCommandSubcommandBuilder {
+  return subcommand
+    .addStringOption(option => buildGenerationOption(option))
+    .addStringOption(option => buildMetaOption(option));
+}
+
+export class CommandBase {
+  constructor(protected readonly dataSource: AppDataSource) {
   }
 
-  public async tryGetMoveSetCommand(message, args: string[]): Promise<MovesetCommandData> {
-    const argData = this.tryParseCommandArgs(message, args);
-    if (!argData.valid) {
-      message.channel.send(argData.errorMessage);
-      return { valid: false };
-    }
-    
-    const pokemon = argData.pokemon;
-    let moveset = await this.dataSource.smogonStats.getMoveSet(pokemon.name, argData.format);
-    moveset = moveset ? moveset : {} as MoveSetUsage;
-    
-    return { valid: true, pokemon: pokemon, moveSet: moveset, format: argData.format };
+  protected getFormat(interaction: ChatInputCommandInteraction): SmogonFormat {
+    const generation = interaction.options.getString('generation');
+    const meta = interaction.options.getString('meta');
+    const args = [generation, meta].filter((value): value is string => !!value);
+    return FormatHelper.getFormat(args);
   }
 
-  public async processMoveSetCommand(message, 
-                                     args: string[], 
-                                     targetData: (data: MoveSetUsage) => UsageData[] | ChecksAndCountersUsageData[]) {
-    const cmd = await this.tryGetMoveSetCommand(message, args);
-    if (!cmd.valid) return;
-    
-    const embed = new Discord.MessageEmbed()
-      .setColor(ColorService.getColorForType(cmd.pokemon.type1))
-      .setThumbnail(ImageService.getPngUrl(cmd.pokemon))
-
-    const moveSetdata = targetData(cmd.moveSet);
-    if (moveSetdata) {
-      moveSetdata.slice(0, 24).forEach((data, i) => {
-        const value = this.isCheckAndCounters(data)
-          ? `Knocked out : ${data.kOed.toFixed(2)}%\nSwitched out: ${data.switchedOut.toFixed(2)}%`
-          : `Usage: ${data.percentage.toFixed(2)}%`;
-  
-        embed.addField(`${data.name}`, value, true);
+  protected async resolvePokemonQuery(interaction: ChatInputCommandInteraction): Promise<PokemonQuery | undefined> {
+    const requestedName = interaction.options.getString('name', true).trim();
+    const pokemon = this.dataSource.pokemonDb.getPokemon(requestedName);
+    if (!pokemon) {
+      await interaction.reply({
+        content: `Could not find the provided Pokemon: '${requestedName}'.`,
+        flags: MessageFlags.Ephemeral,
       });
+      return undefined;
     }
 
-    const msgHeader = `**__${cmd.pokemon.name} ${this.displayName}:__** ${FormatHelper.toString(cmd.format)}`;
-    message.channel.send(msgHeader, embed);
+    return {
+      format: this.getFormat(interaction),
+      pokemon,
+      requestedName,
+    };
   }
 
-  public async processFilterBasedCommand(message, 
-                                         args: string[], 
-                                         targetData: (data: MoveSetUsage) => UsageData[]){
-    const format = FormatHelper.getFormat(args);
-    const movesets = await this.dataSource.smogonStats.getMegasMoveSets(format);
-        
-    if (!movesets || movesets.length == 0) {
-      return message.channel.send(`Could not find moveset for the provided data: '${FormatHelper.toString(format)}', ${message.author}!`);
-    }
-    
-    const pokemon = this.dataSource.pokemonDb.getPokemon(movesets[0].name);
-
-    const embed = new Discord.MessageEmbed()
-      .setColor(ColorService.getColorForType(pokemon.type1))
-      .setThumbnail(ImageService.getPngUrl(pokemon))
-
-    movesets.slice(0, 24).forEach((set, i) => {
-      embed.addField(`${set.name}`, `Usage: ${set.usage.toFixed(2)}%`, true);
-    });
-
-    const msgHeader = `**__${this.displayName}:__** Top ${movesets.length} ${this.displayName} users of ${FormatHelper.toString(format)}`;
-    message.channel.send(msgHeader, embed);
+  protected async getMoveSetCommandData(query: PokemonQuery): Promise<MovesetCommandData> {
+    const moveSet = await this.dataSource.smogonStats.getMoveSet(query.pokemon.name, query.format);
+    return {
+      format: query.format,
+      moveSet: moveSet ? moveSet : {} as MoveSetUsage,
+      pokemon: query.pokemon,
+    };
   }
 
-  // helpers
-  private isCheckAndCounters(obj: any): obj is ChecksAndCountersUsageData {
-    return obj.kOed !== undefined; 
-  }
+  protected createPokemonEmbed(
+    pokemon: Pokemon,
+    options: { footer?: string; image?: boolean; thumbnail?: boolean } = {}
+  ): EmbedBuilder {
+    const embed = new EmbedBuilder().setColor(ColorService.getColorForType(pokemon.type1));
 
-  protected tryParseCommandArgs(message: any, args: string[]): ArgData {
-    if (!args.length) {
-      const error = this.getNoPokemonInArgsErrorMessage(message);
-      return { valid: false, errorMessage: error };
+    if (options.image) {
+      embed.setImage(ImageService.getGifUrl(pokemon));
     }
 
-    const argData = this.parseArgs(args);
-    const pokemon = argData.pokemon;
-    const isValid = argData.valid && pokemon;
-    if (!isValid) {
-      const error = `Could not find the provided Pokémon: '${argData.pokemonName}' / format: ${FormatHelper.toString(argData.format)}, ${message.author}!`;
-      return { valid: false, errorMessage: error };
+    if (options.thumbnail) {
+      embed.setThumbnail(ImageService.getPngUrl(pokemon));
     }
 
-    return { valid: true, pokemon: pokemon, format: argData.format };
-  }
-
-  private getNoPokemonInArgsErrorMessage(message: any): string {
-    let msg = `You didn't provide the Pokémon, ${message.author}!`;
-    msg += `\nThe proper usage would be: \`/${this.usage}\``;
-    msg += `\neg.:`;
-    msg += `\n/${this.name} magearna`;
-    msg += `\n/${this.name} alakazam gen6`;
-    msg += `\n/${this.name} scizor uu`;
-    msg += `\n/${this.name} machamp gen6 uu`;
-    return msg;
-  }
-
-  private parseArgs(args: string[]): ArgData {
-    if (args.length == 0)
-      return { valid: false };
-    
-    if (args.length == 1) {
-      const pokemon = this.dataSource.pokemonDb.getPokemon(args[0]);
-      return { valid: pokemon != null, pokemon: pokemon, pokemonName: args[0], format: FormatHelper.getDefault() };
+    if (options.footer) {
+      embed.setFooter({ text: options.footer });
     }
 
-    const hasPokemonSecondName = !FormatHelper.isValidGen(args[1]) && !FormatHelper.isValidTier(args[1]);
-    
-    let pokemonName = hasPokemonSecondName
-      ? `${args[0]} ${args[1]}`
-      : args[0]
-
-    if (pokemonName.toLowerCase().startsWith("mega"))
-      pokemonName = pokemonName.substring(4).trim().concat("-mega");
-
-    if (pokemonName.toLowerCase().startsWith("gmax"))
-      pokemonName = pokemonName.substring(4).trim().concat("-gmax");
-      
-    if (pokemonName.toLowerCase().startsWith("galar"))
-      pokemonName = pokemonName.substring(5).trim().concat("-galar");
-
-    if (pokemonName.toLowerCase().startsWith("galarian"))
-      pokemonName = pokemonName.substring(8).trim().concat("-galar");
-      
-      
-    const format = FormatHelper.getFormat(args.slice(hasPokemonSecondName ? 2 : 1));
-    const pokemon = this.dataSource.pokemonDb.getPokemon(pokemonName);
-    
-    return { valid: pokemon != null, pokemon: pokemon, pokemonName: pokemonName, format: format };
+    return embed;
   }
+
+  protected addUsageFields(
+    embed: EmbedBuilder,
+    usageData: UsageData[] | ChecksAndCountersUsageData[] | undefined,
+    formatter?: (data: UsageData | ChecksAndCountersUsageData) => string,
+  ): void {
+    const safeUsageData = usageData ? usageData.slice(0, 24) : [];
+    if (!safeUsageData.length) {
+      embed.setDescription('No data available for this query.');
+      return;
+    }
+
+    for (const usage of safeUsageData) {
+      const value = formatter
+        ? formatter(usage)
+        : `Usage: ${usage.percentage.toFixed(2)}%`;
+
+      embed.addFields({ name: usage.name, value, inline: true });
+    }
+  }
+
+  protected async replyNoData(interaction: ChatInputCommandInteraction, message: string): Promise<void> {
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({ content: message, embeds: [] });
+      return;
+    }
+
+    await interaction.reply({ content: message, flags: MessageFlags.Ephemeral });
+  }
+
+  protected getSlashFormatArguments(format: SmogonFormat): string {
+    const defaultFormat = FormatHelper.getDefault();
+    const args: string[] = [];
+
+    if (format.generation !== defaultFormat.generation) {
+      args.push(`generation:${format.generation.replace(/^gen/i, '')}`);
+    }
+
+    if (format.tier !== defaultFormat.tier) {
+      args.push(`meta:${format.tier}`);
+    }
+
+    return args.join(' ');
+  }
+
+  private isCheckAndCounters(usage: UsageData | ChecksAndCountersUsageData): usage is ChecksAndCountersUsageData {
+    return (usage as ChecksAndCountersUsageData).kOed !== undefined;
+  }
+}
+
+function buildGenerationOption(option: SlashCommandStringOption): SlashCommandStringOption {
+  return option
+    .setName('generation')
+    .setDescription('Pokemon generation')
+    .addChoices(...generationChoices);
+}
+
+function buildMetaOption(option: SlashCommandStringOption): SlashCommandStringOption {
+  return option
+    .setName('meta')
+    .setDescription('Competitive metagame')
+    .addChoices(...metaChoices);
 }

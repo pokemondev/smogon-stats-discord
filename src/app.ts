@@ -1,71 +1,69 @@
-import fs = require("fs");
-import Discord = require('discord.js');
-import { Command } from './commands/command';
+import { config } from 'dotenv';
+import { ChatInputCommandInteraction, Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 import { AppDataSource } from './appDataSource';
+import { SlashCommandHandler } from './commands/command';
+import { createCommands } from './commands';
 
-// setup & load config
-require('dotenv').config();
+config();
+
 const dataSource = new AppDataSource();
-const prefix = '/';
+const token = process.env.TOKEN;
 
-// setup client and commands
-const client = new Discord.Client();
-const commands = new Discord.Collection<string, Command>();
-
-const commandFiles = fs.readdirSync(__dirname + '/commands').filter(file => file.endsWith('.js') && file !== 'command.js');
-console.log(commandFiles);
-for (const file of commandFiles) {
-  const cmdModule = require(`${__dirname }/commands/${file}`);
-  const command = new (<any>cmdModule)[Object.keys(cmdModule)[0]](dataSource) as Command;
-  
-  commands.set(command.name, command);
-  if (command.aliases.length > 0) {
-    for (const alias of command.aliases) {
-      commands.set(alias, command);
-    }
-  }
+if (!token) {
+  throw new Error('TOKEN environment variable is required.');
 }
-dataSource.botCommands = commands;
 
-// discord events
-client.on('ready', () => {
-  console.log(`Logged in as ${client.user.tag}!`);
+const commands = new Map<string, SlashCommandHandler>(
+  createCommands(dataSource).map(command => [command.data.name, command] as const)
+);
+
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+client.once(Events.ClientReady, readyClient => {
+  console.log(`Logged in as ${readyClient.user.tag}!`);
+  console.log(`Loaded ${commands.size} slash commands.`);
 });
 
-client.on('message', async msg => {
+client.on(Events.InteractionCreate, async interaction => {
+  if (!interaction.isChatInputCommand()) {
+    return;
+  }
+
+  const command = commands.get(interaction.commandName);
+  if (!command) {
+    return;
+  }
+
   try {
-    if (!msg.content.startsWith(prefix) || msg.author.bot) return;
-
-    const args = msg.content.slice(prefix.length).split(/ +/);
-    const commandName = args.shift().toLowerCase();
-
-    const command = commands.get(commandName) as Command;
-    if (!command) return;
-
-    await command.execute(msg, args);
-  } 
+    await command.execute(interaction);
+  }
   catch (error) {
-    await handleCommandFailure(msg, error);
-  }  
+    await handleCommandFailure(interaction, error);
+  }
 });
 
-async function handleCommandFailure(msg: Discord.Message, error: any): Promise<void> {
-  console.error(`Failed to process message '${msg.content}' from ${msg.author.tag}.`, error);
+async function handleCommandFailure(interaction: ChatInputCommandInteraction, error: unknown): Promise<void> {
+  console.error(`Failed to process command '${interaction.commandName}' from ${interaction.user.tag}.`, error);
 
   try {
-    const commandFailureMessage = 'there was an error trying to execute that command. The message could not be processed.';
-    await msg.reply(commandFailureMessage);
+    const commandFailureMessage = 'There was an error trying to execute that command.';
+    if (interaction.deferred || interaction.replied) {
+      await interaction.followUp({ content: commandFailureMessage, flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    await interaction.reply({ content: commandFailureMessage, flags: MessageFlags.Ephemeral });
   }
   catch (replyError) {
-    console.error('Failed to send the command failure reply.', replyError);
+    console.error('Failed to send the command failure response.', replyError);
   }
 }
 
-const isDebug = process.argv.some(a=> a == "debug");
+const isDebug = process.argv.some(a => a === 'debug');
 if (isDebug)
 {
-  console.log("Debug Mode On!")
-  client.on('debug', console.log);
+  console.log('Debug Mode On!');
+  client.on(Events.Debug, console.log);
 }
 
 process.on('unhandledRejection', reason => {
@@ -76,4 +74,4 @@ process.on('uncaughtException', error => {
   console.error('Uncaught exception.', error);
 });
 
-client.login(process.env.TOKEN);
+client.login(token);

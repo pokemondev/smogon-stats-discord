@@ -20,11 +20,12 @@ export class FormatHelper {
     { gen: 'gen8', year: '2020', tier: 'vgc2020', aliases: [ 'vgc2020' ], isDefault: true },
     { gen: 'gen7', year: '2019', tier: 'vgc2019', aliases: [ 'vgc2019' ], isDefault: true },
    ];
+  public static MetaValues = [ 'ubers', 'ou', 'uu', 'ru', 'nu', ...FormatHelper.VgcSeasons.map(season => season.tier) ];
   public static Tiers = [ 'ubers', 'uber', 'ou', 'uu', 'ru', 'nu', 'vgc', ...FormatHelper.VgcSeasons.map(season => season.tier) ];
   
   public static getFormat(args: string[]): SmogonFormat {
-    const normalizedArgs = args.map(a => a.toLowerCase());
-    let gen  = normalizedArgs.find(a => this.Generations.some(g => g == a));
+    const normalizedArgs = args.map(a => this.normalizeValue(a));
+    let gen  = normalizedArgs.find(a => this.isValidGen(a));
     let tier = normalizedArgs.find(a => this.isValidTier(a) || a == 'vgc');
     const vgcYear = normalizedArgs.find(a => /^\d{4}$/.test(a));
     const vgcRegulation = normalizedArgs.find(a => /^reg[a-z0-9]+$/.test(a));
@@ -40,13 +41,14 @@ export class FormatHelper {
     }
 
     return {
-      generation: (gen || this.getDefault().generation).toLowerCase(),
+      generation: this.normalizeGeneration(gen) || this.getDefault().generation,
       tier: (tier || this.getDefault().tier).toLowerCase()
     };
   }
 
   public static isValidGen(gen: string): boolean {
-    return this.Generations.some(g => g == gen.toLowerCase());
+    const normalizedGen = this.normalizeGeneration(gen);
+    return this.Generations.some(g => g == normalizedGen);
   }
 
   public static isValidTier(tier: string): boolean {
@@ -63,7 +65,7 @@ export class FormatHelper {
   }
 
   public static toString(format: SmogonFormat): string {
-    return `Gen ${format.generation[format.generation.length-1]} ${format.tier.toUpperCase()}`;
+    return `Gen ${format.generation.replace(/^gen/i, '')} ${format.tier.toUpperCase()}`;
   }
 
   public static getSmogonSet(pokemon: Pokemon, set: PokemonSet): string {
@@ -168,5 +170,28 @@ export class FormatHelper {
       case 'sd': return 'SpD';
       case 'sp': return 'Spe';
     }
+  }
+
+  private static normalizeGeneration(gen?: string): string {
+    if (!gen)
+      return '';
+
+    const normalizedGen = gen.toLowerCase();
+    if (/^\d{1,2}$/.test(normalizedGen))
+      return `gen${normalizedGen}`;
+
+    return normalizedGen.startsWith('gen')
+      ? normalizedGen
+      : `gen${normalizedGen}`;
+  }
+
+  private static normalizeValue(value?: string): string {
+    if (!value)
+      return '';
+
+    const normalizedValue = value.toLowerCase();
+    return /^\d{1,2}$/.test(normalizedValue)
+      ? this.normalizeGeneration(normalizedValue)
+      : normalizedValue;
   }
 }

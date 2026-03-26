@@ -1,55 +1,91 @@
-import { Command } from "./command";
-import { AppDataSource } from "../appDataSource";
+import { ChatInputCommandInteraction, EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
+import { CommandHelpTopic, SlashCommandData, SlashCommandHandler } from './command';
 
-export class HelpCommand implements Command {
-  name = 'help';
-  description = "Lists all available commands";
-  aliases = [ 'commands' ];
-  
-  private appDataSource: AppDataSource;
+export const helpHelpTopic: CommandHelpTopic = {
+  command: 'help',
+  description: 'Show a quick guide for the bot commands and arguments.',
+  examples: [
+    '/help',
+    '/help command:pokemon',
+  ],
+};
 
-  constructor(appDataSource: AppDataSource) {
-    this.appDataSource = appDataSource;
+export function createHelpCommandData(helpTopics: CommandHelpTopic[]): SlashCommandData {
+  return new SlashCommandBuilder()
+    .setName('help')
+    .setDescription('Show command help and usage examples')
+    .addStringOption(option =>
+      option
+        .setName('command')
+        .setDescription('Command to explain in more detail')
+        .addChoices(...helpTopics.map(topic => ({ name: topic.command, value: topic.command })))
+    );
+}
+
+export class HelpCommand implements SlashCommandHandler {
+  public readonly data: SlashCommandData;
+  public readonly helpTopic = helpHelpTopic;
+
+  constructor(private readonly helpTopics: CommandHelpTopic[]) {
+    this.data = createHelpCommandData(helpTopics);
   }
-  
-  public execute(message: any, args: any) {
-    const data = [];
-    const commands = this.appDataSource.botCommands;
-    const prefix = '/';
 
-    // general help - list all commands
-    if (!args.length) {
-      var cmdNames = [...new Set(Array.from(commands.entries()).map(cmd => cmd[1].name))];
-      data.push('Here\'s a list of all my commands:');
-      data.push( "```\n" + cmdNames.join('\n') + "```");
-      data.push(`You can send \`${prefix}help [command name]\` to get info on a specific command!`);
+  public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+    const requestedCommand = interaction.options.getString('command');
+    const topic = requestedCommand
+      ? this.helpTopics.find(helpTopic => helpTopic.command === requestedCommand)
+      : undefined;
 
-      return message.author.send(data, { split: true })
-        .then(() => {
-          if (message.channel.type === 'dm') return;
-          message.reply('I\'ve sent you a DM with all my commands!');
-        })
-        .catch(error => {
-          console.error(`Could not send help DM to ${message.author.tag}.\n`, error);
-          message.reply('it seems like I can\'t DM you! Do you have DMs disabled?');
-        });
+    const embed = topic
+      ? this.buildTopicEmbed(topic)
+      : this.buildOverviewEmbed();
+
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+  }
+
+  private buildOverviewEmbed(): EmbedBuilder {
+    const embed = new EmbedBuilder()
+      .setTitle('Smogon Stats Help')
+      .setDescription('Start with `/pokemon` for a specific Pokemon, `/meta` for format-wide rankings, or `/util` for utility commands. Defaults are Gen 9 and OU when omitted.');
+
+    for (const topic of this.helpTopics) {
+      embed.addFields({ name: `/${topic.command}`, value: topic.description, inline: false });
     }
 
-    const name = args[0].toLowerCase();
-    const command = commands.get(name) || commands.find(c => c.aliases && c.aliases.includes(name));
+    embed.addFields({
+      name: 'Quick Examples',
+      value: [
+        '/pokemon summary name:dragonite',
+        '/pokemon items name:gholdengo meta:OU',
+        '/meta usage',
+        '/meta leads generation:"Gen 8" meta:OU',
+        '/util ping',
+      ].join('\n'),
+      inline: false,
+    });
 
-    if (!command) {
-      return message.reply('that\'s not a valid command!');
+    return embed;
+  }
+
+  private buildTopicEmbed(topic: CommandHelpTopic): EmbedBuilder {
+    const embed = new EmbedBuilder()
+      .setTitle(`/${topic.command}`)
+      .setDescription(topic.description);
+
+    if (topic.arguments && topic.arguments.length) {
+      embed.addFields({
+        name: 'Arguments',
+        value: topic.arguments.join('\n'),
+        inline: false,
+      });
     }
 
-    data.push(`**Name:** ${command.name}`);
+    embed.addFields({
+      name: 'Examples',
+      value: topic.examples.join('\n'),
+      inline: false,
+    });
 
-    if (command.aliases) data.push(`**Aliases:** ${command.aliases.join(', ')}`);
-    if (command.description) data.push(`**Description:** ${command.description}`);
-    if ((command as any).usage) data.push(`**Usage:** ${prefix}${(command as any).usage}`);
-
-    //data.push(`**Cooldown:** ${command.cooldown || 3} second(s)`);
-
-    message.channel.send(data, { split: true });
+    return embed;
   }
 }
