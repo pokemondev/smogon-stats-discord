@@ -2,10 +2,18 @@ import cacheManager = require('cache-manager');
 import { PokemonUsage, MoveSetUsage, SmogonFormat } from "./usageModels";
 import { FormatHelper } from "./formatHelper";
 import { FileHelper } from "../common/fileHelper";
+import { SmogonStatsError } from "../models/errors";
 
 export class SmogonStats {
 
-  private cachedDb: cacheManager.Cache = cacheManager.caching({ store: 'memory', max: 1000, ttl: 60 * 5 /* 5 min */ });
+  private static readonly DefaultCacheTtlInSeconds = 60 * 2;
+  private static readonly Gen8PriorityCacheTtlInSeconds = 60 * 5;
+  private static readonly Gen9PriorityCacheTtlInSeconds = 60 * 10;
+
+  private cachedDb: cacheManager.Cache = cacheManager.caching({
+    store: 'memory',
+    ttl: SmogonStats.DefaultCacheTtlInSeconds
+  });
 
   public async getLeads(format: SmogonFormat): Promise<PokemonUsage[]> {
     const statsType = 'leads';
@@ -70,23 +78,53 @@ export class SmogonStats {
   private async getStatsData<T>(statsType: string, format: SmogonFormat, callback: (stats: any) => any = undefined): Promise<T> {
     const fmt = FormatHelper.getKeyFrom(format);
     const cacheKey = `${statsType}_${fmt}`;
-    const statsData = await this.cachedDb.wrap(cacheKey, function(cb) {
-      
-      console.log('loading ' + statsType)
-      let fileData = SmogonStats.loadFileData(statsType, format);
-  
-      if (callback)
-        fileData = callback(fileData);
-      
-      return fileData;
-    });
+    const ttl = this.getCacheTtlInSeconds(format);
+    let statsData: any;
+
+    try {
+      statsData = await this.cachedDb.wrap(cacheKey, () => {
+        console.log('loading ' + statsType)
+        let fileData = SmogonStats.loadFileData(statsType, format);
+
+        if (callback)
+          fileData = callback(fileData);
+
+        return fileData;
+      }, { ttl });
+    }
+    catch (error) {
+      throw SmogonStats.buildStatsDataError(statsType, format, error);
+    }
 
     return statsData as T;
+  }
+
+  private getCacheTtlInSeconds(format: SmogonFormat): number {
+    const isPriorityTier = format.tier === 'ou' || format.tier.startsWith('vgc');
+
+    if (isPriorityTier) {
+      if (format.generation === 'gen9')
+        return SmogonStats.Gen9PriorityCacheTtlInSeconds;
+
+      if (format.generation === 'gen8')
+        return SmogonStats.Gen8PriorityCacheTtlInSeconds;
+    }
+
+    return SmogonStats.DefaultCacheTtlInSeconds;
   }
 
   private static loadFileData(statsType: string, format: SmogonFormat): any {
     const filename = `${statsType}-${FormatHelper.getKeyFrom(format)}`;
     const filePath = `smogon-stats/${format.generation}/${format.tier}/${filename}.json`;
     return FileHelper.loadFileDataAsAny(filePath);
+  }
+
+  private static buildStatsDataError(statsType: string, format: SmogonFormat, error: any): SmogonStatsError {
+    if (error instanceof SmogonStatsError)
+      return error;
+
+    const details = error && error.message ? error.message : 'Unknown error';
+    const formatDisplay = FormatHelper.toString(format);
+    return new SmogonStatsError(statsType, format, `Could not load ${statsType} data for ${formatDisplay}. ${details}`);
   }
 }
