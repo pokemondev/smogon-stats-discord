@@ -1,55 +1,178 @@
-# Smogon Stats - Discord Bot ![Smogon Stats](https://cdn.discordapp.com/avatars/610945850557988894/2680da85a519a5d856e7a90cc449ef4e.png?size=64 "Smogon Stats")
-[![Discord Bots](https://discordbots.org/api/widget/status/610945850557988894.svg)](https://discordbots.org/bot/610945850557988894) 
-[![Invite Smogon Stats](https://img.shields.io/badge/Discord-Get%20Smogon%20Stats%20Bot-blueviolet?logo=discord)](https://discordapp.com/api/oauth2/authorize?client_id=610945850557988894&permissions=280576&scope=bot)
-[![Join to the community at https://discord.com/invite/BM7ZRNB](https://img.shields.io/badge/Discord-Join%20the%20community-blueviolet?logo=discord)](https://discord.com/invite/BM7ZRNB)
+# Smogon Stats Discord Bot
 
-## Overview
-A Discord Smogon usage statistics bot that aims to show Pokémon Showdown battles usage data like Pokémon, movesets (moves, items, abilities...), tiers, generations.
+Smogon Stats is a Discord bot for Pokemon Showdown and Smogon competitive data. It serves usage rankings, leads data, moveset trends, counters, teammates, and curated Smogon sets from local JSON snapshots.
 
-[Invite Smogon Stats](https://discordapp.com/api/oauth2/authorize?client_id=610945850557988894&permissions=280576&scope=bot) to your own Discord server!
-
-[Join Smogon Stats Support Server](https://discord.com/invite/BM7ZRNB) to try out the bot and talk to the devs!
-<!--
-[![Discord Bots](https://discordbots.org/api/widget/servers/610945850557988894.svg)](https://discordbots.org/bot/610945850557988894)
--->
+The bot now runs on modern discord.js slash commands instead of prefix-based message commands.
 
 ## Features
-* Access to useful Pokémon battling data based on Smogon/Pokemon Showdown;
-* Movesets data from Smogon for the most popular formats (tiers & generations);
-* Type Weakness/Move Coverage Tools;
-* Fuzzy search on pokémon names (miss spelling awareness);
-* Support to Generation 8, 7 and 6;
-* Support to VGC, OU and UU metagames (more coming...)
-<!-- * Learnsets and Standard Movesets (from All Generations and Smogon Metas) -->
 
-## Commands
-| Command       | Aliases                  | Descrition                                                                     |
-|---------------|--------------------------|--------------------------------------------------------------------------------|
-| `/pokemon`    | `/p`, `/pkm`, `/mon`     | Shows a pokémon summary of all relevant battling information                   |
-| `/usage`      | `/u`, `/usages`          | Shows most used pokémons at a format and their usage percentages               |
-| `/leads`      | `/l`, `/lead`            | Shows most used leading pokémon' and its lead percentage                       |
-| `/moves`      | `/m`, `/move`            | Shows most used pokémon's **moves** and its usage percentage                   |
-| `/items`      | `/i`, `/item`            | Shows most used pokémon's **items** and its usage percentage                   |
-| `/abilities`  | `/a`, `/ability`         | Shows most used pokémon's **abilities** and its usage percentage               |
-| `/spreads`    | `/iv`, `/ivs`, `/natures`| Shows most used pokémon's **IV's spreads & natures** with its usage percentage |
-| `/team-mates` | `/tm`, `/mates`          | Shows most used pokémon's **team mates** and its usage percentage              |
-| `/counters`   | `/cc`, `/checks`         | Shows most used pokémon's **counters and checks** and its usage percentage     |
-| `/megas`      | `/m`, `/mega`            | Shows most used Mega evolutioned pokémon and their usage percentages           |
+- Slash-command first command surface.
+- Fuzzy Pokemon name matching kept from the original bot.
+- Competitive summary command with moves, items, abilities, spreads, counters, and type profile.
+- Meta-wide rankings for usage, leads, and Mega Stone users.
+- Smogon sets lookup by Pokemon, generation, and metagame.
+- Static local data files for predictable responses and simple hosting.
 
-## Screen shots
-`/pokemon greninja-ash`
+## Requirements
 
-![Pokémon summary command](https://2qwijq.dm.files.1drv.com/y4m6Yyx6eXgljS3MHJ4wjPwAmVwy_mLkPEtI5Ij17lvYn5Vy7amdumnroGhjz3ngcdZv5C3m1auAIM1av_WJoo4rf5yC9qv1yqRs5kul-4w8pMkh1J3fVtn92i55V50fO9BZxbAQnciZmbFT7sr_NSi1a5OZKizhY4XsLvZuIMiIYMsZULQOAfWP7hyBmgBXEjlM2dHBWv0mA73wPGwOduu-g?width=660&height=641&cropmode=none "Pokémon summary command")
+- Node.js 20 or newer.
+- A Discord application with a bot token.
+- Your application ID for command registration.
 
-`/moves gengar`
+## Setup
 
-![Moves command](https://drowma.dm.files.1drv.com/y4m5Luihb1cTSMq4ZA9P8oYecH9dG3NI7vtiGfFjd8LSAo5YwA9YGKwMJeR0rH7-C30avAJjkfVW9Jojuk9tgs_S_WEtGcqCKgHeleeB1MkYelpamCUd52ik3SiDE7JJ0NmAfcdrQdvTRhlEeDYPMg6ytoAzC_aqrTdoTXz5UsYEv7WwrNrHzbeHd8-APsdG9uv2fQF3yWvdJ6sbH6IY6E8VQ?width=660&height=440&cropmode=none "Moves command")
+1. Install dependencies:
 
-`/items charizard`
+```bash
+npm install
+```
 
-![Items command](https://yevgqa.dm.files.1drv.com/y4mBXcgVLnYyPgzG-2dOOS95kLk1TBh4xNI0t-ORY6DAIpBo4CDV1z-Q2MPMI_XaS-AvHuDaoVBvQYC39LYmi_y4nNs-cgkGuG-E5PzNlCplo4UuXedoe8US2rieBHGI4YA9477olkHfhwbITu-vxj2AJ3EazJ_tNBxiPihteEhvLRykYh0W-sAFMnxF0aUrboL6JKvIqDg-0rWVe9tX710kw?width=660&height=381&cropmode=none "Items command")
+2. Configure environment variables in `.env`:
 
-`/usage`
+```env
+TOKEN=your_bot_token
+CLIENT_ID=your_application_id
+DEV_GUILD_ID=optional_guild_id_for_fast_testing
+```
 
-![Usage command](https://nxxzgg.dm.files.1drv.com/y4mKbvgCw3AyOsabpqQxLJnhPAszXPqQMNNGW0m3OrQLU1cWfvKbeyf47FYzlYk3Fgs4PZ6DrdTyWBVFXmTeht9ZVKTzujJCpMiM3acDPYL4jrsxMJYLdqPuF78u5knFzowY_Q2Nkh3j-Me8DHBWV6c8wfuqc6x3QPjno80p1_Igdb8KPUiNECs9DDzQG_PSnTBABUeLZCAtqaHsp_knXFOAA?width=660&height=341&cropmode=none "Logo Title Text 1")
+3. Register slash commands:
+
+```bash
+npm run register:commands
+```
+
+If `DEV_GUILD_ID` is set, commands are registered to that guild for instant updates. Otherwise, commands are registered globally.
+
+4. Start the bot:
+
+```bash
+npm start
+```
+
+For local development with watch mode:
+
+```bash
+npm run dev
+```
+
+## Discord App Setup
+
+### OAuth scopes
+
+- `bot`
+- `applications.commands`
+
+### Gateway intents
+
+- `Guilds`
+
+This bot does not require `Message Content` or any privileged intent for the implemented slash-command flow.
+
+### Minimum bot permissions
+
+- `ViewChannel`
+- `SendMessages`
+- `EmbedLinks`
+
+Optional only if you want thread replies:
+
+- `SendMessagesInThreads`
+
+Users also need permission to use application commands in the target channel.
+
+## Command Surface
+
+Defaults:
+
+- `generation` defaults to `Gen 9`
+- `meta` defaults to `OU`
+
+### `/pokemon`
+
+Pokemon-targeted data commands. All Pokemon subcommands use the same arguments:
+
+- `name` required
+- `generation` optional
+- `meta` optional
+
+Subcommands:
+
+- `summary` — full competitive overview
+- `moves` — most used moves
+- `abilities` — most used abilities
+- `items` — most used items
+- `spreads` — most used spreads and natures
+- `checks` — common checks and counters
+- `teammates` — common teammates
+- `sets` — curated Smogon sets
+
+Examples:
+
+```text
+/pokemon summary name:dragonite
+/pokemon moves name:gholdengo meta:OU
+/pokemon sets name:landorus-therian generation:"Gen 8" meta:OU
+```
+
+### `/meta`
+
+Metagame-wide rankings. Meta subcommands use:
+
+- `generation` optional
+- `meta` optional
+
+Subcommands:
+
+- `usage` — most used Pokemon
+- `leads` — most common leads
+- `megas` — most common Mega Stone users
+
+Examples:
+
+```text
+/meta usage
+/meta leads meta:UU
+/meta megas generation:"Gen 6" meta:OU
+```
+
+### `/help`
+
+Ephemeral command help. Optional argument:
+
+- `command`
+
+Examples:
+
+```text
+/help
+/help command:pokemon
+```
+
+### `/util`
+
+Utility subcommands:
+
+- `ping` — returns bot latency
+- `server` — guild-only server name and member count
+
+Examples:
+
+```text
+/util ping
+/util server
+```
+
+## Notes
+
+- Discord always shows slash option names in the UI, so the command syntax includes labels such as `name:`, `generation:`, and `meta:`.
+- The internal Smogon `format` is treated as `generation + meta`.
+- Fuzzy name matching is still the primary fallback even without autocomplete.
+
+## Testing
+
+Run the existing test suite with:
+
+```bash
+npm test
+```
 
