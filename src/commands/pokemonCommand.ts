@@ -1,35 +1,136 @@
-import Discord = require('discord.js');
-import { CommandBase, MovesetCommandData } from "./command";
+import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from 'discord.js';
+import { CommandBase, CommandHelpTopic, MovesetCommandData, SlashCommandData, SlashCommandHandler, withFormatOptions, withNameOption } from './command';
 import { AppDataSource } from "../appDataSource";
-import { ColorService } from '../pokemon/colorService';
 import { FormatHelper } from '../smogon/formatHelper';
 import { TypeService } from '../pokemon/typeService';
 import { EffectivenessType } from '../pokemon/models';
 import { UsageData } from '../smogon/usageModels';
-import { ImageService } from '../pokemon/imageService';
 
-export class PokemonCommand extends CommandBase {
-  name = "pokemon";
-  description = "Lists the most used moves of a given Pokémon";
-  aliases = [ 'p', 'pkm', 'mon' ];
+export const pokemonHelpTopic: CommandHelpTopic = {
+  command: 'pokemon',
+  description: 'Pokemon-specific competitive data, moveset usage, and Smogon sets.',
+  arguments: [
+    'name: Pokemon name to search for.',
+    'generation: Optional generation filter. Uses the configured default when omitted.',
+    'meta: Optional metagame filter. Uses the configured default when omitted. If only generation is provided, that generation uses its default VGC format.',
+  ],
+  examples: [
+    '/pokemon summary name:dragonite',
+    '/pokemon moves name:gholdengo meta:OU',
+    '/pokemon sets name:landorus-therian generation:"Gen 8" meta:OU',
+  ],
+};
+
+export function createPokemonCommandData(): SlashCommandData {
+  return new SlashCommandBuilder()
+    .setName('pokemon')
+    .setDescription('Pokemon competitive data and Smogon sets')
+    .addSubcommand(subcommand => withFormatOptions(withNameOption(
+      subcommand
+        .setName('summary')
+        .setDescription('Show a full competitive summary for a Pokemon'),
+      'Pokemon name'
+    )))
+    .addSubcommand(subcommand => withFormatOptions(withNameOption(
+      subcommand
+        .setName('moves')
+        .setDescription('Show the most used moves for a Pokemon'),
+      'Pokemon name'
+    )))
+    .addSubcommand(subcommand => withFormatOptions(withNameOption(
+      subcommand
+        .setName('abilities')
+        .setDescription('Show the most used abilities for a Pokemon'),
+      'Pokemon name'
+    )))
+    .addSubcommand(subcommand => withFormatOptions(withNameOption(
+      subcommand
+        .setName('items')
+        .setDescription('Show the most used items for a Pokemon'),
+      'Pokemon name'
+    )))
+    .addSubcommand(subcommand => withFormatOptions(withNameOption(
+      subcommand
+        .setName('spreads')
+        .setDescription('Show the most used spreads and natures for a Pokemon'),
+      'Pokemon name'
+    )))
+    .addSubcommand(subcommand => withFormatOptions(withNameOption(
+      subcommand
+        .setName('checks')
+        .setDescription('Show common checks and counters for a Pokemon'),
+      'Pokemon name'
+    )))
+    .addSubcommand(subcommand => withFormatOptions(withNameOption(
+      subcommand
+        .setName('teammates')
+        .setDescription('Show the most common teammates for a Pokemon'),
+      'Pokemon name'
+    )))
+    .addSubcommand(subcommand => withFormatOptions(withNameOption(
+      subcommand
+        .setName('sets')
+        .setDescription('Show curated Smogon sets for a Pokemon'),
+      'Pokemon name'
+    )));
+}
+
+export class PokemonCommand extends CommandBase implements SlashCommandHandler {
+  public readonly data = createPokemonCommandData();
+  public readonly helpTopic = pokemonHelpTopic;
 
   constructor(dataSource: AppDataSource) {
     super(dataSource);
   }
   
-  async execute(message: any, args: any) {
-    const cmd = await this.tryGetMoveSetCommand(message, args);
-    if (!cmd.valid) return;
+  async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+    switch (interaction.options.getSubcommand()) {
+      case 'summary':
+        await this.handleSummary(interaction);
+        return;
+      case 'moves':
+        await this.handleMovesetBreakdown(interaction, 'Moves', moveSet => moveSet.moves);
+        return;
+      case 'abilities':
+        await this.handleMovesetBreakdown(interaction, 'Abilities', moveSet => moveSet.abilities);
+        return;
+      case 'items':
+        await this.handleMovesetBreakdown(interaction, 'Items', moveSet => moveSet.items);
+        return;
+      case 'spreads':
+        await this.handleMovesetBreakdown(interaction, 'Spreads', moveSet => moveSet.spreads);
+        return;
+      case 'checks':
+        await this.handleMovesetBreakdown(interaction, 'Checks', moveSet => moveSet.checksAndCounters);
+        return;
+      case 'teammates':
+        await this.handleMovesetBreakdown(interaction, 'Teammates', moveSet => moveSet.teamMates);
+        return;
+      case 'sets':
+        await this.handleSets(interaction);
+        return;
+      default:
+        await interaction.reply({ content: 'That subcommand is not supported.', flags: MessageFlags.Ephemeral });
+    }
+  }
 
-    const hasMovesetData = cmd.moveSet && cmd.moveSet.moves && cmd.moveSet.items;
-    const isGen9 = cmd.format.generation == 'gen9';
+  private async handleSummary(interaction: ChatInputCommandInteraction): Promise<void> {
+    const query = await this.resolvePokemonQuery(interaction);
+    if (!query) {
+      return;
+    }
 
-    const embed = new Discord.MessageEmbed()
-      .setColor(ColorService.getColorForType(cmd.pokemon.type1))
-      .setImage(ImageService.getGifUrl(cmd.pokemon))
-      .setFooter(this.getFooterDetails(cmd));
+    await interaction.deferReply();
 
-    // setup and get data
+    const cmd = await this.getMoveSetCommandData(query);
+    const hasMovesetData = !!(cmd.moveSet.moves && cmd.moveSet.items);
+    const isGen9 = cmd.format.generation === 'gen9';
+
+    const embed = this.createPokemonEmbed(cmd.pokemon, {
+      footer: this.getFooterDetails(interaction, cmd),
+      image: true,
+    });
+
     const { stats, baseStatsData } = this.getBaseStatsData(cmd);
     const info = await this.getGeneralInfoData(cmd);
     const abilities = this.getData(cmd.moveSet.abilities);
@@ -37,27 +138,99 @@ export class PokemonCommand extends CommandBase {
     const items = this.getData(cmd.moveSet.items);
     const defensiveProfile = this.getWeakResistData(cmd);
     const teraTypes = this.getTeraTypesData(cmd);
-    const typeFieldName = isGen9 ? "Tera Types" : "Weak/Resist";
+    const typeFieldName = isGen9 ? 'Tera Types' : 'Weak/Resist';
     const typeFieldData = isGen9 ? teraTypes : defensiveProfile;
     const spreads = this.getData(cmd.moveSet.spreads, 6, true);
     const countersChecks = this.getCountersChecksData(cmd);
 
-    embed.addField("Base Stats Total: " + stats.tot, baseStatsData, true);
-    embed.addField("General Info", info, true);
+    embed.addFields(
+      { name: `Base Stats Total: ${stats.tot}`, value: baseStatsData, inline: true },
+      { name: 'General Info', value: info, inline: true },
+    );
+
     if (hasMovesetData) {
-      embed.addField("Abilities", abilities, true);
-      embed.addField("Moves", moves, true);
-      embed.addField("Items", items, true);
-      embed.addField(typeFieldName, typeFieldData, true);
-      embed.addField("Nature/IV spread", spreads, true);
-      embed.addField("Counters & Checks", countersChecks, true);
+      embed.addFields(
+        { name: 'Abilities', value: abilities, inline: true },
+        { name: 'Moves', value: moves, inline: true },
+        { name: 'Items', value: items, inline: true },
+        { name: typeFieldName, value: typeFieldData, inline: true },
+        { name: 'Nature/IV Spread', value: spreads, inline: true },
+        { name: 'Counters & Checks', value: countersChecks, inline: true },
+      );
     } else {
-      embed.addField(typeFieldName, typeFieldData, true);
+      embed.addFields({ name: typeFieldName, value: typeFieldData, inline: true });
     }
 
-    // title and send message
-    const msgHeader = `**__${cmd.pokemon.name}:__** ${FormatHelper.toString(cmd.format)}`;
-    message.channel.send(msgHeader, embed);
+    await interaction.editReply({
+      content: `**__${cmd.pokemon.name}:__** ${FormatHelper.toString(cmd.format)}`,
+      embeds: [embed],
+    });
+  }
+
+  private async handleMovesetBreakdown(
+    interaction: ChatInputCommandInteraction,
+    title: string,
+    selector: (moveSet: MovesetCommandData['moveSet']) => UsageData[] | ReturnType<typeof this.getChecksData>
+  ): Promise<void> {
+    const query = await this.resolvePokemonQuery(interaction);
+    if (!query) {
+      return;
+    }
+
+    await interaction.deferReply();
+
+    const cmd = await this.getMoveSetCommandData(query);
+    const embed = this.createPokemonEmbed(cmd.pokemon, { thumbnail: true });
+    const usageData = selector(cmd.moveSet);
+
+    this.addUsageFields(embed, usageData, usage => {
+      if ('kOed' in usage) {
+        return `Knocked out: ${usage.kOed.toFixed(2)}%\nSwitched out: ${usage.switchedOut.toFixed(2)}%`;
+      }
+
+      return `Usage: ${usage.percentage.toFixed(2)}%`;
+    });
+
+    await interaction.editReply({
+      content: `**__${cmd.pokemon.name} ${title}:__** ${FormatHelper.toString(cmd.format)}`,
+      embeds: [embed],
+    });
+  }
+
+  private async handleSets(interaction: ChatInputCommandInteraction): Promise<void> {
+    const query = await this.resolvePokemonQuery(interaction);
+    if (!query) {
+      return;
+    }
+
+    await interaction.deferReply();
+
+    const sets = this.dataSource.smogonSets.get(query.pokemon, query.format);
+    if (!sets.length) {
+      await this.replyNoData(
+        interaction,
+        `No Smogon sets available for ${query.pokemon.name} in ${FormatHelper.toString(query.format)}.`
+      );
+      return;
+    }
+
+    const embed = this.createPokemonEmbed(query.pokemon, {
+      footer: 'More details on smogon.com',
+      thumbnail: true,
+    });
+
+    for (const set of sets) {
+      embed.addFields({
+        name: set.name,
+        value: `${FormatHelper.getSmogonSet(query.pokemon, set)}\u2006`,
+        inline: false,
+      });
+    }
+
+    await interaction.editReply({
+      content: `**__Sets:__** Top ${query.pokemon.name} sets of ${FormatHelper.toString(query.format)}`,
+      embeds: [embed],
+    });
   }
 
   private getBaseStatsData(cmd: MovesetCommandData) {
@@ -72,10 +245,10 @@ export class PokemonCommand extends CommandBase {
 
   private async getGeneralInfoData(cmd: MovesetCommandData) {
     const usage = await this.dataSource.smogonStats.getUsage(cmd.pokemon.name, cmd.format);
-    const usageInfo = usage ? `${usage.rank}º (${usage.usageRaw.toFixed(2)}%)` : '';
+    const usageInfo = usage ? `${usage.rank}º (${usage.usageRaw.toFixed(2)}%)` : 'N/A';
     
-    const info1 = `Tier: \`${cmd.pokemon.tier}\``;
-    const info2 = `Generation: \`${cmd.pokemon.generation}\``;
+    const info1 = `Meta: \`${cmd.format.meta.toUpperCase()}\``;
+    const info2 = `Generation: \`Gen ${cmd.format.generation.replace(/^gen/i, '')}\``;
     const info3 = `Type: \`${cmd.pokemon.type1} ${(cmd.pokemon.type2 ? '/ ' + cmd.pokemon.type2 : '')}\``;
     const info4 = `Usage: \`${usageInfo}\``;
     const infoX = `${info1}\n${info2}\n${info3}\n${info4}`;
@@ -103,6 +276,10 @@ export class PokemonCommand extends CommandBase {
     return this.getData(cmd.moveSet.teraTypes);
   }
 
+  private getChecksData(moveSet: MovesetCommandData['moveSet']) {
+    return moveSet.checksAndCounters;
+  }
+
   private getData(usageData: UsageData[], limit: number = 6, highlighEverything: boolean = false): string {
     const hl1 = highlighEverything ? "\`" : "";
     const hl2 = highlighEverything ? ""   : "\`";
@@ -112,16 +289,15 @@ export class PokemonCommand extends CommandBase {
 
   private getCountersChecksData(cmd: MovesetCommandData): string {
     const cc = (cmd.moveSet.checksAndCounters ? cmd.moveSet.checksAndCounters : []);
-    let countersChecks = cc.slice(0, 6).map(iv => `\`${iv.name}: KOed ${iv.kOed.toFixed(1)}% / Swed ${iv.switchedOut.toFixed(1)}%\``).join('\n');
+    let countersChecks = cc.slice(0, 6).map(iv => `\`${iv.name}: KOed ${iv.kOed.toFixed(1)}% / Switched ${iv.switchedOut.toFixed(1)}%\``).join('\n');
     countersChecks = countersChecks ? countersChecks : "-";
     return countersChecks;
   }
 
-  private getFooterDetails(cmd: MovesetCommandData): string {
+  private getFooterDetails(interaction: ChatInputCommandInteraction, cmd: MovesetCommandData): string {
     const pokemonName = cmd.pokemon.name.toLowerCase();
-    const genArg = cmd.format.generation == FormatHelper.getDefault().generation ? "" : cmd.format.generation;
-    const tierArg = cmd.format.tier == FormatHelper.getDefault().tier ? "" : cmd.format.tier;
+    const formatArgs = this.getSlashFormatArguments(interaction);
     
-    return `Sets details on: /sets ${pokemonName} ${genArg} ${tierArg}`.trim();
+    return `Sets details on: /pokemon sets name:${pokemonName}${formatArgs ? ` ${formatArgs}` : ''}`;
   }
 }

@@ -30,6 +30,6 @@ export interface PokemonUsage {
 
 export interface SmogonFormat {
     generation: string;
-    tier: string;
+    meta: string;
 }
 

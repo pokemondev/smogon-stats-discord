@@ -1,15 +1,16 @@
+import { ColorResolvable } from 'discord.js';
 import { PokemonType } from "./models";
 
 export class ColorService {
 
-	private static typeColorMap: { [id: number] : string; } = {};
-	private static versionColorMap: { [id: string] : string; } = {};
+	private static typeColorMap: { [id: number] : ColorResolvable; } = {};
+	private static versionColorMap: { [id: string] : ColorResolvable; } = {};
 	
-	public static getColorForType(type: PokemonType): string 	{
+	public static getColorForType(type: PokemonType): ColorResolvable {
 		return this.typeColorMap[type];
 	}
 	
-	public static getColorForVersion(version: string): string {
+	public static getColorForVersion(version: string): ColorResolvable {
 		version = version.toLowerCase();
 		return this.versionColorMap[version];
 	}

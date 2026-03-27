@@ -100,9 +100,9 @@ export class SmogonStats {
   }
 
   private getCacheTtlInSeconds(format: SmogonFormat): number {
-    const isPriorityTier = format.tier === 'ou' || format.tier.startsWith('vgc');
+    const isPriorityMeta = format.meta === 'ou' || format.meta.startsWith('vgc');
 
-    if (isPriorityTier) {
+    if (isPriorityMeta) {
       if (format.generation === 'gen9')
         return SmogonStats.Gen9PriorityCacheTtlInSeconds;
 
@@ -115,7 +115,7 @@ export class SmogonStats {
 
   private static loadFileData(statsType: string, format: SmogonFormat): any {
     const filename = `${statsType}-${FormatHelper.getKeyFrom(format)}`;
-    const filePath = `smogon-stats/${format.generation}/${format.tier}/${filename}.json`;
+    const filePath = `smogon-stats/${format.generation}/${format.meta}/${filename}.json`;
     return FileHelper.loadFileDataAsAny(filePath);
   }
 

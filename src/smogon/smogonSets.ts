@@ -42,8 +42,8 @@ export class SmogonSets {
 
         // remove not supported sets from memory
         for (const setName of pokemonSets.keys()) {
-          const setTier = setName.split(" ")[0].toLowerCase();
-          const isSupported = FormatHelper.Tiers.some(tier => setTier == tier);
+          const setMeta = setName.split(" ")[0].toLowerCase();
+          const isSupported = FormatHelper.MetaAliases.some(meta => setMeta == meta);
 
           if (!isSupported) {
             pokemonSets.delete(setName);
@@ -52,7 +52,7 @@ export class SmogonSets {
 
           const set = pokemonSets.get(setName);
           set.name = setName;
-          set.format = { tier: setTier, generation: gen };
+          set.format = { meta: setMeta, generation: gen };
         }
 
         genSetMap.set(pokemon, Array.from(pokemonSets.values()));

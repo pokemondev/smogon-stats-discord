@@ -4,13 +4,18 @@
   "description": "Discord bot for Smogon usage stats",
   "main": "index.js",
   "scripts": {
-    "test": "npm run build && node ./dist/smogon/smogonStats.test.js && node ./dist/smogon/formatHelper.test.js",
+    "test": "npm run clean && npm run build && node ./dist/runTests.js",
     "clean": "rimraf dist",
-    "start": "npm-run-all --parallel watch:*",
-    "watch:build": "tsc --watch",
-    "watch:app": "node ./dist/app.js",
+    "build": "tsc -b ./",
     "bot": "node ./dist/app.js",
-    "build": "tsc -b ./"
+    "register:commands": "npm run build && node ./dist/registerCommands.js",
+    "start": "npm run build && npm run bot",
+    "dev": "npm-run-all --parallel watch:build watch:bot",
+    "watch:build": "tsc --watch --preserveWatchOutput",
+    "watch:bot": "nodemon --watch dist --delay 1 --exec node ./dist/app.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "repository": {
     "type": "git",
@@ -24,18 +29,17 @@
   "homepage": "https://github.com/pokemondev/smogon-stats-discord#readme",
   "dependencies": {
     "cache-manager": "^3.4.0",
-    "discord.js": "^12.5.1",
-    "dotenv": "^8.1.0",
-    "fuzzy-matching": "^0.4.3",
-    "nodemon": "^1.19.1",
-    "npm-run-all": "^4.1.5",
-    "rimraf": "^3.0.0",
-    "typescript": "^3.5.3"
+    "discord.js": "^14.25.1",
+    "dotenv": "^16.4.7",
+    "fuzzy-matching": "^0.4.3"
   },
   "devDependencies": {
     "@sinonjs/fake-timers": "^15.1.1",
     "@types/cache-manager": "^3.4.0",
-    "@types/node": "^12.7.2",
-    "@types/ws": "^7.4.0"
+    "@types/node": "^22.13.10",
+    "nodemon": "^3.1.9",
+    "npm-run-all": "^4.1.5",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.2"
   }
 }
