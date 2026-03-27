@@ -1,6 +1,6 @@
 import { REST, Routes } from 'discord.js';
-import { createCommandData } from './commands';
-import { ConfigHelper } from './config/configValidator';
+import { createCommandData } from './commands/commandIndex';
+import { ConfigHelper } from './config/configHelper';
 
 const { client: clientConfig } = ConfigHelper.loadAndValidate({ requireClientId: true });
 const token = clientConfig.token;

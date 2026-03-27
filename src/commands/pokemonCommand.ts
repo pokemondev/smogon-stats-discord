@@ -11,13 +11,13 @@ export const pokemonHelpTopic: CommandHelpTopic = {
   description: 'Pokemon-specific competitive data, moveset usage, and Smogon sets.',
   arguments: [
     'name: Pokemon name to search for.',
-    'generation: Optional generation filter. Uses the configured default when omitted.',
-    'meta: Optional metagame filter. Uses the configured default when omitted. If only generation is provided, that generation uses its default VGC format.',
+    'meta: Optional competitive metagame / (VGC) regulation filter. Uses the configured default when omitted.',
+    'generation: Optional generation filter. Uses the configured default when omitted. If only generation is provided, that generation uses its default VGC format.',
   ],
   examples: [
     '/pokemon summary name:dragonite',
     '/pokemon moves name:gholdengo meta:OU',
-    '/pokemon sets name:landorus-therian generation:"Gen 8" meta:OU',
+    '/pokemon sets name:landorus-therian meta:OU generation:"Gen 8"',
   ],
 };
 

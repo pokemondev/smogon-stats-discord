@@ -1,15 +1,15 @@
 import { ChatInputCommandInteraction, Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 import { AppDataSource } from './appDataSource';
 import { SlashCommandHandler } from './commands/command';
-import { createCommands } from './commands';
-import { ConfigHelper } from './config/configValidator';
+import { createCommands } from './commands/commandIndex';
+import { ConfigHelper } from './config/configHelper';
 
 const botConfig = ConfigHelper.loadAndValidate();
 const dataSource = new AppDataSource();
 const token = botConfig.client.token;
 
 const commands = new Map<string, SlashCommandHandler>(
-  createCommands(dataSource).map(command => [command.data.name, command] as const)
+  createCommands(dataSource, botConfig).map(command => [command.data.name, command] as const)
 );
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });

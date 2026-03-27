@@ -3,23 +3,23 @@ import { AppDataSource } from '../appDataSource';
 import { CommandBase, CommandHelpTopic, SlashCommandData, SlashCommandHandler, withFormatOptions } from './command';
 import { FormatHelper } from '../smogon/formatHelper';
 
-export const metaHelpTopic: CommandHelpTopic = {
-  command: 'meta',
+export const statsHelpTopic: CommandHelpTopic = {
+  command: 'stats',
   description: 'Format-wide rankings such as usage, leads, and Mega Stone users.',
   arguments: [
-    'generation: Optional generation filter. Uses the configured default when omitted.',
-    'meta: Optional metagame filter. Uses the configured default when omitted. If only generation is provided, that generation uses its default VGC format.',
+    'meta: Optional competitive metagame / (VGC) regulation filter. Uses the configured default when omitted.',
+    'generation: Optional generation filter. Uses the configured default when omitted. If only generation is provided, that generation uses its default VGC format.',
   ],
   examples: [
-    '/meta usage',
-    '/meta leads meta:UU',
-    '/meta megas generation:"Gen 6" meta:OU',
+    '/stats usage',
+    '/stats leads meta:UU',
+    '/stats megas meta:OU generation:"Gen 6"',
   ],
 };
 
-export function createMetaCommandData(): SlashCommandData {
+export function createStatsCommandData(): SlashCommandData {
   return new SlashCommandBuilder()
-    .setName('meta')
+    .setName('stats')
     .setDescription('Format-wide rankings and trends')
     .addSubcommand(subcommand => withFormatOptions(
       subcommand
@@ -38,9 +38,9 @@ export function createMetaCommandData(): SlashCommandData {
     ));
 }
 
-export class MetaCommand extends CommandBase implements SlashCommandHandler {
-  public readonly data = createMetaCommandData();
-  public readonly helpTopic = metaHelpTopic;
+export class StatsCommand extends CommandBase implements SlashCommandHandler {
+  public readonly data = createStatsCommandData();
+  public readonly helpTopic = statsHelpTopic;
 
   constructor(dataSource: AppDataSource) {
     super(dataSource);

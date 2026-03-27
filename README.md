@@ -30,6 +30,7 @@ npm install
 2. Configure environment variables in `.env`:
 
 ```env
+BOT_NAME=Smogon Stats
 TOKEN=your_bot_token
 CLIENT_ID=your_application_id
 DEV_GUILD_ID=optional_guild_id_for_fast_testing
@@ -37,7 +38,7 @@ DEFAULT_GENERATION=gen9
 DEFAULT_META=vgc2026regf
 ```
 
-`DEFAULT_GENERATION` and `DEFAULT_META` are required. The bot validates them on startup and during command registration, and it fails fast if they are missing, ambiguous, or incompatible.
+`BOT_NAME`, `DEFAULT_GENERATION`, and `DEFAULT_META` are required. The bot validates them on startup and during command registration, and it fails fast if they are missing, ambiguous, or incompatible.
 
 3. Register slash commands:
 
@@ -88,7 +89,7 @@ Users also need permission to use application commands in the target channel.
 
 Defaults:
 
-- `generation` and `meta` default to the configured `DEFAULT_GENERATION` and `DEFAULT_META`
+- `meta` and `generation` default to the configured `DEFAULT_META` and `DEFAULT_GENERATION`
 - if only `generation` is provided, the bot uses that generation's default VGC format
 - slash-command meta choices show VGC formats first, and the configured default choice is marked with `(Default)`
 
@@ -97,8 +98,8 @@ Defaults:
 Pokemon-targeted data commands. All Pokemon subcommands use the same arguments:
 
 - `name` required
-- `generation` optional
 - `meta` optional
+- `generation` optional
 
 Subcommands:
 
@@ -116,15 +117,15 @@ Examples:
 ```text
 /pokemon summary name:dragonite
 /pokemon moves name:gholdengo meta:OU
-/pokemon sets name:landorus-therian generation:"Gen 8" meta:OU
+/pokemon sets name:landorus-therian meta:OU generation:"Gen 8"
 ```
 
-### `/meta`
+### `/stats`
 
 Metagame-wide rankings. Meta subcommands use:
 
-- `generation` optional
 - `meta` optional
+- `generation` optional
 
 Subcommands:
 
@@ -135,9 +136,9 @@ Subcommands:
 Examples:
 
 ```text
-/meta usage
-/meta leads meta:UU
-/meta megas generation:"Gen 6" meta:OU
+/stats usage
+/stats leads meta:UU
+/stats megas meta:OU generation:"Gen 6"
 ```
 
 ### `/help`

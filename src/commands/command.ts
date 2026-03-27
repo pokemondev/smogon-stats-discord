@@ -63,8 +63,8 @@ export function withNameOption(subcommand: SlashCommandSubcommandBuilder, descri
 
 export function withFormatOptions(subcommand: SlashCommandSubcommandBuilder): SlashCommandSubcommandBuilder {
   return subcommand
-    .addStringOption(option => buildGenerationOption(option))
-    .addStringOption(option => buildMetaOption(option));
+    .addStringOption(option => buildMetaOption(option))
+    .addStringOption(option => buildGenerationOption(option));
 }
 
 export class CommandBase {
@@ -160,12 +160,12 @@ export class CommandBase {
     const generation = interaction.options.getString('generation');
     const meta = interaction.options.getString('meta');
 
-    if (generation) {
-      args.push(`generation:${generation}`);
-    }
-
     if (meta) {
       args.push(`meta:${meta}`);
+    }
+
+    if (generation) {
+      args.push(`generation:${generation}`);
     }
 
     return args.join(' ');
@@ -186,18 +186,18 @@ function buildGenerationOption(option: SlashCommandStringOption): SlashCommandSt
 function buildMetaOption(option: SlashCommandStringOption): SlashCommandStringOption {
   return option
     .setName('meta')
-    .setDescription('Competitive metagame')
+    .setDescription('Competitive metagame / (VGC) regulation')
     .addChoices(...getMetaChoices());
 }
 
 function getMetaChoices() {
   const defaultFormat = FormatConfig.getDefaultFormat();
   const vgcChoices = FormatCatalog.VgcSeasons.map(season => ({
-    name: getDisplayNameForMeta(season.meta),
+    name: getMetaFriendlyName(season.meta),
     value: season.meta,
   }));
   const standardChoices = FormatCatalog.StandardMetaValues.map(meta => ({
-    name: getDisplayNameForMeta(meta),
+    name: getMetaFriendlyName(meta),
     value: meta,
   }));
 
@@ -209,11 +209,11 @@ function getMetaChoices() {
   }));
 }
 
-function getDisplayNameForMeta(meta: string): string {
+function getMetaFriendlyName(meta: string): string {
   const vgcSeason = FormatCatalog.VgcSeasons.find(season => season.meta === meta);
   if (vgcSeason) {
     const regulation = vgcSeason.regulation
-      ? ` ${vgcSeason.regulation.replace(/^reg/i, 'REG ').toUpperCase()}`
+      ? ` ${vgcSeason.regulation.replace(/^reg/i, 'Reg. ').toUpperCase()}`
       : '';
     return `VGC ${vgcSeason.year}${regulation}`;
   }
