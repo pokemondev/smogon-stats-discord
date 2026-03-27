@@ -1,17 +1,12 @@
-import { config } from 'dotenv';
 import { ChatInputCommandInteraction, Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 import { AppDataSource } from './appDataSource';
 import { SlashCommandHandler } from './commands/command';
 import { createCommands } from './commands';
+import { ConfigHelper } from './config/configValidator';
 
-config();
-
+const botConfig = ConfigHelper.loadAndValidate();
 const dataSource = new AppDataSource();
-const token = process.env.TOKEN;
-
-if (!token) {
-  throw new Error('TOKEN environment variable is required.');
-}
+const token = botConfig.client.token;
 
 const commands = new Map<string, SlashCommandHandler>(
   createCommands(dataSource).map(command => [command.data.name, command] as const)

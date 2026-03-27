@@ -1,20 +1,11 @@
-import { config } from 'dotenv';
 import { REST, Routes } from 'discord.js';
 import { createCommandData } from './commands';
+import { ConfigHelper } from './config/configValidator';
 
-config();
-
-const token = process.env.TOKEN;
-const clientId = process.env.CLIENT_ID;
-const developmentGuildId = process.env.DEV_GUILD_ID;
-
-if (!token) {
-  throw new Error('TOKEN environment variable is required to register commands.');
-}
-
-if (!clientId) {
-  throw new Error('CLIENT_ID environment variable is required to register commands.');
-}
+const { client: clientConfig } = ConfigHelper.loadAndValidate({ requireClientId: true });
+const token = clientConfig.token;
+const clientId = clientConfig.clientId;
+const developmentGuildId = clientConfig.developmentGuildId;
 
 async function registerCommands(): Promise<void> {
   const rest = new REST({ version: '10' }).setToken(token as string);

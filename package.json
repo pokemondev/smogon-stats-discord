@@ -4,7 +4,7 @@
   "description": "Discord bot for Smogon usage stats",
   "main": "index.js",
   "scripts": {
-    "test": "npm run build && node ./dist/smogon/smogonStats.test.js && node ./dist/smogon/formatHelper.test.js",
+    "test": "npm run clean && npm run build && node ./dist/runTests.js",
     "clean": "rimraf dist",
     "build": "tsc -b ./",
     "bot": "node ./dist/app.js",

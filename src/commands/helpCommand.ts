@@ -1,5 +1,7 @@
 import { ChatInputCommandInteraction, EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { CommandHelpTopic, SlashCommandData, SlashCommandHandler } from './command';
+import { FormatConfig } from '../config/formatConfig';
+import { FormatHelper } from '../smogon/formatHelper';
 
 export const helpHelpTopic: CommandHelpTopic = {
   command: 'help',
@@ -44,9 +46,10 @@ export class HelpCommand implements SlashCommandHandler {
   }
 
   private buildOverviewEmbed(): EmbedBuilder {
+    const defaultFormat = FormatConfig.getDefaultFormat();
     const embed = new EmbedBuilder()
       .setTitle('Smogon Stats Help')
-      .setDescription('Start with `/pokemon` for a specific Pokemon, `/meta` for format-wide rankings, or `/util` for utility commands. Defaults are Gen 9 and OU when omitted.');
+      .setDescription(`Start with \`/pokemon\` for a specific Pokemon, \`/meta\` for format-wide rankings, or \`/util\` for utility commands. Current configured default format: ${FormatHelper.toString(defaultFormat)}. If only generation is provided, that generation uses its default VGC format.`);
 
     for (const topic of this.helpTopics) {
       embed.addFields({ name: `/${topic.command}`, value: topic.description, inline: false });

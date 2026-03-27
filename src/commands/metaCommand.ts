@@ -7,8 +7,8 @@ export const metaHelpTopic: CommandHelpTopic = {
   command: 'meta',
   description: 'Format-wide rankings such as usage, leads, and Mega Stone users.',
   arguments: [
-    'generation: Optional generation filter. Defaults to Gen 9.',
-    'meta: Optional metagame filter. Defaults to OU.',
+    'generation: Optional generation filter. Uses the configured default when omitted.',
+    'meta: Optional metagame filter. Uses the configured default when omitted. If only generation is provided, that generation uses its default VGC format.',
   ],
   examples: [
     '/meta usage',

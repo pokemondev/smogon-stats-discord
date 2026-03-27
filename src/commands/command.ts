@@ -12,25 +12,14 @@ import { ColorService } from '../pokemon/colorService';
 import { FormatHelper } from '../smogon/formatHelper';
 import { Pokemon } from '../pokemon/models';
 import { ImageService } from '../pokemon/imageService';
+import { FormatConfig } from '../config/formatConfig';
+import { FormatCatalog } from '../smogon/formatCatalog';
 
 const generationChoices = [
   { name: 'Gen 9', value: '9' },
   { name: 'Gen 8', value: '8' },
   { name: 'Gen 7', value: '7' },
   { name: 'Gen 6', value: '6' },
-] as const;
-
-const metaChoices = [
-  { name: 'UBERS', value: 'ubers' },
-  { name: 'OU', value: 'ou' },
-  { name: 'UU', value: 'uu' },
-  { name: 'RU', value: 'ru' },
-  { name: 'NU', value: 'nu' },
-  { name: 'VGC 2026 REG I', value: 'vgc2026regi' },
-  { name: 'VGC 2026 REG F', value: 'vgc2026regf' },
-  { name: 'VGC 2021', value: 'vgc2021' },
-  { name: 'VGC 2020', value: 'vgc2020' },
-  { name: 'VGC 2019', value: 'vgc2019' },
 ] as const;
 
 export interface SlashCommandHandler {
@@ -166,16 +155,17 @@ export class CommandBase {
     await interaction.reply({ content: message, flags: MessageFlags.Ephemeral });
   }
 
-  protected getSlashFormatArguments(format: SmogonFormat): string {
-    const defaultFormat = FormatHelper.getDefault();
+  protected getSlashFormatArguments(interaction: ChatInputCommandInteraction): string {
     const args: string[] = [];
+    const generation = interaction.options.getString('generation');
+    const meta = interaction.options.getString('meta');
 
-    if (format.generation !== defaultFormat.generation) {
-      args.push(`generation:${format.generation.replace(/^gen/i, '')}`);
+    if (generation) {
+      args.push(`generation:${generation}`);
     }
 
-    if (format.meta !== defaultFormat.meta) {
-      args.push(`meta:${format.meta}`);
+    if (meta) {
+      args.push(`meta:${meta}`);
     }
 
     return args.join(' ');
@@ -197,5 +187,36 @@ function buildMetaOption(option: SlashCommandStringOption): SlashCommandStringOp
   return option
     .setName('meta')
     .setDescription('Competitive metagame')
-    .addChoices(...metaChoices);
+    .addChoices(...getMetaChoices());
+}
+
+function getMetaChoices() {
+  const defaultFormat = FormatConfig.getDefaultFormat();
+  const vgcChoices = FormatCatalog.VgcSeasons.map(season => ({
+    name: getDisplayNameForMeta(season.meta),
+    value: season.meta,
+  }));
+  const standardChoices = FormatCatalog.StandardMetaValues.map(meta => ({
+    name: getDisplayNameForMeta(meta),
+    value: meta,
+  }));
+
+  return [ ...vgcChoices, ...standardChoices ].map(choice => ({
+    ...choice,
+    name: choice.value === defaultFormat.meta
+      ? `${choice.name} (Default)`
+      : choice.name,
+  }));
+}
+
+function getDisplayNameForMeta(meta: string): string {
+  const vgcSeason = FormatCatalog.VgcSeasons.find(season => season.meta === meta);
+  if (vgcSeason) {
+    const regulation = vgcSeason.regulation
+      ? ` ${vgcSeason.regulation.replace(/^reg/i, 'REG ').toUpperCase()}`
+      : '';
+    return `VGC ${vgcSeason.year}${regulation}`;
+  }
+
+  return meta.toUpperCase();
 }

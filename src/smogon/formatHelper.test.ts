@@ -2,6 +2,9 @@ import assert = require('assert');
 import { FormatHelper } from './formatHelper';
 import { SmogonFormat } from './usageModels';
 
+process.env.DEFAULT_GENERATION = 'gen9';
+process.env.DEFAULT_META = 'vgc2026regf';
+
 interface TestCase {
   name: string;
   run: () => void;
@@ -15,11 +18,15 @@ interface FormatCase {
 const formatCases: FormatCase[] = [
   {
     args: [],
-    expected: { generation: 'gen9', meta: 'ou' }
+    expected: { generation: 'gen9', meta: 'vgc2026regf' }
   },
   {
     args: [ 'pikachu' ],
-    expected: { generation: 'gen9', meta: 'ou' }
+    expected: { generation: 'gen9', meta: 'vgc2026regf' }
+  },
+  {
+    args: [ 'gen8' ],
+    expected: { generation: 'gen8', meta: 'vgc2021' }
   },
   {
     args: [ 'gen8', 'uu' ],
@@ -75,6 +82,20 @@ const tests: TestCase[] = [
         const actual = FormatHelper.getFormat(testCase.args);
         assert.deepStrictEqual(actual, testCase.expected, `Failed for args: ${testCase.args.join(' ') || '<empty>'}`);
       });
+    }
+  },
+  {
+    name: 'uses configured defaults for empty and meta-only inputs',
+    run: () => {
+      process.env.DEFAULT_GENERATION = 'gen8';
+      process.env.DEFAULT_META = 'ou';
+
+      assert.deepStrictEqual(FormatHelper.getFormat([]), { generation: 'gen8', meta: 'ou' });
+      assert.deepStrictEqual(FormatHelper.getFormat([ 'uu' ]), { generation: 'gen8', meta: 'uu' });
+      assert.deepStrictEqual(FormatHelper.getFormat([ 'gen9' ]), { generation: 'gen9', meta: 'vgc2026regf' });
+
+      process.env.DEFAULT_GENERATION = 'gen9';
+      process.env.DEFAULT_META = 'vgc2026regf';
     }
   }
 ];

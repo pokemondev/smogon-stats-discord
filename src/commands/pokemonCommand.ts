@@ -11,8 +11,8 @@ export const pokemonHelpTopic: CommandHelpTopic = {
   description: 'Pokemon-specific competitive data, moveset usage, and Smogon sets.',
   arguments: [
     'name: Pokemon name to search for.',
-    'generation: Optional generation filter. Defaults to Gen 9.',
-    'meta: Optional metagame filter. Defaults to OU.',
+    'generation: Optional generation filter. Uses the configured default when omitted.',
+    'meta: Optional metagame filter. Uses the configured default when omitted. If only generation is provided, that generation uses its default VGC format.',
   ],
   examples: [
     '/pokemon summary name:dragonite',
@@ -127,7 +127,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const isGen9 = cmd.format.generation === 'gen9';
 
     const embed = this.createPokemonEmbed(cmd.pokemon, {
-      footer: this.getFooterDetails(cmd),
+      footer: this.getFooterDetails(interaction, cmd),
       image: true,
     });
 
@@ -294,9 +294,9 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     return countersChecks;
   }
 
-  private getFooterDetails(cmd: MovesetCommandData): string {
+  private getFooterDetails(interaction: ChatInputCommandInteraction, cmd: MovesetCommandData): string {
     const pokemonName = cmd.pokemon.name.toLowerCase();
-    const formatArgs = this.getSlashFormatArguments(cmd.format);
+    const formatArgs = this.getSlashFormatArguments(interaction);
     
     return `Sets details on: /pokemon sets name:${pokemonName}${formatArgs ? ` ${formatArgs}` : ''}`;
   }
