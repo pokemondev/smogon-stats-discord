@@ -66,6 +66,14 @@ export class FormatHelper {
     return FormatCatalog.getMetaDisplayName(meta);
   }
 
+  public static tryResolveSupportedSetMeta(generation: string, setName: string): string | undefined {
+    return FormatCatalog.tryResolveSupportedSetMeta(generation, setName);
+  }
+
+  public static getSmogonAnalysisUrl(format: SmogonFormat): string {
+    return FormatCatalog.getSmogonAnalysisUrl(format);
+  }
+
   public static toUserString(format: SmogonFormat): string {
     return `${this.getMetaDisplayName(format.meta)} (Gen ${format.generation.replace(/^gen/i, '')})`;
   }

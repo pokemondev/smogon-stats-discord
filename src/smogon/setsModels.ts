@@ -9,6 +9,7 @@ export interface PokemonSet {
   evs: Evs
   moves: string[]
   format: SmogonFormat
+  teraType?: string
 }
 
 export interface Evs {

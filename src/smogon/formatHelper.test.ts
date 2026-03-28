@@ -110,6 +110,21 @@ const tests: TestCase[] = [
       assert.strictEqual(FormatHelper.toUserString({ generation: 'gen8', meta: 'ou' }), 'OU (Gen 8)');
       assert.strictEqual(FormatHelper.toUserString({ generation: 'gen9', meta: 'vgc2026regi' }), 'VGC 2026 Reg. I (Gen 9)');
     }
+  },
+  {
+    name: 'resolves supported set metas and analysis links',
+    run: () => {
+      assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen9', 'OU Defensive Pivot'), 'ou');
+      assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen9', 'VGC 2025 Reg I Bulky Support'), 'vgc2026regi');
+      assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen8', 'VGC 2021 Utility'), 'vgc2021');
+      assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen8', 'VGC 2022 Support'), undefined);
+      assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen8', 'National Dex RU Showdown Usage'), undefined);
+
+      assert.strictEqual(FormatHelper.getSmogonAnalysisUrl({ generation: 'gen9', meta: 'ou' }), 'https://www.smogon.com/dex/sv/formats/ou');
+      assert.strictEqual(FormatHelper.getSmogonAnalysisUrl({ generation: 'gen9', meta: 'vgc2026regf' }), 'https://www.smogon.com/dex/sv/formats/vgc24-regulation-f/');
+      assert.strictEqual(FormatHelper.getSmogonAnalysisUrl({ generation: 'gen9', meta: 'vgc2026regi' }), 'https://www.smogon.com/dex/sv/formats/vgc25-regulation-i/');
+      assert.strictEqual(FormatHelper.getSmogonAnalysisUrl({ generation: 'gen8', meta: 'vgc2021' }), 'https://www.smogon.com/');
+    }
   }
 ];
 
