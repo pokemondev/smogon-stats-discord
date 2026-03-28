@@ -124,7 +124,7 @@ const tests: TestCase[] = [
     name: 'keeps gen8 ou and vgc cached for five minutes',
     run: async () => {
       await assertReloadsAfterTtl({ generation: 'gen8', meta: 'ou' }, 5 * 60 * 1000);
-      await assertReloadsAfterTtl({ generation: 'gen8', meta: 'vgc2021' }, 5 * 60 * 1000);
+      await assertReloadsAfterTtl({ generation: 'gen8', meta: 'vgc2022' }, 5 * 60 * 1000);
     }
   },
   {

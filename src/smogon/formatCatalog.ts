@@ -24,7 +24,7 @@ export class FormatCatalog {
   public static readonly VgcSeasons: readonly VgcSeason[] = [
     { gen: 'gen9', year: '2026', regulation: 'regf', meta: 'vgc2026regf', aliases: [ 'vgc2026', 'vgc2026regf' ], isDefault: true },
     { gen: 'gen9', year: '2026', regulation: 'regi', meta: 'vgc2026regi', aliases: [ 'vgc2026regi' ] },
-    { gen: 'gen8', year: '2021', meta: 'vgc2021', aliases: [ 'vgc2021' ], isDefault: true },
+    { gen: 'gen8', year: '2022', meta: 'vgc2022', aliases: [ 'vgc2022' ], isDefault: true },
     { gen: 'gen7', year: '2019', meta: 'vgc2019', aliases: [ 'vgc2019' ], isDefault: true },
   ];
   public static readonly MetaValues = [ ...FormatCatalog.StandardMetaValues, ...FormatCatalog.VgcSeasons.map(season => season.meta) ];

@@ -52,7 +52,7 @@ const tests: TestCase[] = [
     run: () => {
       const cases = [
         { pokemon: 'Amoonguss', format: { generation: 'gen7', meta: 'vgc2019' } as SmogonFormat, prefix: 'VGC 2019' },
-        { pokemon: 'Amoonguss', format: { generation: 'gen8', meta: 'vgc2021' } as SmogonFormat, prefix: 'VGC 2021' },
+        { pokemon: 'Amoonguss', format: { generation: 'gen8', meta: 'vgc2022' } as SmogonFormat, prefix: 'VGC 2022' },
         { pokemon: 'Incineroar', format: { generation: 'gen9', meta: 'vgc2026regi' } as SmogonFormat, prefix: 'VGC 2025 Reg I' },
       ];
 
@@ -75,8 +75,8 @@ const tests: TestCase[] = [
       assert.strictEqual(aegislashBladeNames.some(name => name.startsWith('National Dex ')), false);
 
       const amoongussGen8Names = getStoredSetNames('gen8', 'Amoonguss');
-      assert.ok(amoongussGen8Names.some(name => name.startsWith('VGC 2021')));
-      assert.strictEqual(amoongussGen8Names.some(name => name.startsWith('VGC 2022')), false);
+      assert.strictEqual(amoongussGen8Names.some(name => name.startsWith('VGC 2021')), false);
+      assert.strictEqual(amoongussGen8Names.some(name => name.startsWith('VGC 2022')), true);
     }
   },
   {

@@ -222,7 +222,7 @@ Common places to update:
 - `MetaAliases`
 - aliases and default season logic if the new format should be selected by shorthand input
 
-Use `VgcSeasons` when the meta is a VGC season like `vgc2021` or `vgc2026regi`.
+Use `VgcSeasons` when the meta is a VGC season like `vgc2022` or `vgc2026regi`.
 Use `MetaValues` and `MetaAliases` when the meta should be recognized and accepted by the slash-command and parser layers.
 
 ### 3. Expose it in slash commands if users should select it
