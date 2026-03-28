@@ -68,7 +68,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     const usageData = await this.dataSource.smogonStats.getUsages(format);
     if (!usageData.length) {
-      await this.replyNoData(interaction, `No usage data available for ${FormatHelper.toString(format)}.`);
+      await this.replyNoData(interaction, `No usage data available for ${FormatHelper.toUserString(format)}.`);
       return;
     }
 
@@ -84,7 +84,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
     });
 
     await interaction.editReply({
-      content: `**__Usage:__** Top ${usageData.length} most used Pokemon of ${FormatHelper.toString(format)}`,
+      content: `**__Usage:__** Top ${usageData.length} most used Pokemon of ${FormatHelper.toUserString(format)}`,
       embeds: [embed],
     });
   }
@@ -95,7 +95,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     const leads = await this.dataSource.smogonStats.getLeads(format);
     if (!leads.length) {
-      await this.replyNoData(interaction, `No leads data available for ${FormatHelper.toString(format)}.`);
+      await this.replyNoData(interaction, `No leads data available for ${FormatHelper.toUserString(format)}.`);
       return;
     }
 
@@ -111,7 +111,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
     });
 
     await interaction.editReply({
-      content: `**__Leads:__** Top ${leads.length} leads of ${FormatHelper.toString(format)}`,
+      content: `**__Leads:__** Top ${leads.length} leads of ${FormatHelper.toUserString(format)}`,
       embeds: [embed],
     });
   }
@@ -122,7 +122,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     const moveSets = await this.dataSource.smogonStats.getMegasMoveSets(format);
     if (!moveSets.length) {
-      await this.replyNoData(interaction, `No Mega usage data available for ${FormatHelper.toString(format)}.`);
+      await this.replyNoData(interaction, `No Mega usage data available for ${FormatHelper.toUserString(format)}.`);
       return;
     }
 
@@ -138,7 +138,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
     });
 
     await interaction.editReply({
-      content: `**__Megas:__** Top ${moveSets.length} Mega Stone users of ${FormatHelper.toString(format)}`,
+      content: `**__Megas:__** Top ${moveSets.length} Mega Stone users of ${FormatHelper.toUserString(format)}`,
       embeds: [embed],
     });
   }

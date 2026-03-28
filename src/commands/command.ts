@@ -193,11 +193,11 @@ function buildMetaOption(option: SlashCommandStringOption): SlashCommandStringOp
 function getMetaChoices() {
   const defaultFormat = FormatConfig.getDefaultFormat();
   const vgcChoices = FormatCatalog.VgcSeasons.map(season => ({
-    name: getMetaFriendlyName(season.meta),
+    name: FormatHelper.getMetaDisplayName(season.meta),
     value: season.meta,
   }));
   const standardChoices = FormatCatalog.StandardMetaValues.map(meta => ({
-    name: getMetaFriendlyName(meta),
+    name: FormatHelper.getMetaDisplayName(meta),
     value: meta,
   }));
 
@@ -207,16 +207,4 @@ function getMetaChoices() {
       ? `${choice.name} (Default)`
       : choice.name,
   }));
-}
-
-function getMetaFriendlyName(meta: string): string {
-  const vgcSeason = FormatCatalog.VgcSeasons.find(season => season.meta === meta);
-  if (vgcSeason) {
-    const regulation = vgcSeason.regulation
-      ? ` ${vgcSeason.regulation.replace(/^reg/i, 'Reg. ').toUpperCase()}`
-      : '';
-    return `VGC ${vgcSeason.year}${regulation}`;
-  }
-
-  return meta.toUpperCase();
 }

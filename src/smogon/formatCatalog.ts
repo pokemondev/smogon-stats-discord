@@ -83,6 +83,19 @@ export class FormatCatalog {
     return FormatCatalog.MetaValues.some(value => value === normalizedMeta);
   }
 
+  public static getMetaDisplayName(meta: string): string {
+    const normalizedMeta = FormatCatalog.normalizeMeta(meta);
+    const vgcSeason = FormatCatalog.VgcSeasons.find(season => season.meta === normalizedMeta);
+    if (vgcSeason) {
+      const regulation = vgcSeason.regulation
+        ? ` Reg. ${vgcSeason.regulation.replace(/^reg/i, '').toUpperCase()}`
+        : '';
+      return `VGC ${vgcSeason.year}${regulation}`;
+    }
+
+    return normalizedMeta.toUpperCase();
+  }
+
   public static getVgcYearFromMeta(meta?: string): string {
     const normalizedMeta = meta ? meta.toLowerCase() : '';
     if (!normalizedMeta || normalizedMeta === 'vgc') {
@@ -132,6 +145,13 @@ export class FormatCatalog {
       : undefined;
     if (seasonByYearAndRegulation) {
       return seasonByYearAndRegulation;
+    }
+
+    const seasonByRegulation = normalizedRegulation
+      ? FormatCatalog.getDefaultVgcSeason(season => season.regulation === normalizedRegulation)
+      : undefined;
+    if (seasonByRegulation) {
+      return seasonByRegulation;
     }
 
     const seasonByGenAndRegulation = normalizedGen && normalizedRegulation

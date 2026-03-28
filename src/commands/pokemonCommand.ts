@@ -162,7 +162,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     }
 
     await interaction.editReply({
-      content: `**__${cmd.pokemon.name}:__** ${FormatHelper.toString(cmd.format)}`,
+      content: `**__${cmd.pokemon.name}:__** ${FormatHelper.toUserString(cmd.format)}`,
       embeds: [embed],
     });
   }
@@ -192,7 +192,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     });
 
     await interaction.editReply({
-      content: `**__${cmd.pokemon.name} ${title}:__** ${FormatHelper.toString(cmd.format)}`,
+      content: `**__${cmd.pokemon.name} ${title}:__** ${FormatHelper.toUserString(cmd.format)}`,
       embeds: [embed],
     });
   }
@@ -209,7 +209,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     if (!sets.length) {
       await this.replyNoData(
         interaction,
-        `No Smogon sets available for ${query.pokemon.name} in ${FormatHelper.toString(query.format)}.`
+        `No Smogon sets available for ${query.pokemon.name} in ${FormatHelper.toUserString(query.format)}.`
       );
       return;
     }
@@ -228,7 +228,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     }
 
     await interaction.editReply({
-      content: `**__Sets:__** Top ${query.pokemon.name} sets of ${FormatHelper.toString(query.format)}`,
+      content: `**__Sets:__** Top ${query.pokemon.name} sets of ${FormatHelper.toUserString(query.format)}`,
       embeds: [embed],
     });
   }

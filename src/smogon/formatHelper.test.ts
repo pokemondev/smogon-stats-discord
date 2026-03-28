@@ -45,8 +45,8 @@ const formatCases: FormatCase[] = [
     expected: { generation: 'gen9', meta: 'vgc2026regf' }
   },
   {
-    args: [ 'gen8', 'vgc' ],
-    expected: { generation: 'gen8', meta: 'vgc2021' }
+    args: [ 'gen8', 'vgc' ], // ensures vgc meta always return correct generation (from VgcSeasons def.)
+    expected: { generation: 'gen9', meta: 'vgc2026regf' }
   },
   {
     args: [ 'vgc', '2021' ],
@@ -62,6 +62,10 @@ const formatCases: FormatCase[] = [
   },
   {
     args: [ 'charizard', 'vgc2026regi' ],
+    expected: { generation: 'gen9', meta: 'vgc2026regi' }
+  },
+  {
+    args: [ 'gen6', 'vgc2026regi' ], // ensures vgc meta always return correct generation (from VgcSeasons def.)
     expected: { generation: 'gen9', meta: 'vgc2026regi' }
   },
   {
@@ -96,6 +100,15 @@ const tests: TestCase[] = [
 
       process.env.DEFAULT_GENERATION = 'gen9';
       process.env.DEFAULT_META = 'vgc2026regf';
+    }
+  },
+  {
+    name: 'formats user-facing labels with friendly meta names',
+    run: () => {
+      assert.strictEqual(FormatHelper.getMetaDisplayName('ou'), 'OU');
+      assert.strictEqual(FormatHelper.getMetaDisplayName('vgc2026regi'), 'VGC 2026 Reg. I');
+      assert.strictEqual(FormatHelper.toUserString({ generation: 'gen8', meta: 'ou' }), 'OU (Gen 8)');
+      assert.strictEqual(FormatHelper.toUserString({ generation: 'gen9', meta: 'vgc2026regi' }), 'VGC 2026 Reg. I (Gen 9)');
     }
   }
 ];
