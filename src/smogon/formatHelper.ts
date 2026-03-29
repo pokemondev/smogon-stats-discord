@@ -18,7 +18,7 @@ export class FormatHelper {
     const vgcRegulation = normalizedArgs.find(a => /^reg[a-z0-9]+$/.test(a));
 
     if (this.isVgc(meta) || !!vgcYear) {
-      ({ meta, gen } = this.ensureValidVgc(meta, gen, vgcYear, vgcRegulation));
+      ({ meta, gen } = this.ensureValidVgc(meta, undefined, vgcYear, vgcRegulation));
     }
 
     const configuredDefault = this.getDefault();
@@ -60,6 +60,22 @@ export class FormatHelper {
 
   public static getKeyFrom(format: SmogonFormat): string {
     return format.generation + format.meta;
+  }
+
+  public static getMetaDisplayName(meta: string): string {
+    return FormatCatalog.getMetaDisplayName(meta);
+  }
+
+  public static tryResolveSupportedSetMeta(generation: string, setName: string): string | undefined {
+    return FormatCatalog.tryResolveSupportedSetMeta(generation, setName);
+  }
+
+  public static getSmogonAnalysisUrl(format: SmogonFormat): string {
+    return FormatCatalog.getSmogonAnalysisUrl(format);
+  }
+
+  public static toUserString(format: SmogonFormat): string {
+    return `${this.getMetaDisplayName(format.meta)} (Gen ${format.generation.replace(/^gen/i, '')})`;
   }
 
   public static toString(format: SmogonFormat): string {

@@ -26,7 +26,7 @@ const formatCases: FormatCase[] = [
   },
   {
     args: [ 'gen8' ],
-    expected: { generation: 'gen8', meta: 'vgc2021' }
+    expected: { generation: 'gen8', meta: 'vgc2022' }
   },
   {
     args: [ 'gen8', 'uu' ],
@@ -45,12 +45,12 @@ const formatCases: FormatCase[] = [
     expected: { generation: 'gen9', meta: 'vgc2026regf' }
   },
   {
-    args: [ 'gen8', 'vgc' ],
-    expected: { generation: 'gen8', meta: 'vgc2021' }
+    args: [ 'gen8', 'vgc' ], // ensures vgc meta always return correct generation (from VgcSeasons def.)
+    expected: { generation: 'gen9', meta: 'vgc2026regf' }
   },
   {
-    args: [ 'vgc', '2021' ],
-    expected: { generation: 'gen8', meta: 'vgc2021' }
+    args: [ 'vgc', '2022' ],
+    expected: { generation: 'gen8', meta: 'vgc2022' }
   },
   {
     args: [ 'charizard', 'vgc2026' ],
@@ -62,6 +62,10 @@ const formatCases: FormatCase[] = [
   },
   {
     args: [ 'charizard', 'vgc2026regi' ],
+    expected: { generation: 'gen9', meta: 'vgc2026regi' }
+  },
+  {
+    args: [ 'gen6', 'vgc2026regi' ], // ensures vgc meta always return correct generation (from VgcSeasons def.)
     expected: { generation: 'gen9', meta: 'vgc2026regi' }
   },
   {
@@ -96,6 +100,30 @@ const tests: TestCase[] = [
 
       process.env.DEFAULT_GENERATION = 'gen9';
       process.env.DEFAULT_META = 'vgc2026regf';
+    }
+  },
+  {
+    name: 'formats user-facing labels with friendly meta names',
+    run: () => {
+      assert.strictEqual(FormatHelper.getMetaDisplayName('ou'), 'OU');
+      assert.strictEqual(FormatHelper.getMetaDisplayName('vgc2026regi'), 'VGC 2026 Reg. I');
+      assert.strictEqual(FormatHelper.toUserString({ generation: 'gen8', meta: 'ou' }), 'OU (Gen 8)');
+      assert.strictEqual(FormatHelper.toUserString({ generation: 'gen9', meta: 'vgc2026regi' }), 'VGC 2026 Reg. I (Gen 9)');
+    }
+  },
+  {
+    name: 'resolves supported set metas and analysis links',
+    run: () => {
+      assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen9', 'OU Defensive Pivot'), 'ou');
+      assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen9', 'VGC 2025 Reg I Bulky Support'), 'vgc2026regi');
+      assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen8', 'VGC 2022 Utility'), 'vgc2022');
+      assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen8', 'VGC 2023 Support'), undefined);
+      assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen8', 'National Dex RU Showdown Usage'), undefined);
+
+      assert.strictEqual(FormatHelper.getSmogonAnalysisUrl({ generation: 'gen9', meta: 'ou' }), 'https://www.smogon.com/dex/sv/formats/ou');
+      assert.strictEqual(FormatHelper.getSmogonAnalysisUrl({ generation: 'gen9', meta: 'vgc2026regf' }), 'https://www.smogon.com/dex/sv/formats/vgc24-regulation-f/');
+      assert.strictEqual(FormatHelper.getSmogonAnalysisUrl({ generation: 'gen9', meta: 'vgc2026regi' }), 'https://www.smogon.com/dex/sv/formats/vgc25-regulation-i/');
+      assert.strictEqual(FormatHelper.getSmogonAnalysisUrl({ generation: 'gen8', meta: 'vgc2022' }), 'https://www.smogon.com/');
     }
   }
 ];

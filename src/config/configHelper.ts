@@ -3,6 +3,7 @@ import { SmogonFormat } from '../smogon/usageModels';
 import { FormatConfig } from './formatConfig';
 
 export interface BotClientConfig {
+  botName: string;
   token: string;
   clientId?: string;
   developmentGuildId?: string;
@@ -40,6 +41,7 @@ export class ConfigHelper {
   }
 
   private static getBotClientConfig(options: ConfigValidationOptions): BotClientConfig {
+    const botName = this.getRequiredEnvironmentVariable('BOT_NAME', 'BOT_NAME environment variable is required.');
     const token = this.getRequiredEnvironmentVariable(
       'TOKEN',
       options.requireClientId
@@ -51,6 +53,7 @@ export class ConfigHelper {
       : process.env.CLIENT_ID;
 
     return {
+      botName,
       token,
       clientId,
       developmentGuildId: process.env.DEV_GUILD_ID,

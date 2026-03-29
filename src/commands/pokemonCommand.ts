@@ -11,13 +11,13 @@ export const pokemonHelpTopic: CommandHelpTopic = {
   description: 'Pokemon-specific competitive data, moveset usage, and Smogon sets.',
   arguments: [
     'name: Pokemon name to search for.',
-    'generation: Optional generation filter. Uses the configured default when omitted.',
-    'meta: Optional metagame filter. Uses the configured default when omitted. If only generation is provided, that generation uses its default VGC format.',
+    'meta: Optional competitive metagame / (VGC) regulation filter. Uses the configured default when omitted.',
+    'generation: Optional generation filter. Uses the configured default when omitted. If only generation is provided, that generation uses its default VGC format.',
   ],
   examples: [
     '/pokemon summary name:dragonite',
     '/pokemon moves name:gholdengo meta:OU',
-    '/pokemon sets name:landorus-therian generation:"Gen 8" meta:OU',
+    '/pokemon sets name:landorus-therian meta:OU generation:"Gen 8"',
   ],
 };
 
@@ -162,7 +162,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     }
 
     await interaction.editReply({
-      content: `**__${cmd.pokemon.name}:__** ${FormatHelper.toString(cmd.format)}`,
+      content: `**__${cmd.pokemon.name}:__** ${FormatHelper.toUserString(cmd.format)}`,
       embeds: [embed],
     });
   }
@@ -192,7 +192,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     });
 
     await interaction.editReply({
-      content: `**__${cmd.pokemon.name} ${title}:__** ${FormatHelper.toString(cmd.format)}`,
+      content: `**__${cmd.pokemon.name} ${title}:__** ${FormatHelper.toUserString(cmd.format)}`,
       embeds: [embed],
     });
   }
@@ -206,29 +206,30 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     await interaction.deferReply();
 
     const sets = this.dataSource.smogonSets.get(query.pokemon, query.format);
+    const smogonAnalysisUrl = FormatHelper.getSmogonAnalysisUrl(query.format);
     if (!sets.length) {
       await this.replyNoData(
         interaction,
-        `No Smogon sets available for ${query.pokemon.name} in ${FormatHelper.toString(query.format)}.`
+        `No Smogon sets available for ${query.pokemon.name} in ${FormatHelper.toUserString(query.format)}.\nSmogon analysis: ${smogonAnalysisUrl}`
       );
       return;
     }
 
     const embed = this.createPokemonEmbed(query.pokemon, {
-      footer: 'More details on smogon.com',
+      footer: `Smogon analysis: ${smogonAnalysisUrl}`,
       thumbnail: true,
     });
 
     for (const set of sets) {
       embed.addFields({
         name: set.name,
-        value: `${FormatHelper.getSmogonSet(query.pokemon, set)}\u2006`,
+        value: `\`\`\`${FormatHelper.getSmogonSet(query.pokemon, set)}\`\`\`\u2006`,
         inline: false,
       });
     }
 
     await interaction.editReply({
-      content: `**__Sets:__** Top ${query.pokemon.name} sets of ${FormatHelper.toString(query.format)}`,
+      content: `**__Sets:__** Top ${query.pokemon.name} sets of ${FormatHelper.toUserString(query.format)}`,
       embeds: [embed],
     });
   }
@@ -289,7 +290,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
 
   private getCountersChecksData(cmd: MovesetCommandData): string {
     const cc = (cmd.moveSet.checksAndCounters ? cmd.moveSet.checksAndCounters : []);
-    let countersChecks = cc.slice(0, 6).map(iv => `\`${iv.name}: KOed ${iv.kOed.toFixed(1)}% / Switched ${iv.switchedOut.toFixed(1)}%\``).join('\n');
+    let countersChecks = cc.slice(0, 6).map(iv => `\`${iv.name}: KO ${iv.kOed.toFixed(1)}% / SW ${iv.switchedOut.toFixed(1)}%\``).join('\n');
     countersChecks = countersChecks ? countersChecks : "-";
     return countersChecks;
   }

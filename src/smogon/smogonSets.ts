@@ -42,10 +42,8 @@ export class SmogonSets {
 
         // remove not supported sets from memory
         for (const setName of pokemonSets.keys()) {
-          const setMeta = setName.split(" ")[0].toLowerCase();
-          const isSupported = FormatHelper.MetaAliases.some(meta => setMeta == meta);
-
-          if (!isSupported) {
+          const setMeta = FormatHelper.tryResolveSupportedSetMeta(gen, setName);
+          if (!setMeta) {
             pokemonSets.delete(setName);
             continue;
           }

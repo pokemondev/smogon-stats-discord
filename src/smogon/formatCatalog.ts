@@ -12,11 +12,19 @@ interface VgcSeason {
 export class FormatCatalog {
   public static readonly Generations = [ 'gen9', 'gen8', 'gen7', 'gen6' ] as const;
   public static readonly StandardMetaValues = [ 'ubers', 'ou', 'uu', 'ru', 'nu' ] as const;
+  private static readonly SmogonAnalysisUrls: Readonly<Record<string, string>> = {
+    ou: 'https://www.smogon.com/dex/sv/formats/ou',
+    uu: 'https://www.smogon.com/dex/sv/formats/uu',
+    ru: 'https://www.smogon.com/dex/sv/formats/ru',
+    nu: 'https://www.smogon.com/dex/sv/formats/nu',
+    ubers: 'https://www.smogon.com/dex/sv/formats/ubers',
+    vgc2026regf: 'https://www.smogon.com/dex/sv/formats/vgc24-regulation-f/',
+    vgc2026regi: 'https://www.smogon.com/dex/sv/formats/vgc25-regulation-i/',
+  };
   public static readonly VgcSeasons: readonly VgcSeason[] = [
     { gen: 'gen9', year: '2026', regulation: 'regf', meta: 'vgc2026regf', aliases: [ 'vgc2026', 'vgc2026regf' ], isDefault: true },
     { gen: 'gen9', year: '2026', regulation: 'regi', meta: 'vgc2026regi', aliases: [ 'vgc2026regi' ] },
-    { gen: 'gen8', year: '2021', meta: 'vgc2021', aliases: [ 'vgc2021' ], isDefault: true },
-    { gen: 'gen8', year: '2020', meta: 'vgc2020', aliases: [ 'vgc2020' ], isDefault: true },
+    { gen: 'gen8', year: '2022', meta: 'vgc2022', aliases: [ 'vgc2022' ], isDefault: true },
     { gen: 'gen7', year: '2019', meta: 'vgc2019', aliases: [ 'vgc2019' ], isDefault: true },
   ];
   public static readonly MetaValues = [ ...FormatCatalog.StandardMetaValues, ...FormatCatalog.VgcSeasons.map(season => season.meta) ];
@@ -59,6 +67,21 @@ export class FormatCatalog {
       : normalizedMeta;
   }
 
+  public static tryResolveSupportedSetMeta(generation: string, setName: string): string | undefined {
+    const normalizedGeneration = FormatCatalog.normalizeGeneration(generation);
+    const standardMeta = FormatCatalog.tryResolveSupportedStandardSetMeta(setName);
+    if (standardMeta) {
+      return standardMeta;
+    }
+
+    return FormatCatalog.tryResolveSupportedVgcSetMeta(normalizedGeneration, setName);
+  }
+
+  public static getSmogonAnalysisUrl(format: SmogonFormat): string {
+    const normalizedMeta = FormatCatalog.normalizeMeta(format.meta);
+    return FormatCatalog.SmogonAnalysisUrls[normalizedMeta] || 'https://www.smogon.com/';
+  }
+
   public static isValidGeneration(gen: string): boolean {
     const normalizedGen = FormatCatalog.normalizeGeneration(gen);
     return FormatCatalog.Generations.some(value => value === normalizedGen);
@@ -81,6 +104,19 @@ export class FormatCatalog {
   public static isConcreteMetaValue(meta: string): boolean {
     const normalizedMeta = FormatCatalog.normalizeMeta(meta);
     return FormatCatalog.MetaValues.some(value => value === normalizedMeta);
+  }
+
+  public static getMetaDisplayName(meta: string): string {
+    const normalizedMeta = FormatCatalog.normalizeMeta(meta);
+    const vgcSeason = FormatCatalog.VgcSeasons.find(season => season.meta === normalizedMeta);
+    if (vgcSeason) {
+      const regulation = vgcSeason.regulation
+        ? ` Reg. ${vgcSeason.regulation.replace(/^reg/i, '').toUpperCase()}`
+        : '';
+      return `VGC ${vgcSeason.year}${regulation}`;
+    }
+
+    return normalizedMeta.toUpperCase();
   }
 
   public static getVgcYearFromMeta(meta?: string): string {
@@ -134,6 +170,13 @@ export class FormatCatalog {
       return seasonByYearAndRegulation;
     }
 
+    const seasonByRegulation = normalizedRegulation
+      ? FormatCatalog.getDefaultVgcSeason(season => season.regulation === normalizedRegulation)
+      : undefined;
+    if (seasonByRegulation) {
+      return seasonByRegulation;
+    }
+
     const seasonByGenAndRegulation = normalizedGen && normalizedRegulation
       ? FormatCatalog.VgcSeasons.find(season => season.gen === normalizedGen && season.regulation === normalizedRegulation)
       : undefined;
@@ -167,5 +210,27 @@ export class FormatCatalog {
     }
 
     return FormatCatalog.VgcSeasons.some(season => season.gen === generation && season.meta === meta);
+  }
+
+  private static tryResolveSupportedStandardSetMeta(setName: string): string | undefined {
+    const normalizedSetName = setName.trim().toLowerCase();
+    return FormatCatalog.StandardMetaValues.find(meta => new RegExp(`^${meta}\\b`, 'i').test(normalizedSetName));
+  }
+
+  private static tryResolveSupportedVgcSetMeta(generation: string, setName: string): string | undefined {
+    const match = /^vgc\s+(\d{4})(?:\s+reg(?:ulation)?\s*([a-z0-9]+))?\b/i.exec(setName.trim());
+    if (!match) {
+      return undefined;
+    }
+
+    const year = match[1].toLowerCase();
+    const regulation = match[2] ? `reg${match[2].toLowerCase()}` : '';
+    const generationSeasons = FormatCatalog.VgcSeasons.filter(season => season.gen === generation);
+
+    if (regulation) {
+      return generationSeasons.find(season => season.regulation === regulation)?.meta;
+    }
+
+    return generationSeasons.find(season => season.year === year)?.meta;
   }
 }

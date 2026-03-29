@@ -9,7 +9,7 @@ Smogon Stats Discord Bot is a TypeScript Discord bot that serves Pokemon Showdow
 Important current decisions:
 
 - The bot is slash-command only.
-- The public command model uses `name`, `generation`, and `meta`.
+- The public command model uses `name`, `meta`, and `generation`.
 - Internal code treats a format as `generation + meta`.
 - Fuzzy Pokemon matching is intentionally kept as the primary lookup behavior.
 - Autocomplete is not implemented.
@@ -35,6 +35,7 @@ Important current decisions:
 Create a `.env` file with:
 
 ```env
+BOT_NAME=Smogon Stats
 TOKEN=your_bot_token
 CLIENT_ID=your_application_id
 DEV_GUILD_ID=optional_guild_id_for_fast_testing
@@ -109,14 +110,14 @@ Optional if thread replies are needed:
 Top-level slash commands:
 
 - `/pokemon`
-- `/meta`
+- `/stats`
 - `/util`
 - `/help`
 
 Where they are wired:
 
 - `src/app.ts`: interaction handling and runtime boot
-- `src/commands/index.ts`: command assembly and registration payload source
+- `src/commands/commandIndex.ts`: command assembly and registration payload source
 - `src/registerCommands.ts`: Discord REST command registration
 
 Shared slash-command helpers live in `src/commands/command.ts`.
@@ -177,7 +178,7 @@ The code expects these snapshots to exist locally. This bot does not fetch live 
 - `src/app.ts`: bot bootstrap, login, interaction dispatch, error replies
 - `src/appDataSource.ts`: shared service container
 - `src/commands/command.ts`: shared slash option definitions and command base helpers
-- `src/commands/index.ts`: command list used both at runtime and during registration
+- `src/commands/commandIndex.ts`: command list used both at runtime and during registration
 - `src/smogon/formatHelper.ts`: source of truth for supported generations, metas, VGC aliases, and format parsing
 - `src/smogon/smogonStats.ts`: local stats loading and caching
 - `src/smogon/smogonSets.ts`: local Smogon set loading
@@ -221,7 +222,7 @@ Common places to update:
 - `MetaAliases`
 - aliases and default season logic if the new format should be selected by shorthand input
 
-Use `VgcSeasons` when the meta is a VGC season like `vgc2021` or `vgc2026regi`.
+Use `VgcSeasons` when the meta is a VGC season like `vgc2022` or `vgc2026regi`.
 Use `MetaValues` and `MetaAliases` when the meta should be recognized and accepted by the slash-command and parser layers.
 
 ### 3. Expose it in slash commands if users should select it

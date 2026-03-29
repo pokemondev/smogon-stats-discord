@@ -1,5 +1,5 @@
 import assert = require('assert');
-import { ConfigHelper } from './configValidator';
+import { ConfigHelper } from './configHelper';
 
 interface TestCase {
   name: string;
@@ -39,12 +39,14 @@ const tests: TestCase[] = [
   {
     name: 'validates runtime bot config together with default format config',
     run: () => withEnv({
+      BOT_NAME: 'Smogon Stats',
       TOKEN: 'test-token',
       DEFAULT_GENERATION: 'gen9',
       DEFAULT_META: 'vgc2026regf',
     }, () => {
       const config = ConfigHelper.loadAndValidate({ loadEnvironment: false });
 
+      assert.strictEqual(config.client.botName, 'Smogon Stats');
       assert.strictEqual(config.client.token, 'test-token');
       assert.deepStrictEqual(config.defaultFormat, { generation: 'gen9', meta: 'vgc2026regf' });
     })
@@ -52,6 +54,7 @@ const tests: TestCase[] = [
   {
     name: 'requires client id when validating command registration config',
     run: () => withEnv({
+      BOT_NAME: 'Smogon Stats',
       TOKEN: 'test-token',
       CLIENT_ID: undefined,
       DEFAULT_GENERATION: 'gen9',
@@ -61,8 +64,20 @@ const tests: TestCase[] = [
     })
   },
   {
+    name: 'fails runtime validation when bot name is missing',
+    run: () => withEnv({
+      BOT_NAME: undefined,
+      TOKEN: 'test-token',
+      DEFAULT_GENERATION: 'gen9',
+      DEFAULT_META: 'vgc2026regf',
+    }, () => {
+      assert.throws(() => ConfigHelper.loadAndValidate({ loadEnvironment: false }), /BOT_NAME environment variable is required/);
+    })
+  },
+  {
     name: 'fails runtime validation when token is missing',
     run: () => withEnv({
+      BOT_NAME: 'Smogon Stats',
       TOKEN: undefined,
       DEFAULT_GENERATION: 'gen9',
       DEFAULT_META: 'vgc2026regf',
