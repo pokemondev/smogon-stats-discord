@@ -117,6 +117,28 @@ const tests: TestCase[] = [
     }
   },
   {
+    name: 'info defers before editing successful responses',
+    run: async () => {
+      const command = new PokemonCommand(dataSource);
+      const interaction = createInteraction('info', {
+        name: 'incineroar',
+        category: 'items',
+        generation: '9',
+        meta: 'ou',
+      });
+
+      (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+        format: query.format,
+        pokemon: query.pokemon,
+        moveSet: createEmptyMoveSet(query.pokemon.name),
+      });
+
+      await command.execute(interaction as never);
+
+      assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'deferReply', 'editReply' ]);
+    }
+  },
+  {
     name: 'summary defers before editing successful responses',
     run: async () => {
       const command = new PokemonCommand(dataSource);

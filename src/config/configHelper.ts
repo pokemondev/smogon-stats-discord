@@ -69,7 +69,7 @@ export class ConfigHelper {
   private static getCommandAnalyticsConfig(): CommandAnalyticsConfig {
     const rawFlushEvery = process.env.COMMAND_STATS_FLUSH_EVERY;
     if (!rawFlushEvery) {
-      return { flushEvery: 100 };
+      return { flushEvery: 25 };
     }
 
     const flushEvery = Number(rawFlushEvery);

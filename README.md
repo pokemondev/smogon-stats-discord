@@ -96,28 +96,34 @@ Defaults:
 
 ### `/pokemon`
 
-Pokemon-targeted data commands. All Pokemon subcommands use the same arguments:
-
-- `name` required
-- `meta` optional
-- `generation` optional
+Pokemon-targeted data commands.
 
 Subcommands:
 
 - `summary` — full competitive overview
-- `moves` — most used moves
-- `abilities` — most used abilities
-- `items` — most used items
-- `spreads` — most used spreads and natures
-- `checks` — common checks and counters
-- `teammates` — common teammates
+- `info` — detailed usage data by category
 - `sets` — curated Smogon sets
+
+Arguments:
+
+- `summary`: `name` required, `meta` optional, `generation` optional
+- `info`: `name` required, `category` required, `meta` optional, `generation` optional
+- `sets`: `name` required, `meta` optional, `generation` optional
+
+`info` categories:
+
+- `moves`
+- `abilities`
+- `items`
+- `spreads`
+- `checks`
+- `teammates`
 
 Examples:
 
 ```text
 /pokemon summary name:dragonite
-/pokemon moves name:gholdengo meta:OU
+/pokemon info name:gholdengo category:items meta:OU
 /pokemon sets name:landorus-therian meta:OU generation:"Gen 8"
 ```
 

@@ -23,6 +23,15 @@ const generationChoices = [
   { name: 'Gen 6', value: '6' },
 ] as const;
 
+const pokemonInfoCategoryChoices = [
+  { name: 'Moves', value: 'moves' },
+  { name: 'Abilities', value: 'abilities' },
+  { name: 'Items', value: 'items' },
+  { name: 'Spreads', value: 'spreads' },
+  { name: 'Checks', value: 'checks' },
+  { name: 'Teammates', value: 'teammates' },
+] as const;
+
 export interface SlashCommandHandler {
   data: SlashCommandData;
   helpTopic: CommandHelpTopic;
@@ -58,6 +67,16 @@ export function withNameOption(subcommand: SlashCommandSubcommandBuilder, descri
     option
       .setName('name')
       .setDescription(description)
+      .setRequired(true)
+  );
+}
+
+export function withPokemonInfoCategoryOption(subcommand: SlashCommandSubcommandBuilder): SlashCommandSubcommandBuilder {
+  return subcommand.addStringOption(option =>
+    option
+      .setName('category')
+      .setDescription('Pokemon info category')
+      .addChoices(...pokemonInfoCategoryChoices)
       .setRequired(true)
   );
 }
