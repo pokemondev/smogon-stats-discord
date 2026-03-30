@@ -36,9 +36,10 @@ CLIENT_ID=your_application_id
 DEV_GUILD_ID=optional_guild_id_for_fast_testing
 DEFAULT_GENERATION=gen9
 DEFAULT_META=vgc2026regf
+COMMAND_STATS_FLUSH_EVERY=25
 ```
 
-`BOT_NAME`, `DEFAULT_GENERATION`, and `DEFAULT_META` are required. The bot validates them on startup and during command registration, and it fails fast if they are missing, ambiguous, or incompatible.
+`BOT_NAME`, `DEFAULT_GENERATION`, and `DEFAULT_META` are required. The bot validates them on startup and during command registration, and it fails fast if they are missing, ambiguous, or incompatible. `COMMAND_STATS_FLUSH_EVERY` is optional and controls how often command analytics are saved to `data/command-stats.json` and summarized in the console.
 
 3. Register slash commands:
 
@@ -160,13 +161,17 @@ Utility subcommands:
 
 - `ping` — returns bot latency
 - `server` — guild-only server name and member count
+- `stats` — dev-oriented analytics summary of command usage and failures
 
 Examples:
 
 ```text
 /util ping
 /util server
+/util stats
 ```
+
+`/util` is intentionally not included in the public `/help` output.
 
 ## Notes
 

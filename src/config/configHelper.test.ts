@@ -41,6 +41,7 @@ const tests: TestCase[] = [
     run: () => withEnv({
       BOT_NAME: 'Smogon Stats',
       TOKEN: 'test-token',
+      COMMAND_STATS_FLUSH_EVERY: '5',
       DEFAULT_GENERATION: 'gen9',
       DEFAULT_META: 'vgc2026regf',
     }, () => {
@@ -49,6 +50,7 @@ const tests: TestCase[] = [
       assert.strictEqual(config.client.botName, 'Smogon Stats');
       assert.strictEqual(config.client.token, 'test-token');
       assert.deepStrictEqual(config.defaultFormat, { generation: 'gen9', meta: 'vgc2026regf' });
+      assert.deepStrictEqual(config.analytics, { flushEvery: 5 });
     })
   },
   {
@@ -83,6 +85,32 @@ const tests: TestCase[] = [
       DEFAULT_META: 'vgc2026regf',
     }, () => {
       assert.throws(() => ConfigHelper.loadAndValidate({ loadEnvironment: false }), /TOKEN environment variable is required/);
+    })
+  },
+  {
+    name: 'uses a default analytics flush interval when not configured',
+    run: () => withEnv({
+      BOT_NAME: 'Smogon Stats',
+      TOKEN: 'test-token',
+      COMMAND_STATS_FLUSH_EVERY: undefined,
+      DEFAULT_GENERATION: 'gen9',
+      DEFAULT_META: 'vgc2026regf',
+    }, () => {
+      const config = ConfigHelper.loadAndValidate({ loadEnvironment: false });
+
+      assert.strictEqual(config.analytics.flushEvery, 25);
+    })
+  },
+  {
+    name: 'rejects invalid analytics flush interval values',
+    run: () => withEnv({
+      BOT_NAME: 'Smogon Stats',
+      TOKEN: 'test-token',
+      COMMAND_STATS_FLUSH_EVERY: '0',
+      DEFAULT_GENERATION: 'gen9',
+      DEFAULT_META: 'vgc2026regf',
+    }, () => {
+      assert.throws(() => ConfigHelper.loadAndValidate({ loadEnvironment: false }), /COMMAND_STATS_FLUSH_EVERY/);
     })
   }
 ];

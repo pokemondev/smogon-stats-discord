@@ -93,3 +93,4 @@ package-lock.json
 dist
 .vs/
 .vscode/
+data/command-stats.json

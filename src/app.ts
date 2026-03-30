@@ -6,7 +6,7 @@ import { createCommands } from './commands/commandIndex';
 import { ConfigHelper } from './config/configHelper';
 
 const botConfig = ConfigHelper.loadAndValidate();
-const dataSource = new AppDataSource();
+const dataSource = new AppDataSource(botConfig);
 const token = botConfig.client.token;
 
 const commands = new Map<string, SlashCommandHandler>(
@@ -31,9 +31,11 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 
   try {
+    dataSource.analytics.recordCommandAttempt(interaction);
     await command.execute(interaction);
   }
   catch (error) {
+    dataSource.analytics.recordCommandFailure(interaction);
     await DiscordHelper.handleCommandFailure(interaction, error);
   }
 });
@@ -46,11 +48,30 @@ if (isDebug)
 }
 
 process.on('unhandledRejection', reason => {
+  void dataSource.analytics.flush();
   console.error('Unhandled promise rejection.', reason);
 });
 
 process.on('uncaughtException', error => {
+  void dataSource.analytics.flush();
   console.error('Uncaught exception.', error);
+});
+
+async function flushAnalyticsAndExit(exitCode: number): Promise<void> {
+  try {
+    await dataSource.analytics.flush();
+  }
+  finally {
+    process.exit(exitCode);
+  }
+}
+
+process.on('SIGINT', () => {
+  void flushAnalyticsAndExit(0);
+});
+
+process.on('SIGTERM', () => {
+  void flushAnalyticsAndExit(0);
 });
 
 client.login(token);

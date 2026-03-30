@@ -9,9 +9,14 @@ export interface BotClientConfig {
   developmentGuildId?: string;
 }
 
+export interface CommandAnalyticsConfig {
+  flushEvery: number;
+}
+
 export interface BotConfig {
   client: BotClientConfig;
   defaultFormat: SmogonFormat;
+  analytics: CommandAnalyticsConfig;
 }
 
 export interface ConfigValidationOptions {
@@ -28,6 +33,7 @@ export class ConfigHelper {
     return {
       client: this.getBotClientConfig(options),
       defaultFormat: FormatConfig.getDefaultFormat(),
+      analytics: this.getCommandAnalyticsConfig(),
     };
   }
 
@@ -58,6 +64,20 @@ export class ConfigHelper {
       clientId,
       developmentGuildId: process.env.DEV_GUILD_ID,
     };
+  }
+
+  private static getCommandAnalyticsConfig(): CommandAnalyticsConfig {
+    const rawFlushEvery = process.env.COMMAND_STATS_FLUSH_EVERY;
+    if (!rawFlushEvery) {
+      return { flushEvery: 100 };
+    }
+
+    const flushEvery = Number(rawFlushEvery);
+    if (!Number.isInteger(flushEvery) || flushEvery <= 0) {
+      throw new Error('COMMAND_STATS_FLUSH_EVERY environment variable must be a positive integer.');
+    }
+
+    return { flushEvery };
   }
 
   private static getRequiredEnvironmentVariable(name: string, errorMessage: string): string {

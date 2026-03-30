@@ -1,7 +1,10 @@
 import assert = require('assert');
 import { AppDataSource } from '../appDataSource';
+import { ConfigHelper } from '../config/configHelper';
 import { MoveSetUsage } from '../smogon/usageModels';
 
+process.env.BOT_NAME = process.env.BOT_NAME || 'Smogon Stats';
+process.env.TOKEN = process.env.TOKEN || 'test-token';
 process.env.DEFAULT_GENERATION = process.env.DEFAULT_GENERATION || 'gen9';
 process.env.DEFAULT_META = process.env.DEFAULT_META || 'vgc2026regf';
 
@@ -62,7 +65,7 @@ class FakeChatInputCommandInteraction {
   }
 }
 
-const dataSource = new AppDataSource();
+const dataSource = new AppDataSource(ConfigHelper.loadAndValidate({ loadEnvironment: false }));
 
 function createInteraction(subcommand: string, strings: Record<string, string | undefined>): FakeChatInputCommandInteraction {
   return new FakeChatInputCommandInteraction(subcommand, strings);
