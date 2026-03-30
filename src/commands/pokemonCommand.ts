@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { CommandBase, CommandHelpTopic, MovesetCommandData, SlashCommandData, SlashCommandHandler, withFormatOptions, withNameOption } from './command';
+import { CommandBase, CommandHelpTopic, MovesetCommandData, SlashCommandData, SlashCommandHandler, withFormatOptions, withNameOption, withPokemonInfoCategoryOption } from './command';
 import { AppDataSource } from "../appDataSource";
 import { DiscordHelper } from '../common/discordHelper';
 import { FormatHelper } from '../smogon/formatHelper';
@@ -7,17 +7,47 @@ import { TypeService } from '../pokemon/typeService';
 import { EffectivenessType } from '../pokemon/models';
 import { UsageData } from '../smogon/usageModels';
 
+const pokemonInfoHandlers = {
+  moves: {
+    title: 'Moves',
+    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.moves,
+  },
+  abilities: {
+    title: 'Abilities',
+    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.abilities,
+  },
+  items: {
+    title: 'Items',
+    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.items,
+  },
+  spreads: {
+    title: 'Spreads',
+    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.spreads,
+  },
+  checks: {
+    title: 'Checks',
+    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.checksAndCounters,
+  },
+  teammates: {
+    title: 'Teammates',
+    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.teamMates,
+  },
+} as const;
+
+type PokemonInfoCategory = keyof typeof pokemonInfoHandlers;
+
 export const pokemonHelpTopic: CommandHelpTopic = {
   command: 'pokemon',
   description: 'Pokemon-specific competitive data, moveset usage, and Smogon sets.',
   arguments: [
     'name: Pokemon name to search for.',
+    'category: Required for /pokemon info. One of moves, abilities, items, spreads, checks, or teammates.',
     'meta: Optional competitive metagame / (VGC) regulation filter. Uses the configured default when omitted.',
     'generation: Optional generation filter. Uses the configured default when omitted. If only generation is provided, that generation uses its default VGC format.',
   ],
   examples: [
     '/pokemon summary name:dragonite',
-    '/pokemon moves name:gholdengo meta:OU',
+    '/pokemon info name:gholdengo category:items meta:OU',
     '/pokemon sets name:landorus-therian meta:OU generation:"Gen 8"',
   ],
 };
@@ -32,42 +62,12 @@ export function createPokemonCommandData(): SlashCommandData {
         .setDescription('Show a full competitive summary for a Pokemon'),
       'Pokemon name'
     )))
-    .addSubcommand(subcommand => withFormatOptions(withNameOption(
+    .addSubcommand(subcommand => withFormatOptions(withPokemonInfoCategoryOption(withNameOption(
       subcommand
-        .setName('moves')
-        .setDescription('Show the most used moves for a Pokemon'),
+        .setName('info')
+        .setDescription('Show a detailed usage category for a Pokemon'),
       'Pokemon name'
-    )))
-    .addSubcommand(subcommand => withFormatOptions(withNameOption(
-      subcommand
-        .setName('abilities')
-        .setDescription('Show the most used abilities for a Pokemon'),
-      'Pokemon name'
-    )))
-    .addSubcommand(subcommand => withFormatOptions(withNameOption(
-      subcommand
-        .setName('items')
-        .setDescription('Show the most used items for a Pokemon'),
-      'Pokemon name'
-    )))
-    .addSubcommand(subcommand => withFormatOptions(withNameOption(
-      subcommand
-        .setName('spreads')
-        .setDescription('Show the most used spreads and natures for a Pokemon'),
-      'Pokemon name'
-    )))
-    .addSubcommand(subcommand => withFormatOptions(withNameOption(
-      subcommand
-        .setName('checks')
-        .setDescription('Show common checks and counters for a Pokemon'),
-      'Pokemon name'
-    )))
-    .addSubcommand(subcommand => withFormatOptions(withNameOption(
-      subcommand
-        .setName('teammates')
-        .setDescription('Show the most common teammates for a Pokemon'),
-      'Pokemon name'
-    )))
+    ))))
     .addSubcommand(subcommand => withFormatOptions(withNameOption(
       subcommand
         .setName('sets')
@@ -89,23 +89,8 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
       case 'summary':
         await this.handleSummary(interaction);
         return;
-      case 'moves':
-        await this.handleMovesetBreakdown(interaction, 'Moves', moveSet => moveSet.moves);
-        return;
-      case 'abilities':
-        await this.handleMovesetBreakdown(interaction, 'Abilities', moveSet => moveSet.abilities);
-        return;
-      case 'items':
-        await this.handleMovesetBreakdown(interaction, 'Items', moveSet => moveSet.items);
-        return;
-      case 'spreads':
-        await this.handleMovesetBreakdown(interaction, 'Spreads', moveSet => moveSet.spreads);
-        return;
-      case 'checks':
-        await this.handleMovesetBreakdown(interaction, 'Checks', moveSet => moveSet.checksAndCounters);
-        return;
-      case 'teammates':
-        await this.handleMovesetBreakdown(interaction, 'Teammates', moveSet => moveSet.teamMates);
+      case 'info':
+        await this.handleInfo(interaction);
         return;
       case 'sets':
         await this.handleSets(interaction);
@@ -113,6 +98,17 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
       default:
         await interaction.reply({ content: 'That subcommand is not supported.', flags: MessageFlags.Ephemeral });
     }
+  }
+
+  private async handleInfo(interaction: ChatInputCommandInteraction): Promise<void> {
+    const category = interaction.options.getString('category', true) as PokemonInfoCategory;
+    const handler = pokemonInfoHandlers[category];
+    if (!handler) {
+      await interaction.reply({ content: 'That info category is not supported.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    await this.handleMovesetBreakdown(interaction, handler.title, handler.selector);
   }
 
   private async handleSummary(interaction: ChatInputCommandInteraction): Promise<void> {

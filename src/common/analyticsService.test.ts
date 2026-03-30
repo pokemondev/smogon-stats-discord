@@ -63,6 +63,7 @@ const tests: TestCase[] = [
       assert.strictEqual(snapshot.failedCommandCounts['pokemon/summary'], 1);
       assert.strictEqual(snapshot.guildCommandCounts.guild1['pokemon/summary'], 2);
       assert.strictEqual(snapshot.pokemonCounts.Incineroar, 2);
+      assert.deepStrictEqual(snapshot.pokemonInfoCategoryCounts, {});
     }
   },
   {
@@ -77,8 +78,9 @@ const tests: TestCase[] = [
         log: message => logs.push(message),
       });
 
-      service.recordCommandAttempt(new FakeInteraction('pokemon', 'summary', {
+      service.recordCommandAttempt(new FakeInteraction('pokemon', 'info', {
         name: 'incineroar',
+        category: 'items',
         meta: 'ou',
         generation: '9',
       }, 'guild-1') as never);
@@ -86,8 +88,9 @@ const tests: TestCase[] = [
         meta: 'ou',
         generation: '9',
       }, 'guild-1') as never);
-      service.recordCommandFailure(new FakeInteraction('pokemon', 'summary', {
+      service.recordCommandFailure(new FakeInteraction('pokemon', 'info', {
         name: 'incineroar',
+        category: 'items',
         meta: 'ou',
         generation: '9',
       }, 'guild-1') as never);
@@ -96,20 +99,23 @@ const tests: TestCase[] = [
 
       const snapshot = service.getSnapshot();
       assert.strictEqual(snapshot.totalProcessedCommands, 2);
-      assert.strictEqual(snapshot.commandCounts['pokemon/summary'], 1);
+      assert.strictEqual(snapshot.commandCounts['pokemon/info'], 1);
       assert.strictEqual(snapshot.commandCounts['stats/usage'], 1);
-      assert.strictEqual(snapshot.failedCommandCounts['pokemon/summary'], 1);
-      assert.strictEqual(snapshot.guildCommandCounts['guild-1']['pokemon/summary'], 1);
+      assert.strictEqual(snapshot.failedCommandCounts['pokemon/info'], 1);
+      assert.strictEqual(snapshot.guildCommandCounts['guild-1']['pokemon/info'], 1);
       assert.strictEqual(snapshot.guildCommandCounts['guild-1']['stats/usage'], 1);
       assert.strictEqual(snapshot.pokemonCounts.Incineroar, 1);
+      assert.strictEqual(snapshot.pokemonInfoCategoryCounts.items, 1);
       assert.strictEqual(snapshot.metaCounts.ou, 2);
       assert.strictEqual(snapshot.generationCounts.gen9, 2);
       assert.strictEqual(logs.length, 1);
-      assert.ok(logs[0].indexOf('Top commands: pokemon/summary=1, stats/usage=1.') >= 0);
+      assert.ok(logs[0].indexOf('Top commands: pokemon/info=1, stats/usage=1.') >= 0);
+      assert.ok(logs[0].indexOf('Top pokemon info categories: items=1.') >= 0);
 
       const summary = service.getSummary('guild-1');
       assert.ok(summary.indexOf('Top commands overall') >= 0);
       assert.ok(summary.indexOf('Top commands for this server') >= 0);
+      assert.ok(summary.indexOf('Top pokemon info categories overall') >= 0);
       assert.strictEqual(summary.indexOf('4.'), -1);
 
       const persisted = readJson(filePath);
@@ -139,6 +145,7 @@ const tests: TestCase[] = [
       assert.strictEqual(snapshot.commandCounts['pokemon/sets'], 1);
       assert.strictEqual(snapshot.failedCommandCounts['pokemon/sets'], 1);
       assert.strictEqual(snapshot.pokemonCounts.MissingNo, undefined);
+      assert.deepStrictEqual(snapshot.pokemonInfoCategoryCounts, {});
     }
   }
 ];

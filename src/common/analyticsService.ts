@@ -14,6 +14,7 @@ export interface CommandAnalyticsSnapshot {
   failedCommandCounts: CountMap;
   guildCommandCounts: GuildCountMap;
   pokemonCounts: CountMap;
+  pokemonInfoCategoryCounts: CountMap;
   metaCounts: CountMap;
   generationCounts: CountMap;
   lastSavedAt?: string;
@@ -69,6 +70,11 @@ export class AnalyticsService {
       if (pokemonName) {
         this.incrementCount(this.snapshot.pokemonCounts, pokemonName);
       }
+
+      const pokemonInfoCategory = this.getPokemonInfoCategory(interaction);
+      if (pokemonInfoCategory) {
+        this.incrementCount(this.snapshot.pokemonInfoCategoryCounts, pokemonInfoCategory);
+      }
     }
 
     if (this.shouldTrackFormat(interaction.commandName)) {
@@ -98,6 +104,7 @@ export class AnalyticsService {
       this.formatSection('Top failed commands overall', this.snapshot.failedCommandCounts),
       guildId ? this.formatSection('Top commands for this server', this.snapshot.guildCommandCounts[guildId]) : undefined,
       this.formatSection('Top pokemon overall', this.snapshot.pokemonCounts),
+      this.formatSection('Top pokemon info categories overall', this.snapshot.pokemonInfoCategoryCounts),
       this.formatSection('Top metas', this.snapshot.metaCounts),
       this.formatSection('Top generations', this.snapshot.generationCounts),
     ];
@@ -129,6 +136,7 @@ export class AnalyticsService {
       commandCounts: { ...this.snapshot.commandCounts },
       failedCommandCounts: { ...this.snapshot.failedCommandCounts },
       pokemonCounts: { ...this.snapshot.pokemonCounts },
+      pokemonInfoCategoryCounts: { ...this.snapshot.pokemonInfoCategoryCounts },
       metaCounts: { ...this.snapshot.metaCounts },
       generationCounts: { ...this.snapshot.generationCounts },
       lastSavedAt: this.now().toISOString(),
@@ -153,6 +161,7 @@ export class AnalyticsService {
       failedCommandCounts: { ...(parsed.failedCommandCounts ?? {}) },
       guildCommandCounts: this.cloneGuildCounts(parsed.guildCommandCounts ?? {}),
       pokemonCounts: { ...(parsed.pokemonCounts ?? {}) },
+      pokemonInfoCategoryCounts: { ...(parsed.pokemonInfoCategoryCounts ?? {}) },
       metaCounts: { ...(parsed.metaCounts ?? {}) },
       generationCounts: { ...(parsed.generationCounts ?? {}) },
       lastSavedAt: parsed.lastSavedAt,
@@ -167,6 +176,7 @@ export class AnalyticsService {
       failedCommandCounts: {},
       guildCommandCounts: {},
       pokemonCounts: {},
+      pokemonInfoCategoryCounts: {},
       metaCounts: {},
       generationCounts: {},
     };
@@ -207,6 +217,14 @@ export class AnalyticsService {
     return this.pokemonDb.getPokemon(rawPokemonName.trim())?.name;
   }
 
+  private getPokemonInfoCategory(interaction: ChatInputCommandInteraction): string | undefined {
+    if (interaction.commandName !== 'pokemon' || interaction.options.getSubcommand(false) !== 'info') {
+      return undefined;
+    }
+
+    return interaction.options.getString('category') ?? undefined;
+  }
+
   private shouldTrackFormat(commandName: string): boolean {
     return commandName === 'pokemon' || commandName === 'stats';
   }
@@ -217,6 +235,7 @@ export class AnalyticsService {
       this.formatInlineSection('Top commands', this.snapshot.commandCounts),
       this.formatInlineSection('Top failed', this.snapshot.failedCommandCounts),
       this.formatInlineSection('Top pokemon', this.snapshot.pokemonCounts),
+      this.formatInlineSection('Top pokemon info categories', this.snapshot.pokemonInfoCategoryCounts),
       this.formatInlineSection('Top metas', this.snapshot.metaCounts),
       this.formatInlineSection('Top generations', this.snapshot.generationCounts),
     ].join(' ');
