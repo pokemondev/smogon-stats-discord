@@ -1,6 +1,7 @@
 import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { CommandBase, CommandHelpTopic, MovesetCommandData, SlashCommandData, SlashCommandHandler, withFormatOptions, withNameOption } from './command';
 import { AppDataSource } from "../appDataSource";
+import { DiscordHelper } from '../common/discordHelper';
 import { FormatHelper } from '../smogon/formatHelper';
 import { TypeService } from '../pokemon/typeService';
 import { EffectivenessType } from '../pokemon/models';
@@ -115,12 +116,14 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
   }
 
   private async handleSummary(interaction: ChatInputCommandInteraction): Promise<void> {
-    const query = await this.resolvePokemonQuery(interaction);
+    const query = this.resolvePokemonQuery(interaction);
     if (!query) {
+      const requestedName = this.getRequestedPokemonName(interaction);
+      await this.replyNoData(interaction, `Could not find the provided Pokemon: '${requestedName}'.`);
       return;
     }
 
-    await interaction.deferReply();
+    await DiscordHelper.deferCommandReply(interaction);
 
     const cmd = await this.getMoveSetCommandData(query);
     const hasMovesetData = !!(cmd.moveSet.moves && cmd.moveSet.items);
@@ -140,7 +143,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const teraTypes = this.getTeraTypesData(cmd);
     const typeFieldName = isGen9 ? 'Tera Types' : 'Weak/Resist';
     const typeFieldData = isGen9 ? teraTypes : defensiveProfile;
-    const spreads = this.getData(cmd.moveSet.spreads, 6, true);
+    const spreads = this.getData(cmd.moveSet.spreads, 4, true);
     const countersChecks = this.getCountersChecksData(cmd);
 
     embed.addFields(
@@ -172,12 +175,14 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     title: string,
     selector: (moveSet: MovesetCommandData['moveSet']) => UsageData[] | ReturnType<typeof this.getChecksData>
   ): Promise<void> {
-    const query = await this.resolvePokemonQuery(interaction);
+    const query = this.resolvePokemonQuery(interaction);
     if (!query) {
+      const requestedName = this.getRequestedPokemonName(interaction);
+      await this.replyNoData(interaction, `Could not find the provided Pokemon: '${requestedName}'.`);
       return;
     }
 
-    await interaction.deferReply();
+    await DiscordHelper.deferCommandReply(interaction);
 
     const cmd = await this.getMoveSetCommandData(query);
     const embed = this.createPokemonEmbed(cmd.pokemon, { thumbnail: true });
@@ -198,12 +203,14 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
   }
 
   private async handleSets(interaction: ChatInputCommandInteraction): Promise<void> {
-    const query = await this.resolvePokemonQuery(interaction);
+    const query = this.resolvePokemonQuery(interaction);
     if (!query) {
+      const requestedName = this.getRequestedPokemonName(interaction);
+      await this.replyNoData(interaction, `Could not find the provided Pokemon: '${requestedName}'.`);
       return;
     }
 
-    await interaction.deferReply();
+    await DiscordHelper.deferCommandReply(interaction);
 
     const sets = this.dataSource.smogonSets.get(query.pokemon, query.format);
     const smogonAnalysisUrl = FormatHelper.getSmogonAnalysisUrl(query.format);
@@ -288,9 +295,9 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     return data ? data : "-";
   }
 
-  private getCountersChecksData(cmd: MovesetCommandData): string {
+  private getCountersChecksData(cmd: MovesetCommandData, limit: number = 4): string {
     const cc = (cmd.moveSet.checksAndCounters ? cmd.moveSet.checksAndCounters : []);
-    let countersChecks = cc.slice(0, 6).map(iv => `\`${iv.name}: KO ${iv.kOed.toFixed(1)}% / SW ${iv.switchedOut.toFixed(1)}%\``).join('\n');
+    let countersChecks = cc.slice(0, limit).map(iv => `\`${iv.name}: KO ${iv.kOed.toFixed(1)}% / SW ${iv.switchedOut.toFixed(1)}%\``).join('\n');
     countersChecks = countersChecks ? countersChecks : "-";
     return countersChecks;
   }

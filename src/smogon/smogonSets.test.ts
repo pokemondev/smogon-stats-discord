@@ -85,6 +85,23 @@ const tests: TestCase[] = [
       const sets = getSets('Incineroar', { generation: 'gen9', meta: 'vgc2026regf' });
       assert.deepStrictEqual(sets, []);
     }
+  },
+  {
+    name: 'keeps the supported gen9 set snapshots for miraidon and koraidon',
+    run: () => {
+      const miraidonNames = getStoredSetNames('gen9', 'Miraidon');
+      const koraidonNames = getStoredSetNames('gen9', 'Koraidon');
+
+      assert.ok(miraidonNames.some(name => name.startsWith('VGC 2025 Reg I')));
+      assert.ok(koraidonNames.some(name => name.startsWith('VGC 2025 Reg I')));
+      assert.ok(koraidonNames.some(name => name.startsWith('Ubers ')));
+      assert.strictEqual(miraidonNames.some(name => name.startsWith('Anything Goes')), false);
+      assert.strictEqual(koraidonNames.some(name => name.startsWith('Anything Goes')), false);
+      assert.ok(getSets('Miraidon', { generation: 'gen9', meta: 'vgc2026regi' }).length > 0);
+      assert.ok(getSets('Koraidon', { generation: 'gen9', meta: 'vgc2026regi' }).length > 0);
+      assert.deepStrictEqual(getSets('Miraidon', { generation: 'gen9', meta: 'ubers' }), []);
+      assert.ok(getSets('Koraidon', { generation: 'gen9', meta: 'ubers' }).length > 0);
+    }
   }
 ];
 

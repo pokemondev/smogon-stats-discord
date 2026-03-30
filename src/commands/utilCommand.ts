@@ -1,12 +1,14 @@
+import { AppDataSource } from '../appDataSource';
 import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { CommandHelpTopic, SlashCommandData, SlashCommandHandler } from './command';
 
 export const utilHelpTopic: CommandHelpTopic = {
   command: 'util',
-  description: 'Utility commands such as ping and server information.',
+  description: 'Utility commands such as ping, server information, and analytics summaries.',
   examples: [
     '/util ping',
     '/util server',
+    '/util stats',
   ],
 };
 
@@ -23,12 +25,20 @@ export function createUtilCommandData(): SlashCommandData {
       subcommand
         .setName('server')
         .setDescription('Show basic server information')
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('stats')
+        .setDescription('Show command analytics summary')
     );
 }
 
 export class UtilCommand implements SlashCommandHandler {
   public readonly data = createUtilCommandData();
   public readonly helpTopic = utilHelpTopic;
+
+  constructor(private readonly dataSource: AppDataSource) {
+  }
 
   public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     switch (interaction.options.getSubcommand()) {
@@ -46,6 +56,12 @@ export class UtilCommand implements SlashCommandHandler {
 
         await interaction.reply({
           content: `Server name: ${interaction.guild.name}\nTotal members: ${interaction.guild.memberCount}`,
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      case 'stats':
+        await interaction.reply({
+          content: this.dataSource.analytics.getSummary(interaction.guildId ?? undefined),
           flags: MessageFlags.Ephemeral,
         });
         return;

@@ -1,11 +1,12 @@
 import { ChatInputCommandInteraction, Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 import { AppDataSource } from './appDataSource';
+import { DiscordHelper } from './common/discordHelper';
 import { SlashCommandHandler } from './commands/command';
 import { createCommands } from './commands/commandIndex';
 import { ConfigHelper } from './config/configHelper';
 
 const botConfig = ConfigHelper.loadAndValidate();
-const dataSource = new AppDataSource();
+const dataSource = new AppDataSource(botConfig);
 const token = botConfig.client.token;
 
 const commands = new Map<string, SlashCommandHandler>(
@@ -30,29 +31,14 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 
   try {
+    dataSource.analytics.recordCommandAttempt(interaction);
     await command.execute(interaction);
   }
   catch (error) {
-    await handleCommandFailure(interaction, error);
+    dataSource.analytics.recordCommandFailure(interaction);
+    await DiscordHelper.handleCommandFailure(interaction, error);
   }
 });
-
-async function handleCommandFailure(interaction: ChatInputCommandInteraction, error: unknown): Promise<void> {
-  console.error(`Failed to process command '${interaction.commandName}' from ${interaction.user.tag}.`, error);
-
-  try {
-    const commandFailureMessage = 'There was an error trying to execute that command.';
-    if (interaction.deferred || interaction.replied) {
-      await interaction.followUp({ content: commandFailureMessage, flags: MessageFlags.Ephemeral });
-      return;
-    }
-
-    await interaction.reply({ content: commandFailureMessage, flags: MessageFlags.Ephemeral });
-  }
-  catch (replyError) {
-    console.error('Failed to send the command failure response.', replyError);
-  }
-}
 
 const isDebug = process.argv.some(a => a === 'debug');
 if (isDebug)
@@ -62,11 +48,30 @@ if (isDebug)
 }
 
 process.on('unhandledRejection', reason => {
+  void dataSource.analytics.flush();
   console.error('Unhandled promise rejection.', reason);
 });
 
 process.on('uncaughtException', error => {
+  void dataSource.analytics.flush();
   console.error('Uncaught exception.', error);
+});
+
+async function flushAnalyticsAndExit(exitCode: number): Promise<void> {
+  try {
+    await dataSource.analytics.flush();
+  }
+  finally {
+    process.exit(exitCode);
+  }
+}
+
+process.on('SIGINT', () => {
+  void flushAnalyticsAndExit(0);
+});
+
+process.on('SIGTERM', () => {
+  void flushAnalyticsAndExit(0);
 });
 
 client.login(token);

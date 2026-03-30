@@ -52,7 +52,7 @@ export class HelpCommand implements SlashCommandHandler {
     const defaultFormat = FormatConfig.getDefaultFormat();
     const embed = new EmbedBuilder()
       .setTitle(`${this.botName} Help`)
-      .setDescription(`Start with \`/pokemon\` for a specific Pokemon, \`/stats\` for format-wide rankings, or \`/util\` for utility commands. Current configured default format: ${FormatHelper.toUserString(defaultFormat)}. If only generation is provided, that generation uses its default VGC format.`);
+      .setDescription(`Start with \`/pokemon\` for a specific Pokemon or \`/stats\` for format-wide rankings. Current configured default format: ${FormatHelper.toUserString(defaultFormat)}. If only generation is provided, that generation uses its default VGC format.`);
 
     for (const topic of this.helpTopics) {
       embed.addFields({ name: `/${topic.command}`, value: topic.description, inline: false });
@@ -65,7 +65,6 @@ export class HelpCommand implements SlashCommandHandler {
         '/pokemon items name:gholdengo meta:OU',
         '/stats usage',
         '/stats leads meta:OU generation:"Gen 8"',
-        '/util ping',
       ].join('\n'),
       inline: false,
     });

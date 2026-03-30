@@ -7,6 +7,7 @@ import {
   SlashCommandSubcommandBuilder,
 } from 'discord.js';
 import { AppDataSource } from "../appDataSource";
+import { DiscordHelper } from '../common/discordHelper';
 import { MoveSetUsage, UsageData, ChecksAndCountersUsageData, SmogonFormat } from "../smogon/usageModels";
 import { ColorService } from '../pokemon/colorService';
 import { FormatHelper } from '../smogon/formatHelper';
@@ -71,6 +72,10 @@ export class CommandBase {
   constructor(protected readonly dataSource: AppDataSource) {
   }
 
+  protected getRequestedPokemonName(interaction: ChatInputCommandInteraction): string {
+    return interaction.options.getString('name', true).trim();
+  }
+
   protected getFormat(interaction: ChatInputCommandInteraction): SmogonFormat {
     const generation = interaction.options.getString('generation');
     const meta = interaction.options.getString('meta');
@@ -78,14 +83,10 @@ export class CommandBase {
     return FormatHelper.getFormat(args);
   }
 
-  protected async resolvePokemonQuery(interaction: ChatInputCommandInteraction): Promise<PokemonQuery | undefined> {
-    const requestedName = interaction.options.getString('name', true).trim();
+  protected resolvePokemonQuery(interaction: ChatInputCommandInteraction): PokemonQuery | undefined {
+    const requestedName = this.getRequestedPokemonName(interaction);
     const pokemon = this.dataSource.pokemonDb.getPokemon(requestedName);
     if (!pokemon) {
-      await interaction.reply({
-        content: `Could not find the provided Pokemon: '${requestedName}'.`,
-        flags: MessageFlags.Ephemeral,
-      });
       return undefined;
     }
 
