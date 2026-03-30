@@ -1,5 +1,6 @@
 import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { AppDataSource } from '../appDataSource';
+import { DiscordHelper } from '../common/discordHelper';
 import { CommandBase, CommandHelpTopic, SlashCommandData, SlashCommandHandler, withFormatOptions } from './command';
 import { FormatHelper } from '../smogon/formatHelper';
 
@@ -64,7 +65,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
   private async handleUsage(interaction: ChatInputCommandInteraction): Promise<void> {
     const format = this.getFormat(interaction);
-    await interaction.deferReply();
+    await DiscordHelper.deferCommandReply(interaction);
 
     const usageData = await this.dataSource.smogonStats.getUsages(format);
     if (!usageData.length) {
@@ -91,7 +92,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
   private async handleLeads(interaction: ChatInputCommandInteraction): Promise<void> {
     const format = this.getFormat(interaction);
-    await interaction.deferReply();
+    await DiscordHelper.deferCommandReply(interaction);
 
     const leads = await this.dataSource.smogonStats.getLeads(format);
     if (!leads.length) {
@@ -118,7 +119,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
   private async handleMegas(interaction: ChatInputCommandInteraction): Promise<void> {
     const format = this.getFormat(interaction);
-    await interaction.deferReply();
+    await DiscordHelper.deferCommandReply(interaction);
 
     const moveSets = await this.dataSource.smogonStats.getMegasMoveSets(format);
     if (!moveSets.length) {

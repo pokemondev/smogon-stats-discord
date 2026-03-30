@@ -1,5 +1,6 @@
 import { ChatInputCommandInteraction, Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 import { AppDataSource } from './appDataSource';
+import { DiscordHelper } from './common/discordHelper';
 import { SlashCommandHandler } from './commands/command';
 import { createCommands } from './commands/commandIndex';
 import { ConfigHelper } from './config/configHelper';
@@ -33,26 +34,9 @@ client.on(Events.InteractionCreate, async interaction => {
     await command.execute(interaction);
   }
   catch (error) {
-    await handleCommandFailure(interaction, error);
+    await DiscordHelper.handleCommandFailure(interaction, error);
   }
 });
-
-async function handleCommandFailure(interaction: ChatInputCommandInteraction, error: unknown): Promise<void> {
-  console.error(`Failed to process command '${interaction.commandName}' from ${interaction.user.tag}.`, error);
-
-  try {
-    const commandFailureMessage = 'There was an error trying to execute that command.';
-    if (interaction.deferred || interaction.replied) {
-      await interaction.followUp({ content: commandFailureMessage, flags: MessageFlags.Ephemeral });
-      return;
-    }
-
-    await interaction.reply({ content: commandFailureMessage, flags: MessageFlags.Ephemeral });
-  }
-  catch (replyError) {
-    console.error('Failed to send the command failure response.', replyError);
-  }
-}
 
 const isDebug = process.argv.some(a => a === 'debug');
 if (isDebug)
