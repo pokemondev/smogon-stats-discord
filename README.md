@@ -1,6 +1,6 @@
 # Smogon Stats Discord Bot
 
-Smogon Stats is a Discord bot for Pokemon Showdown and Smogon competitive data. It serves usage rankings, leads data, moveset trends, counters, teammates, and curated Smogon sets from local JSON snapshots.
+Smogon Stats is a Discord bot for Pokemon Showdown and Smogon competitive data. It serves usage rankings, leads data, moveset trends, counters, teammates, curated Smogon sets, and VGC data from local JSON snapshots.
 
 The bot now runs on modern discord.js slash commands instead of prefix-based message commands.
 
@@ -11,6 +11,7 @@ The bot now runs on modern discord.js slash commands instead of prefix-based mes
 - Competitive summary command with moves, items, abilities, spreads, counters, and type profile.
 - Meta-wide rankings for usage, leads, and Mega Stone users.
 - Smogon sets lookup by Pokemon, generation, and metagame.
+- VGC team lookups by regulation with optional Pokemon member filters.
 - Static local data files for predictable responses and simple hosting.
 
 ## Requirements
@@ -146,6 +147,33 @@ Examples:
 /stats usage
 /stats leads meta:UU
 /stats megas meta:OU generation:"Gen 6"
+```
+
+### `/vgc`
+
+VGC metagame related commands.
+
+Subcommands:
+
+- `teams` — featured teams for a VGC regulation
+
+Arguments:
+
+- `teams`: `regulation` optional, `pokemon1` optional, `pokemon2` optional
+
+Notes:
+
+- `regulation` uses VGC season choices such as `VGC 2026 Reg. I`
+- if only `pokemon2` is provided, it is treated as `pokemon1`
+- team list output is capped at the top 10 matching teams
+
+Examples:
+
+```text
+/vgc teams
+/vgc teams regulation:"VGC 2026 Reg. I"
+/vgc teams pokemon1:charizard
+/vgc teams regulation:"VGC 2026 Reg. I" pokemon1:zamazenta pokemon2:calyrex-shadow
 ```
 
 ### `/help`

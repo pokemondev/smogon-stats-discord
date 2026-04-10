@@ -13,7 +13,7 @@ export class PokemonDb {
     this.fuzzyMatching = new FuzzyMatching(this.database.map(p => p.name));
   }
 
-  public getPokemon(name: string): Pokemon {
+  public getPokemon(name: string): Pokemon | undefined {
     const pokemon = this.pokemonMap[name.toLowerCase()];
     if (pokemon)
       return pokemon;

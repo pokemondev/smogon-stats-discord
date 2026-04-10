@@ -5,13 +5,15 @@ import { HelpCommand, createHelpCommandData, helpHelpTopic } from './helpCommand
 import { createStatsCommandData, StatsCommand, statsHelpTopic } from './statsCommand';
 import { PokemonCommand, createPokemonCommandData, pokemonHelpTopic } from './pokemonCommand';
 import { UtilCommand, createUtilCommandData } from './utilCommand';
+import { createVgcCommandData, VgcCommand, vgcHelpTopic } from './vgcCommand';
 
-const helpTopics = [pokemonHelpTopic, statsHelpTopic, helpHelpTopic];
+const helpTopics = [pokemonHelpTopic, statsHelpTopic, vgcHelpTopic, helpHelpTopic];
 
 export function createCommands(dataSource: AppDataSource, botConfig: BotConfig): SlashCommandHandler[] {
   return [
     new PokemonCommand(dataSource),
     new StatsCommand(dataSource),
+    new VgcCommand(dataSource),
     new UtilCommand(dataSource),
     new HelpCommand(helpTopics, botConfig.client.botName),
   ];
@@ -21,6 +23,7 @@ export function createCommandData() {
   return [
     createPokemonCommandData(),
     createStatsCommandData(),
+    createVgcCommandData(),
     createUtilCommandData(),
     createHelpCommandData(helpTopics),
   ];
