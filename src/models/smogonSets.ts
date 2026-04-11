@@ -1,4 +1,4 @@
-import { SmogonFormat } from "./usageModels";
+import { SmogonFormat } from "./smogonUsage";
 
 export interface PokemonSet {
   name: string

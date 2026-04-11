@@ -1,5 +1,5 @@
 import { config } from 'dotenv';
-import { SmogonFormat } from '../smogon/usageModels';
+import { SmogonFormat } from '../models/smogonUsage';
 import { FormatConfig } from './formatConfig';
 
 export interface BotClientConfig {

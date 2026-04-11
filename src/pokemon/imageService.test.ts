@@ -1,6 +1,6 @@
 import assert = require('assert');
 import { ImageService } from './imageService';
-import { Pokemon, PokemonType } from './models';
+import { Pokemon, PokemonType } from '../models/pokemon';
 
 interface TestCase {
   name: string;

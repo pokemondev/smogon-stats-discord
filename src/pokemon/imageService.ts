@@ -1,4 +1,4 @@
-import { Pokemon } from "./models";
+import { Pokemon } from "../models/pokemon";
 
 const gifUrlExceptions: Readonly<Record<string, string>> = {
   miraidon: 'https://play.pokemonshowdown.com/sprites/gen5ani/miraidon.gif',

@@ -2,8 +2,8 @@ import { readdirSync } from 'fs';
 import { FileHelper } from '../common/fileHelper';
 import { PokemonDb } from '../pokemon/pokemonDb';
 import { FormatCatalog } from '../smogon/formatCatalog';
-import { SmogonFormat } from '../smogon/usageModels';
-import { VgcTeam, VgcTeamMember } from './models';
+import { SmogonFormat } from '../models/smogonUsage';
+import { VgcTeam, VgcTeamMember } from '../models/vgc';
 
 type VgcTeamsDb = Map<string, VgcTeam[]>;
 type PokemonTeamsMap = Map<string, VgcTeam[]>;

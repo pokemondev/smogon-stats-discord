@@ -1,6 +1,6 @@
 import assert = require('assert');
 import { FormatHelper } from './formatHelper';
-import { SmogonFormat } from './usageModels';
+import { SmogonFormat } from '../models/smogonUsage';
 
 process.env.DEFAULT_GENERATION = 'gen9';
 process.env.DEFAULT_META = 'vgc2026regf';

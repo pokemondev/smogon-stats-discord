@@ -32,4 +32,3 @@ export interface SmogonFormat {
     generation: string;
     meta: string;
 }
-

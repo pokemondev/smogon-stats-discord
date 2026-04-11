@@ -4,8 +4,8 @@ import { AppDataSource } from "../appDataSource";
 import { DiscordHelper } from '../common/discordHelper';
 import { FormatHelper } from '../smogon/formatHelper';
 import { TypeService } from '../pokemon/typeService';
-import { EffectivenessType } from '../pokemon/models';
-import { UsageData } from '../smogon/usageModels';
+import { EffectivenessType } from '../models/pokemon';
+import { UsageData } from '../models/smogonUsage';
 
 const pokemonInfoHandlers = {
   moves: {

@@ -1,10 +1,10 @@
 import { PokemonDb } from "../pokemon/pokemonDb";
 import { FileHelper } from "../common/fileHelper";
-import { PokemonSet } from "./setsModels";
-import { Pokemon } from "../pokemon/models";
+import { PokemonSet } from "../models/smogonSets";
+import { Pokemon } from "../models/pokemon";
 import { getMap, areEquals } from "../common/objectHelper";
 import { FormatHelper } from "./formatHelper";
-import { SmogonFormat } from "./usageModels";
+import { SmogonFormat } from "../models/smogonUsage";
 
 type PokemonSetMap = Map<string, PokemonSet[]>;
 type PokemonSetDb = Map<string, PokemonSetMap>;

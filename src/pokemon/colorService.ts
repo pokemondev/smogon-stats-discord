@@ -1,5 +1,5 @@
 import { ColorResolvable } from 'discord.js';
-import { PokemonType } from "./models";
+import { PokemonType } from "../models/pokemon";
 
 export class ColorService {
 

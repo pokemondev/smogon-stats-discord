@@ -1,6 +1,6 @@
-import { SmogonFormat } from "./usageModels";
-import { PokemonSet, Evs } from "./setsModels";
-import { Pokemon } from "../pokemon/models";
+import { SmogonFormat } from "../models/smogonUsage";
+import { PokemonSet, Evs } from "../models/smogonSets";
+import { Pokemon } from "../models/pokemon";
 import { FormatConfig } from '../config/formatConfig';
 import { FormatCatalog } from './formatCatalog';
 

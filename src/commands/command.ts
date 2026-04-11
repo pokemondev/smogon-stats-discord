@@ -8,10 +8,10 @@ import {
 } from 'discord.js';
 import { AppDataSource } from "../appDataSource";
 import { DiscordHelper } from '../common/discordHelper';
-import { MoveSetUsage, UsageData, ChecksAndCountersUsageData, SmogonFormat } from "../smogon/usageModels";
+import { MoveSetUsage, UsageData, ChecksAndCountersUsageData, SmogonFormat } from "../models/smogonUsage";
 import { ColorService } from '../pokemon/colorService';
 import { FormatHelper } from '../smogon/formatHelper';
-import { Pokemon } from '../pokemon/models';
+import { Pokemon } from '../models/pokemon';
 import { ImageService } from '../pokemon/imageService';
 import { FormatConfig } from '../config/formatConfig';
 import { FormatCatalog } from '../smogon/formatCatalog';

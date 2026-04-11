@@ -1,4 +1,4 @@
-import { PokemonType, TypeEffectiveness, Pokemon, EffectivenessItem, EffectivenessType } from "./models";
+import { PokemonType, TypeEffectiveness, Pokemon, EffectivenessItem, EffectivenessType } from "../models/pokemon";
 import { FileHelper } from "../common/fileHelper";
 import { getMapValues } from "../common/objectHelper";
 

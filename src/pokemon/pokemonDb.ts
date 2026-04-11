@@ -1,5 +1,5 @@
 import FuzzyMatching = require('fuzzy-matching');
-import { Pokemon } from "./models";
+import { Pokemon } from "../models/pokemon";
 import { FileHelper } from "../common/fileHelper";
 
 export class PokemonDb {

@@ -1,7 +1,7 @@
 import assert = require('assert');
 import { PokemonDb } from '../pokemon/pokemonDb';
 import { SmogonSets } from './smogonSets';
-import { SmogonFormat } from './usageModels';
+import { SmogonFormat } from '../models/smogonUsage';
 
 interface TestCase {
   name: string;

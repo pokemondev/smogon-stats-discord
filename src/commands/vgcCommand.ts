@@ -1,11 +1,11 @@
 import { ChatInputCommandInteraction, EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { AppDataSource } from '../appDataSource';
 import { DiscordHelper } from '../common/discordHelper';
-import { Pokemon } from '../pokemon/models';
+import { Pokemon } from '../models/pokemon';
 import { FormatCatalog } from '../smogon/formatCatalog';
 import { FormatHelper } from '../smogon/formatHelper';
-import { SmogonFormat } from '../smogon/usageModels';
-import { VgcTeam } from '../vgc/models';
+import { SmogonFormat } from '../models/smogonUsage';
+import { VgcTeam } from '../models/vgc';
 import { CommandBase, CommandHelpTopic, SlashCommandData, SlashCommandHandler } from './command';
 
 const MaxDisplayedTeams = 6;
