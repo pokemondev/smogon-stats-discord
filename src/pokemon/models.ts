@@ -17,6 +17,7 @@ export interface Pokemon {
     possiblesAbilities: string[];
     evolutions: string[];
     generation: string;
+    isAltForm: boolean;
     weight: number;
     height: number;
     usage?: any;
