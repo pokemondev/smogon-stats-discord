@@ -4,26 +4,29 @@ import { DiscordHelper } from '../common/discordHelper';
 import { Pokemon } from '../models/pokemon';
 import { FormatCatalog } from '../smogon/formatCatalog';
 import { FormatHelper } from '../smogon/formatHelper';
-import { SmogonFormat } from '../models/smogonUsage';
-import { VgcTeam } from '../models/vgc';
+import { PokemonUsage, SmogonFormat } from '../models/smogonUsage';
+import { VgcResolvedTeam, VgcTeam, VgcTeamMember, VgcTeamMemberStatSpread } from '../models/vgc';
 import { CommandBase, CommandHelpTopic, SlashCommandData, SlashCommandHandler } from './command';
 
 const MaxDisplayedTeams = 6;
 const TeamLinksFooterText = 'Check more details at x.com/VGCPastes and limitlessvgc.com';
+const TeamDetailsMissingMessage = 'Could not find a unique VGC team with the provided team id.';
 
 export const vgcHelpTopic: CommandHelpTopic = {
   command: 'vgc',
-  description: 'VGC teams with optional Pokemon member filters.',
+  description: 'VGC teams, filters, and full rental-style team details.',
   arguments: [
-    'regulation: Optional VGC regulation filter. Uses the configured default generation\'s default VGC season when omitted.',
-    'pokemon1: Optional Pokemon that must appear on the team.',
-    'pokemon2: Optional second Pokemon that must appear on the team. If pokemon1 is omitted, pokemon2 is treated as pokemon1.',
+    'teams regulation: Optional VGC regulation filter. Uses the configured default generation\'s default VGC season when omitted.',
+    'teams pokemon1: Optional Pokemon that must appear on the team.',
+    'teams pokemon2: Optional second Pokemon that must appear on the team. If pokemon1 is omitted, pokemon2 is treated as pokemon1.',
+    'team-details team-id: Required VGC team id. The service resolves the regulation automatically.',
   ],
   examples: [
     '/vgc teams',
     '/vgc teams pokemon1:charizard',
     '/vgc teams regulation:"VGC 2026 Reg. I"',
     '/vgc teams regulation:"VGC 2026 Reg. I" pokemon1:zamazenta pokemon2:calyrex-shadow',
+    '/vgc team-details team-id:I1280',
   ],
 };
 
@@ -51,6 +54,17 @@ export function createVgcCommandData(): SlashCommandData {
             .setName('pokemon2')
             .setDescription('Second Pokemon that must be on the team')
         )
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('team-details')
+        .setDescription('Show one VGC team in Smogon set notation')
+        .addStringOption(option =>
+          option
+            .setName('team-id')
+            .setDescription('VGC team id')
+            .setRequired(true)
+        )
     );
 }
 
@@ -67,9 +81,49 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
       case 'teams':
         await this.handleTeams(interaction);
         return;
+      case 'team-details':
+        await this.handleTeamDetails(interaction);
+        return;
       default:
         await interaction.reply({ content: 'That subcommand is not supported.', flags: MessageFlags.Ephemeral });
     }
+  }
+
+  private async handleTeamDetails(interaction: ChatInputCommandInteraction): Promise<void> {
+    const requestedTeamId = interaction.options.getString('team-id', true).trim();
+    const resolvedTeam = this.dataSource.vgcTeams.getTeamById(requestedTeamId);
+    if (!resolvedTeam) {
+      await this.replyNoData(interaction, `${TeamDetailsMissingMessage} (${requestedTeamId})`);
+      return;
+    }
+
+    await DiscordHelper.deferCommandReply(interaction);
+
+    const previewPokemon = await this.getMostUsedTeamPokemon(resolvedTeam);
+    const embed = previewPokemon
+      ? this.createPokemonEmbed(previewPokemon, { footer: TeamLinksFooterText, thumbnail: true })
+      : new EmbedBuilder().setFooter({ text: TeamLinksFooterText });
+
+    embed
+      .setTitle(`${FormatHelper.getMetaDisplayName(resolvedTeam.format.meta)} - ${resolvedTeam.team.description}`)
+      .setDescription(this.buildTeamDetailsDescription(resolvedTeam));
+
+    resolvedTeam.team.members.forEach((member, index) => {
+      embed.addFields({
+        name: member.name,
+        value: `\`\`\`${this.getTeamMemberSet(member)}\`\`\`\u2006`,
+        inline: true,
+      });
+
+      if ((index + 1) % 2 === 0 && index !== resolvedTeam.team.members.length - 1) {
+        embed.addFields({ name: '\u200b', value: '\u200b', inline: false });
+      }
+    });
+
+    await interaction.editReply({
+      content: `**__VGC Team Details:__** ${resolvedTeam.team.teamId}`,
+      embeds: [embed],
+    });
   }
 
   private async handleTeams(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -158,6 +212,24 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
       : FormatCatalog.getGenerationDefaultVgcFormat(configuredDefault.generation);
   }
 
+  private async getMostUsedTeamPokemon(teamResult: VgcResolvedTeam): Promise<Pokemon | undefined> {
+    const fallbackPokemon = this.dataSource.pokemonDb.getPokemon(teamResult.team.members[0]?.name);
+
+    try {
+      const usages = await this.dataSource.smogonStats.getUsages(teamResult.format, false);
+      const teamMemberNames = new Set(teamResult.team.members.map(member => member.name));
+      const previewUsage = usages.find(usage => this.isTeamMemberUsage(usage, teamMemberNames));
+      if (!previewUsage) {
+        return fallbackPokemon;
+      }
+
+      return this.dataSource.pokemonDb.getPokemon(previewUsage.name) ?? fallbackPokemon;
+    }
+    catch {
+      return fallbackPokemon;
+    }
+  }
+
   private findPreviewPokemon(teams: VgcTeam[]): Pokemon | undefined {
     for (const team of teams) {
       for (const member of team.members) {
@@ -183,6 +255,19 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     return parts.join(' - ');
   }
 
+  private buildTeamDetailsDescription(resolvedTeam: VgcResolvedTeam): string {
+    const detailLines = [
+      `Player: \`${resolvedTeam.team.owner}\``,
+      `Event: \`${resolvedTeam.team.event}\``,
+      //`Date: \`${resolvedTeam.team.date}\``,
+      `Rank: \`${resolvedTeam.team.rank ?? 'N/A'}\``,
+      `Rental Code: \`${resolvedTeam.team.rentalCode}\``,
+      //`Paste: ${resolvedTeam.team.teamLink}`,
+    ];
+
+    return detailLines.join('\n');
+  }
+
   private buildNoTeamsMessage(format: SmogonFormat, pokemon1?: Pokemon, pokemon2?: Pokemon): string {
     if (pokemon1 && pokemon2) {
       return `No VGC teams available for ${FormatHelper.getMetaDisplayName(format.meta)} with ${pokemon1.name} and ${pokemon2.name}.`;
@@ -197,6 +282,76 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
 
   private buildTeamMembersCodeBlock(team: VgcTeam): string {
     return `\`\`\`\n${team.members.map(member => member.name).join('\n')}\n\`\`\``;
+  }
+
+  private isTeamMemberUsage(usage: PokemonUsage, teamMemberNames: Set<string>): boolean {
+    const usagePokemon = this.dataSource.pokemonDb.getPokemon(usage.name);
+    const usageName = usagePokemon ? usagePokemon.name : usage.name;
+    return teamMemberNames.has(usageName);
+  }
+
+  private getTeamMemberSet(member: VgcTeamMember): string {
+    const lines = [
+      `${member.name}${member.item ? ` @ ${member.item}` : ''}`,
+    ];
+
+    if (member.ability) {
+      lines.push(`Ability: ${member.ability}`);
+    }
+
+    if (member.level) {
+      lines.push(`Level: ${member.level}`);
+    }
+
+    if (member.teraType) {
+      lines.push(`Tera Type: ${member.teraType}`);
+    }
+
+    const evs = this.formatStatSpread('EVs', member.evs);
+    if (evs) {
+      lines.push(evs);
+    }
+
+    const ivs = this.formatStatSpread('IVs', member.ivs);
+    if (ivs) {
+      lines.push(ivs);
+    }
+
+    if (member.nature) {
+      lines.push(`${member.nature} Nature`);
+    }
+
+    member.moves.forEach(move => {
+      lines.push(`- ${move}`);
+    });
+
+    return lines.join('\n');
+  }
+
+  private formatStatSpread(label: string, spread?: VgcTeamMemberStatSpread): string | undefined {
+    if (!spread) {
+      return undefined;
+    }
+
+    const values = Object.entries(spread)
+      .filter(([, value]) => value !== undefined)
+      .map(([stat, value]) => `${value} ${this.getDisplayStatName(stat)}`);
+
+    return values.length
+      ? `${label}: ${values.join(' / ')}`
+      : undefined;
+  }
+
+  private getDisplayStatName(stat: string): string {
+    switch (stat) {
+      case 'hp': return 'HP';
+      case 'at': return 'Atk';
+      case 'df': return 'Def';
+      case 'sa': return 'SpA';
+      case 'sd': return 'SpD';
+      case 'sp': return 'Spe';
+      default: return stat.toUpperCase();
+    }
   }
 }
 

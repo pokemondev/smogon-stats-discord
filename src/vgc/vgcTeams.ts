@@ -2,18 +2,22 @@ import { readdirSync } from 'fs';
 import { FileHelper } from '../common/fileHelper';
 import { PokemonDb } from '../pokemon/pokemonDb';
 import { FormatCatalog } from '../smogon/formatCatalog';
+import { FormatHelper } from '../smogon/formatHelper';
 import { SmogonFormat } from '../models/smogonUsage';
-import { VgcTeam, VgcTeamMember } from '../models/vgc';
+import { VgcResolvedTeam, VgcTeam, VgcTeamMember } from '../models/vgc';
 
-type VgcTeamsDb = Map<string, VgcTeam[]>;
-type PokemonTeamsMap = Map<string, VgcTeam[]>;
-type PokemonTeamsDb = Map<string, PokemonTeamsMap>;
+type VgcTeamsDb = Map<string, VgcTeam[]>;           // meta to teams map
+type PokemonTeamsMap = Map<string, VgcTeam[]>;      // pokemon to teams map
+type PokemonTeamsDb = Map<string, PokemonTeamsMap>; // meta to pokemon teams map
+type TeamIdDb = Map<string, VgcResolvedTeam>;
+
 const NullRankFallback = Number.MAX_SAFE_INTEGER;
 
 export class VgcTeams {
   private readonly teamsDb: VgcTeamsDb = new Map();
   private readonly pokemonTeamsDb: PokemonTeamsDb = new Map();
   private readonly teamMemberKeys = new Map<VgcTeam, Set<string>>();
+  private readonly teamIdDb: TeamIdDb = new Map();
 
   constructor(private readonly pokemonDb: PokemonDb) {
     this.loadFileData();
@@ -47,6 +51,15 @@ export class VgcTeams {
     return primaryTeams.filter(team => this.teamMemberKeys.get(team)?.has(secondaryPokemonKey));
   }
 
+  public getTeamById(teamId: string): VgcResolvedTeam | undefined {
+    const teamIdKey = this.getTeamIdKey(teamId);
+    if (!teamIdKey) {
+      return undefined;
+    }
+
+    return this.teamIdDb.get(teamIdKey);
+  }
+
   private loadFileData(): void {
     const teamFiles = readdirSync('data/vgc-teams')
       .filter(filename => /^vgcteams-.+\.json$/i.test(filename))
@@ -54,6 +67,7 @@ export class VgcTeams {
 
     teamFiles.forEach(filename => {
       const meta = this.getMetaFromFilename(filename);
+      const format = FormatCatalog.resolveVgcSeason(meta);
       const loadedTeams = FileHelper.loadFileData<VgcTeam[]>(`vgc-teams/${filename}`);
       const teams = loadedTeams
         .filter(team => team.members.length === 6)
@@ -61,7 +75,7 @@ export class VgcTeams {
       teams.sort((left, right) => this.compareTeams(left, right));
       const pokemonTeamsMap: PokemonTeamsMap = new Map();
 
-      teams.forEach(team => this.indexTeam(pokemonTeamsMap, team));
+        teams.forEach(team => this.indexTeam(pokemonTeamsMap, team, { generation: format.gen, meta }));
 
       this.teamsDb.set(meta, teams);
       this.pokemonTeamsDb.set(meta, pokemonTeamsMap);
@@ -72,7 +86,9 @@ export class VgcTeams {
     });
   }
 
-  private indexTeam(pokemonTeamsMap: PokemonTeamsMap, team: VgcTeam): void {
+  private indexTeam(pokemonTeamsMap: PokemonTeamsMap, team: VgcTeam, format: SmogonFormat): void {
+    this.indexTeamId(team, format);
+
     const memberKeys = new Set<string>();
 
     team.members.forEach(member => {
@@ -92,6 +108,20 @@ export class VgcTeams {
     });
 
     this.teamMemberKeys.set(team, memberKeys);
+  }
+
+  private indexTeamId(team: VgcTeam, format: SmogonFormat): void {
+    const teamIdKey = this.getTeamIdKey(team.teamId);
+    if (!teamIdKey) {
+      return;
+    }
+
+    const currentTeam = this.teamIdDb.get(teamIdKey);
+    if (currentTeam && this.isDefaultRegulation(currentTeam.format)) {
+      return;
+    }
+
+    this.teamIdDb.set(teamIdKey, { format, team });
   }
 
   private normalizeTeam(team: VgcTeam): VgcTeam {
@@ -137,6 +167,19 @@ export class VgcTeams {
   private getPokemonKey(pokemonName: string): string {
     const pokemon = this.pokemonDb.getPokemon(pokemonName.trim());
     return (pokemon ? pokemon.name : pokemonName).trim().toLowerCase();
+  }
+
+  private getTeamIdKey(teamId?: string): string {
+    return teamId ? teamId.trim().toLowerCase() : '';
+  }
+
+  private isDefaultRegulation(format: SmogonFormat): boolean {
+    const configuredDefault = FormatHelper.getDefault();
+    const defaultVgcFormat = FormatCatalog.isVgcMeta(configuredDefault.meta)
+      ? configuredDefault
+      : FormatCatalog.getGenerationDefaultVgcFormat(configuredDefault.generation);
+
+    return format.meta === defaultVgcFormat.meta;
   }
 
   private compareTeams(left: VgcTeam, right: VgcTeam): number {

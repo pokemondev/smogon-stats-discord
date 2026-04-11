@@ -156,16 +156,20 @@ VGC metagame related commands.
 Subcommands:
 
 - `teams` — featured teams for a VGC regulation
+- `team-details` — full team paste in Smogon notation for a VGC team id
 
 Arguments:
 
 - `teams`: `regulation` optional, `pokemon1` optional, `pokemon2` optional
+- `team-details`: `team-id` required
 
 Notes:
 
 - `regulation` uses VGC season choices such as `VGC 2026 Reg. I`
 - if only `pokemon2` is provided, it is treated as `pokemon1`
-- team list output is capped at the top 10 matching teams
+- team list output is capped at the top 6 matching teams
+- `team-details` resolves the regulation automatically from the team id
+- team details use the most used Pokemon on that team for the embed color and sprite when usage data is available
 
 Examples:
 
@@ -174,6 +178,7 @@ Examples:
 /vgc teams regulation:"VGC 2026 Reg. I"
 /vgc teams pokemon1:charizard
 /vgc teams regulation:"VGC 2026 Reg. I" pokemon1:zamazenta pokemon2:calyrex-shadow
+/vgc team-details team-id:I1280
 ```
 
 ### `/help`

@@ -1,6 +1,8 @@
 import assert = require('assert');
 import { ConfigHelper } from '../config/configHelper';
+import { ColorService } from '../pokemon/colorService';
 import { PokemonDb } from '../pokemon/pokemonDb';
+import { VgcResolvedTeam } from '../models/vgc';
 import { VgcCommand } from './vgcCommand';
 
 process.env.BOT_NAME = process.env.BOT_NAME || 'Smogon Stats';
@@ -31,14 +33,25 @@ function createSampleTeam(teamId: string, description: string) {
     event: 'Event',
     rank: 1,
     members: [
-      { name: 'Charizard', item: 'Item', ability: 'Ability', teraType: 'Fire', moves: [] },
-      { name: 'Incineroar', item: 'Item', ability: 'Ability', teraType: 'Fire', moves: [] },
-      { name: 'Amoonguss', item: 'Item', ability: 'Ability', teraType: 'Grass', moves: [] },
-      { name: 'Dragonite', item: 'Item', ability: 'Ability', teraType: 'Normal', moves: [] },
-      { name: 'Whimsicott', item: 'Item', ability: 'Ability', teraType: 'Fairy', moves: [] },
-      { name: 'Zamazenta', item: 'Item', ability: 'Ability', teraType: 'Steel', moves: [] },
+      { name: 'Charizard', item: 'Choice Specs', ability: 'Solar Power', teraType: 'Fire', level: 50, nature: 'Timid', evs: { hp: 4, sa: 252, sp: 252 }, moves: ['Heat Wave', 'Air Slash', 'Protect', 'Solar Beam'] },
+      { name: 'Incineroar', item: 'Sitrus Berry', ability: 'Intimidate', teraType: 'Grass', level: 50, nature: 'Careful', evs: { hp: 252, df: 76, sd: 180 }, moves: ['Fake Out', 'Flare Blitz', 'Parting Shot', 'Knock Off'] },
+      { name: 'Amoonguss', item: 'Rocky Helmet', ability: 'Regenerator', teraType: 'Water', level: 50, nature: 'Bold', evs: { hp: 236, df: 156, sd: 116 }, ivs: { at: 0, sp: 0 }, moves: ['Spore', 'Rage Powder', 'Pollen Puff', 'Protect'] },
+      { name: 'Dragonite', item: 'Loaded Dice', ability: 'Inner Focus', teraType: 'Normal', level: 50, nature: 'Adamant', evs: { hp: 36, at: 252, sp: 220 }, moves: ['Extreme Speed', 'Scale Shot', 'Stomping Tantrum', 'Protect'] },
+      { name: 'Whimsicott', item: 'Focus Sash', ability: 'Prankster', teraType: 'Ghost', level: 50, nature: 'Timid', evs: { hp: 4, sa: 252, sp: 252 }, ivs: { at: 0 }, moves: ['Moonblast', 'Tailwind', 'Encore', 'Protect'] },
+      { name: 'Zamazenta', item: 'Clear Amulet', ability: 'Dauntless Shield', teraType: 'Steel', level: 50, nature: 'Jolly', evs: { hp: 4, at: 252, sp: 252 }, moves: ['Behemoth Bash', 'Body Press', 'Wide Guard', 'Protect'] },
     ],
   };
+}
+
+function createResolvedTeam(teamId: string, meta: string = 'vgc2026regi'): VgcResolvedTeam {
+  return {
+    format: { generation: 'gen9', meta },
+    team: createSampleTeam(teamId, 'Sample Team'),
+  };
+}
+
+function getNumericColor(color: unknown): number {
+  return Number.parseInt(String(color).replace('#', ''), 16);
 }
 
 class FakeChatInputCommandInteraction {
@@ -49,11 +62,14 @@ class FakeChatInputCommandInteraction {
   public replied = false;
   public readonly calls: InteractionCall[] = [];
 
-  constructor(private readonly strings: Record<string, string | undefined>) {
+  constructor(
+    private readonly strings: Record<string, string | undefined>,
+    private readonly subcommand: 'teams' | 'team-details' = 'teams',
+  ) {
   }
 
   public readonly options = {
-    getSubcommand: (_required?: boolean) => 'teams',
+    getSubcommand: (_required?: boolean) => this.subcommand,
     getString: (name: string, required?: boolean) => {
       const value = this.strings[name];
       if ((value === undefined || value === null) && required) {
@@ -88,6 +104,23 @@ const pokemonDb = new PokemonDb();
 
 const tests: TestCase[] = [
   {
+    name: 'command data includes the team-details subcommand with a required team-id option',
+    run: async () => {
+      const command = new VgcCommand({ pokemonDb } as never);
+      const json = command.data.toJSON();
+      const subcommand = json.options?.find(option => option.name === 'team-details') as {
+        options?: Array<{ name: string; required?: boolean; description?: string; type?: number }>;
+      } | undefined;
+      const teamIdOption = subcommand?.options?.find(option => option.name === 'team-id');
+
+      assert.ok(subcommand, 'Expected team-details subcommand to be registered.');
+      assert.ok(teamIdOption, 'Expected a required team-id option on team-details.');
+      assert.strictEqual(teamIdOption?.description, 'VGC team id');
+      assert.strictEqual(teamIdOption?.type, 3);
+      assert.strictEqual(teamIdOption?.required, true);
+    },
+  },
+  {
     name: 'teams renders code-block members, ID labels, two-column separators, and footer links',
     run: async () => {
       const command = new VgcCommand({
@@ -99,6 +132,7 @@ const tests: TestCase[] = [
             createSampleTeam('I1278', 'Sample Team 3'),
           ],
           getTeamsByPokemon: () => [],
+          getTeamById: () => undefined,
         },
       } as never);
       const interaction = new FakeChatInputCommandInteraction({});
@@ -132,6 +166,7 @@ const tests: TestCase[] = [
               createSampleTeam('I1280', 'Sample Team'),
             ];
           },
+          getTeamById: () => undefined,
         },
       } as never);
       const interaction = new FakeChatInputCommandInteraction({
@@ -160,6 +195,7 @@ const tests: TestCase[] = [
               createSampleTeam('I1280', 'Sample Team'),
             ];
           },
+          getTeamById: () => undefined,
         },
       } as never);
       const interaction = new FakeChatInputCommandInteraction({
@@ -183,11 +219,108 @@ const tests: TestCase[] = [
         vgcTeams: {
           getTeams: () => [],
           getTeamsByPokemon: () => [],
+          getTeamById: () => undefined,
         },
       } as never);
       const interaction = new FakeChatInputCommandInteraction({
         pokemon1: 'missingno',
       });
+
+      await command.execute(interaction as never);
+
+      assert.deepStrictEqual(interaction.calls.map(call => call.name), ['reply']);
+      assert.strictEqual(interaction.deferred, false);
+    },
+  },
+  {
+    name: 'team-details renders six Smogon-style sets in two columns and uses the most used team member for embed color and image',
+    run: async () => {
+      const command = new VgcCommand({
+        pokemonDb,
+        smogonStats: {
+          getUsages: async () => [
+            { rank: 1, name: 'Incineroar', usageRaw: 25.1 },
+            { rank: 2, name: 'Zamazenta', usageRaw: 20.4 },
+          ],
+        },
+        vgcTeams: {
+          getTeams: () => [],
+          getTeamsByPokemon: () => [],
+          getTeamById: () => createResolvedTeam('I1280'),
+        },
+      } as never);
+      const interaction = new FakeChatInputCommandInteraction({ 'team-id': 'i1280' }, 'team-details');
+
+      await command.execute(interaction as never);
+
+      assert.deepStrictEqual(interaction.calls.map(call => call.name), ['deferReply', 'editReply']);
+
+      const editReplyCall = interaction.calls.find(call => call.name === 'editReply');
+      const payload = editReplyCall?.payload as { content: string; embeds: Array<{ toJSON?: () => any }> };
+      const embed = payload.embeds[0].toJSON ? payload.embeds[0].toJSON() : payload.embeds[0];
+      const incineroar = pokemonDb.getPokemon('Incineroar');
+      assert.ok(incineroar, 'Expected Incineroar in the pokemon database.');
+
+      assert.strictEqual(payload.content, '**__VGC Team Details:__** I1280');
+      assert.strictEqual(embed.title, 'VGC 2026 Reg. I - Sample Team');
+      assert.strictEqual(embed.color, getNumericColor(ColorService.getColorForType(incineroar.type1)));
+      assert.ok((embed.thumbnail?.url ?? '').toLowerCase().includes('incineroar'));
+      assert.strictEqual(embed.fields[0].name, 'Charizard');
+      assert.strictEqual(embed.fields[0].inline, true);
+      assert.ok(embed.fields[0].value.includes('```Charizard @ Choice Specs'));
+      assert.ok(embed.fields[0].value.includes('Ability: Solar Power'));
+      assert.ok(embed.fields[0].value.includes('Tera Type: Fire'));
+      assert.ok(embed.fields[0].value.includes('- Heat Wave'));
+      assert.strictEqual(embed.fields[2].name, '\u200b');
+      assert.strictEqual(embed.fields[5].name, '\u200b');
+      assert.strictEqual(embed.fields.filter((field: { inline?: boolean }) => field.inline).length, 6);
+    },
+  },
+  {
+    name: 'team-details falls back to the first team member when usage data is unavailable',
+    run: async () => {
+      const command = new VgcCommand({
+        pokemonDb,
+        smogonStats: {
+          getUsages: async () => {
+            throw new Error('missing usage data');
+          },
+        },
+        vgcTeams: {
+          getTeams: () => [],
+          getTeamsByPokemon: () => [],
+          getTeamById: () => createResolvedTeam('I1280'),
+        },
+      } as never);
+      const interaction = new FakeChatInputCommandInteraction({ 'team-id': 'I1280' }, 'team-details');
+
+      await command.execute(interaction as never);
+
+      const editReplyCall = interaction.calls.find(call => call.name === 'editReply');
+      const payload = editReplyCall?.payload as { embeds: Array<{ toJSON?: () => any }> };
+      const embed = payload.embeds[0].toJSON ? payload.embeds[0].toJSON() : payload.embeds[0];
+      const charizard = pokemonDb.getPokemon('Charizard');
+      assert.ok(charizard, 'Expected Charizard in the pokemon database.');
+
+      assert.strictEqual(embed.color, getNumericColor(ColorService.getColorForType(charizard.type1)));
+      assert.ok((embed.thumbnail?.url ?? '').toLowerCase().includes('charizard'));
+    },
+  },
+  {
+    name: 'team-details replies immediately when the team id cannot be resolved',
+    run: async () => {
+      const command = new VgcCommand({
+        pokemonDb,
+        smogonStats: {
+          getUsages: async () => [],
+        },
+        vgcTeams: {
+          getTeams: () => [],
+          getTeamsByPokemon: () => [],
+          getTeamById: () => undefined,
+        },
+      } as never);
+      const interaction = new FakeChatInputCommandInteraction({ 'team-id': 'missing' }, 'team-details');
 
       await command.execute(interaction as never);
 

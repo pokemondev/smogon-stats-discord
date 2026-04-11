@@ -67,6 +67,7 @@ export class HelpCommand implements SlashCommandHandler {
         '/stats usage',
         '/stats leads meta:OU generation:"Gen 8"',
         '/vgc teams regulation:"VGC 2026 Reg. I" pokemon1:zamazenta',
+        '/vgc team-details team-id:I1280',
       ].join('\n'),
       inline: false,
     });

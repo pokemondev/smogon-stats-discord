@@ -1,3 +1,5 @@
+import { SmogonFormat } from './smogonUsage';
+
 export interface VgcTeamMemberStatSpread {
   hp?: number;
   at?: number;
@@ -31,4 +33,9 @@ export interface VgcTeam {
   event: string;
   rank: number | null;
   members: VgcTeamMember[];
+}
+
+export interface VgcResolvedTeam {
+  format: SmogonFormat;
+  team: VgcTeam;
 }
