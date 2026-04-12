@@ -5,7 +5,7 @@ import { Pokemon } from '../models/pokemon';
 import { FormatCatalog } from '../smogon/formatCatalog';
 import { FormatHelper } from '../smogon/formatHelper';
 import { PokemonUsage, SmogonFormat } from '../models/smogonUsage';
-import { VgcResolvedTeam, VgcTeam, VgcTeamMember, VgcTeamMemberStatSpread } from '../models/vgc';
+import { VgcResolvedTeam, VgcTeam } from '../models/vgc';
 import { CommandBase, CommandHelpTopic, SlashCommandData, SlashCommandHandler } from './command';
 
 const MaxDisplayedTeams = 6;
@@ -111,7 +111,7 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     resolvedTeam.team.members.forEach((member, index) => {
       embed.addFields({
         name: member.name,
-        value: `\`\`\`${this.getTeamMemberSet(member)}\`\`\`\u2006`,
+        value: `\`\`\`${FormatHelper.getSmogonSet(member)}\`\`\`\u2006`,
         inline: true,
       });
 
@@ -288,70 +288,6 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     const usagePokemon = this.dataSource.pokemonDb.getPokemon(usage.name);
     const usageName = usagePokemon ? usagePokemon.name : usage.name;
     return teamMemberNames.has(usageName);
-  }
-
-  private getTeamMemberSet(member: VgcTeamMember): string {
-    const lines = [
-      `${member.name}${member.item ? ` @ ${member.item}` : ''}`,
-    ];
-
-    if (member.ability) {
-      lines.push(`Ability: ${member.ability}`);
-    }
-
-    if (member.level) {
-      lines.push(`Level: ${member.level}`);
-    }
-
-    if (member.teraType) {
-      lines.push(`Tera Type: ${member.teraType}`);
-    }
-
-    const evs = this.formatStatSpread('EVs', member.evs);
-    if (evs) {
-      lines.push(evs);
-    }
-
-    const ivs = this.formatStatSpread('IVs', member.ivs);
-    if (ivs) {
-      lines.push(ivs);
-    }
-
-    if (member.nature) {
-      lines.push(`${member.nature} Nature`);
-    }
-
-    member.moves.forEach(move => {
-      lines.push(`- ${move}`);
-    });
-
-    return lines.join('\n');
-  }
-
-  private formatStatSpread(label: string, spread?: VgcTeamMemberStatSpread): string | undefined {
-    if (!spread) {
-      return undefined;
-    }
-
-    const values = Object.entries(spread)
-      .filter(([, value]) => value !== undefined)
-      .map(([stat, value]) => `${value} ${this.getDisplayStatName(stat)}`);
-
-    return values.length
-      ? `${label}: ${values.join(' / ')}`
-      : undefined;
-  }
-
-  private getDisplayStatName(stat: string): string {
-    switch (stat) {
-      case 'hp': return 'HP';
-      case 'at': return 'Atk';
-      case 'df': return 'Def';
-      case 'sa': return 'SpA';
-      case 'sd': return 'SpD';
-      case 'sp': return 'Spe';
-      default: return stat.toUpperCase();
-    }
   }
 }
 

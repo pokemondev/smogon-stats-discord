@@ -226,7 +226,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     for (const set of sets) {
       embed.addFields({
         name: set.name,
-        value: `\`\`\`${FormatHelper.getSmogonSet(query.pokemon, set)}\`\`\`\u2006`,
+        value: `\`\`\`${FormatHelper.getSmogonSet(set, query.pokemon)}\`\`\`\u2006`,
         inline: false,
       });
     }

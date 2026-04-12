@@ -1,10 +1,11 @@
 import { readdirSync } from 'fs';
 import { FileHelper } from '../common/fileHelper';
 import { PokemonDb } from '../pokemon/pokemonDb';
+import { PokemonSet } from '../models/smogonSets';
 import { FormatCatalog } from '../smogon/formatCatalog';
 import { FormatHelper } from '../smogon/formatHelper';
 import { SmogonFormat } from '../models/smogonUsage';
-import { VgcResolvedTeam, VgcTeam, VgcTeamMember } from '../models/vgc';
+import { VgcResolvedTeam, VgcTeam } from '../models/vgc';
 
 type VgcTeamsDb = Map<string, VgcTeam[]>;           // meta to teams map
 type PokemonTeamsMap = Map<string, VgcTeam[]>;      // pokemon to teams map
@@ -131,7 +132,7 @@ export class VgcTeams {
     };
   }
 
-  private normalizeMember(member: VgcTeamMember): VgcTeamMember {
+  private normalizeMember(member: PokemonSet): PokemonSet {
     const pokemon = this.pokemonDb.getPokemon(member.name.trim());
 
     return {

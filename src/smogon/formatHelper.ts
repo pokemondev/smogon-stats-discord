@@ -1,10 +1,12 @@
 import { SmogonFormat } from "../models/smogonUsage";
-import { PokemonSet, Evs } from "../models/smogonSets";
+import { PokemonSet, StatsValues } from "../models/smogonSets";
 import { Pokemon } from "../models/pokemon";
 import { FormatConfig } from '../config/formatConfig';
 import { FormatCatalog } from './formatCatalog';
 
 export class FormatHelper {
+  private static readonly StatOrder = ['hp', 'at', 'df', 'sa', 'sd', 'sp'] as const;
+
   public static Generations = FormatCatalog.Generations;
   public static VgcSeasons = FormatCatalog.VgcSeasons;
   public static MetaValues = FormatCatalog.MetaValues;
@@ -82,44 +84,68 @@ export class FormatHelper {
     return `Gen ${format.generation.replace(/^gen/i, '')} ${format.meta.toUpperCase()}`;
   }
 
-  public static getSmogonSet(pokemon: Pokemon, set: PokemonSet): string {
-    var evCounter = 0;
-    var pkmSetText = "";
-    pkmSetText = pokemon.name + (set.item ? " @ " + set.item : "") + "\n";
-    pkmSetText += set.nature + " Nature" + "\n";
-    pkmSetText += set.ability ? "Ability: " + set.ability + "\n" : "";
-    
-    pkmSetText += "EVs: ";
-    var evsArray = [];
-    for (var stat in set.evs) {
-      if (set.evs[stat]) {
-        evsArray.push(set.evs[stat] + " " + this.getDisplayStatName(stat));
-        evCounter += set.evs[stat];
-        if (evCounter > 510) break;
-      }
-    }
-    pkmSetText += evsArray.reduce((a,b) => `${a} / ${b}`); // serialize(evsArray, " / ");
-    pkmSetText += "\n";
-    
-    for (var i = 0; i < 4; i++) {
-      var moveName = set.moves[i];
-      if (moveName !== "(No Move)") {
-        pkmSetText += "- " + moveName + "\n";
-      }
-    }
-    pkmSetText = pkmSetText.trim();
-    return pkmSetText;
+  public static getSmogonSet(set: PokemonSet, pokemon?: Pokemon): string {
+    const displayName = pokemon?.name ?? set.name;
+    const lines = [
+      displayName + (set.item ? ' @ ' + set.item : ''),
+    ];
+
+    if (set.ability) lines.push('Ability: ' + set.ability);
+    if (set.level) lines.push('Level: ' + set.level);
+
+    const ivs = this.formatStatSpread('IVs', set.ivs);
+    if (ivs) lines.push(ivs);
+
+    const evs = this.formatStatSpread('EVs', set.evs, 510);
+    if (evs) lines.push(evs);
+
+    if (set.nature) lines.push(set.nature + ' Nature');
+
+    set.moves
+      .filter(moveName => moveName && moveName !== '(No Move)')
+      .forEach(moveName => lines.push('- ' + moveName));
+
+    return lines.join('\n').trim();
   }
 
   // helpers
-  private static ensureValidVgc(meta: string, gen: string, year?: string, regulation?: string) {
+  private static ensureValidVgc(meta?: string, gen?: string, year?: string, regulation?: string) {
     const season = FormatCatalog.resolveVgcSeason(meta, gen, year, regulation);
     return { meta: season.meta, gen: season.gen };
   }
 
   private static isVgc(meta?: string): boolean { return FormatCatalog.isVgcMeta(meta); };
 
-  private static getDisplayStatName(stat: string) {
+  private static formatStatSpread(label: string, spread?: StatsValues, maxTotal?: number): string | undefined {
+    if (!spread) 
+      return undefined;
+
+    let total = 0;
+    const values = this.getOrderedStatEntries(spread)
+      .filter(([, value]) => value !== undefined)
+      .flatMap(([stat, value]) => {
+        if (value === undefined)
+          return [];        
+
+        if (maxTotal !== undefined && total + value > maxTotal)
+          return [];        
+
+        total += value;
+        return [`${value} ${this.getDisplayStatName(stat)}`];
+      });
+
+    return values.length ? `${label}: ${values.join(' / ')}` : undefined;
+  }
+
+  private static getOrderedStatEntries(spread: StatsValues): Array<[string, number | undefined]> {
+    const knownEntries = this.StatOrder.map(stat => [stat, spread[stat]] as [string, number | undefined]);
+    const extraEntries = Object.entries(spread)
+      .filter(([stat]) => !this.StatOrder.includes(stat as typeof this.StatOrder[number]));
+
+    return [...knownEntries, ...extraEntries];
+  }
+
+  private static getDisplayStatName(stat: string): string {
     switch (stat) {
       case 'hp': return 'HP';
       case 'at': return 'Atk';
@@ -127,6 +153,7 @@ export class FormatHelper {
       case 'sa': return 'SpA';
       case 'sd': return 'SpD';
       case 'sp': return 'Spe';
+      default: return stat.toUpperCase();
     }
   }
 

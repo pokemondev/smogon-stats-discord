@@ -28,7 +28,7 @@ export class SmogonSets {
 
     const sets = genSets.get(pokemon.name);
     return sets
-      ? sets.filter(set => areEquals(set.format, format))
+      ? sets.filter(set => set.format ? areEquals(set.format, format) : false)
       : [];
   }
 

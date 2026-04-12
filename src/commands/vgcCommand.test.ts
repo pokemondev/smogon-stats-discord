@@ -269,8 +269,9 @@ const tests: TestCase[] = [
       assert.strictEqual(embed.fields[0].inline, true);
       assert.ok(embed.fields[0].value.includes('```Charizard @ Choice Specs'));
       assert.ok(embed.fields[0].value.includes('Ability: Solar Power'));
-      assert.ok(embed.fields[0].value.includes('Tera Type: Fire'));
       assert.ok(embed.fields[0].value.includes('- Heat Wave'));
+      assert.ok(embed.fields[3].value.includes('IVs: 0 Atk / 0 Spe'));
+      assert.ok(embed.fields[3].value.includes('Bold Nature'));
       assert.strictEqual(embed.fields[2].name, '\u200b');
       assert.strictEqual(embed.fields[5].name, '\u200b');
       assert.strictEqual(embed.fields.filter((field: { inline?: boolean }) => field.inline).length, 6);
