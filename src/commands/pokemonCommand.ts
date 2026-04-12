@@ -3,6 +3,7 @@ import { CommandBase, CommandHelpTopic, MovesetCommandData, SlashCommandData, Sl
 import { AppDataSource } from "../appDataSource";
 import { DiscordHelper } from '../common/discordHelper';
 import { FormatHelper } from '../smogon/formatHelper';
+import { FormatCatalog } from '../smogon/formatCatalog';
 import { TypeService } from '../pokemon/typeService';
 import { EffectivenessType } from '../models/pokemon';
 import { UsageData } from '../models/smogonUsage';
@@ -131,6 +132,8 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     });
 
     const { stats, baseStatsData } = this.getBaseStatsData(cmd);
+    const isVgc = FormatCatalog.isVgcMeta(cmd.format.meta);
+    
     const info = await this.getGeneralInfoData(cmd);
     const abilities = this.getData(cmd.moveSet.abilities);
     const moves = this.getData(cmd.moveSet.moves);
@@ -140,7 +143,10 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const typeFieldName = isGen9 ? 'Tera Types' : 'Weak/Resist';
     const typeFieldData = isGen9 ? teraTypes : defensiveProfile;
     const spreads = this.getData(cmd.moveSet.spreads, 4, true);
-    const countersChecks = this.getCountersChecksData(cmd);
+    const matchupFieldName = isVgc ? 'Team Mates' : 'Counters & Checks';
+    const matchupFieldData = isVgc
+      ? this.getData(cmd.moveSet.teamMates, 4)
+      : this.getCountersChecksData(cmd);
 
     embed.addFields(
       { name: `Base Stats Total: ${stats.tot}`, value: baseStatsData, inline: true },
@@ -154,7 +160,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
         { name: 'Items', value: items, inline: true },
         { name: typeFieldName, value: typeFieldData, inline: true },
         { name: 'Nature/IV Spread', value: spreads, inline: true },
-        { name: 'Counters & Checks', value: countersChecks, inline: true },
+        { name: matchupFieldName, value: matchupFieldData, inline: true },
       );
     } else {
       embed.addFields({ name: typeFieldName, value: typeFieldData, inline: true });

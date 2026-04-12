@@ -84,6 +84,18 @@ function createEmptyMoveSet(pokemonName: string): MoveSetUsage {
   };
 }
 
+function getEditReplyPayload(interaction: FakeChatInputCommandInteraction): { content?: string; embeds: Array<{ toJSON?: () => any }> } {
+  const editReplyCall = interaction.calls.find(call => call.name === 'editReply');
+  assert.ok(editReplyCall, 'Expected an editReply call.');
+  return editReplyCall?.payload as { content?: string; embeds: Array<{ toJSON?: () => any }> };
+}
+
+function getEditReplyEmbed(interaction: FakeChatInputCommandInteraction): any {
+  const payload = getEditReplyPayload(interaction);
+  const embed = payload.embeds[0];
+  return embed.toJSON ? embed.toJSON() : embed;
+}
+
 const tests: TestCase[] = [
   {
     name: 'sets defers before editing successful responses',
@@ -158,6 +170,88 @@ const tests: TestCase[] = [
       await command.execute(interaction as never);
 
       assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'deferReply', 'editReply' ]);
+    }
+  },
+  {
+    name: 'summary shows Team Mates for VGC using moves-style formatting and top 4 only',
+    run: async () => {
+      const command = new PokemonCommand(dataSource);
+      const interaction = createInteraction('summary', {
+        name: 'incineroar',
+        generation: '9',
+        meta: 'vgc2026regi',
+      });
+
+      (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+        format: query.format,
+        pokemon: query.pokemon,
+        moveSet: {
+          ...createEmptyMoveSet(query.pokemon.name),
+          teamMates: [
+            { name: 'Miraidon', percentage: 42.345 },
+            { name: 'Calyrex-Shadow', percentage: 37.1 },
+            { name: 'Urshifu-Rapid-Strike', percentage: 25.555 },
+            { name: 'Amoonguss', percentage: 19.999 },
+            { name: 'Farigiraf', percentage: 10.5 },
+          ],
+          checksAndCounters: [
+            { name: 'Landorus-Therian', percentage: 0, kOed: 55.1, switchedOut: 24.8 },
+          ],
+        },
+      });
+      (command as any).getGeneralInfoData = async () => 'Meta: `VGC 2026 Reg. I`';
+
+      await command.execute(interaction as never);
+
+      assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'deferReply', 'editReply' ]);
+
+      const embed = getEditReplyEmbed(interaction);
+      const teamMatesField = embed.fields.find((field: { name: string; value: string }) => field.name === 'Team Mates');
+
+      assert.ok(teamMatesField, 'Expected Team Mates field for VGC summary.');
+      assert.strictEqual(embed.fields.some((field: { name: string }) => field.name === 'Counters & Checks'), false);
+      assert.strictEqual(teamMatesField.value, [
+        'Miraidon: `42.34%`',
+        'Calyrex-Shadow: `37.10%`',
+        'Urshifu-Rapid-Strike: `25.55%`',
+        'Amoonguss: `20.00%`',
+      ].join('\n'));
+      assert.strictEqual(teamMatesField.value.includes('Farigiraf'), false);
+    }
+  },
+  {
+    name: 'summary keeps Counters & Checks for non-VGC formats',
+    run: async () => {
+      const command = new PokemonCommand(dataSource);
+      const interaction = createInteraction('summary', {
+        name: 'incineroar',
+        generation: '9',
+        meta: 'ou',
+      });
+
+      (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+        format: query.format,
+        pokemon: query.pokemon,
+        moveSet: {
+          ...createEmptyMoveSet(query.pokemon.name),
+          teamMates: [
+            { name: 'Rillaboom', percentage: 18.75 },
+          ],
+          checksAndCounters: [
+            { name: 'Great Tusk', percentage: 0, kOed: 51.2, switchedOut: 33.4 },
+          ],
+        },
+      });
+      (command as any).getGeneralInfoData = async () => 'Meta: `OU`';
+
+      await command.execute(interaction as never);
+
+      const embed = getEditReplyEmbed(interaction);
+      const countersField = embed.fields.find((field: { name: string; value: string }) => field.name === 'Counters & Checks');
+
+      assert.ok(countersField, 'Expected Counters & Checks field for non-VGC summary.');
+      assert.strictEqual(embed.fields.some((field: { name: string }) => field.name === 'Team Mates'), false);
+      assert.strictEqual(countersField.value, '`Great Tusk: KO 51.2% / SW 33.4%`');
     }
   }
 ];
