@@ -1,4 +1,4 @@
-import { SmogonFormat } from './usageModels';
+import { SmogonFormat } from '../models/smogonUsage';
 
 interface VgcSeason {
   gen: string;

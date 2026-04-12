@@ -1,4 +1,4 @@
-import { SmogonFormat } from "../smogon/usageModels";
+import { SmogonFormat } from "./smogonUsage";
 
 export class DataFileError extends Error {
   public readonly filename: string;

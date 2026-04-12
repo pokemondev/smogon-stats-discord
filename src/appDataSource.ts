@@ -3,11 +3,13 @@ import { PokemonDb } from './pokemon/pokemonDb';
 import { SmogonSets } from './smogon/smogonSets';
 import { AnalyticsService } from './common/analyticsService';
 import { BotConfig } from './config/configHelper';
+import { VgcTeams } from './vgc/vgcTeams';
 
 export class AppDataSource {
   public readonly smogonStats = new SmogonStats();
   public readonly pokemonDb = new PokemonDb();
   public readonly smogonSets = new SmogonSets(this.pokemonDb);
+  public readonly vgcTeams = new VgcTeams(this.pokemonDb);
   public readonly analytics: AnalyticsService;
 
   constructor(botConfig: BotConfig) {

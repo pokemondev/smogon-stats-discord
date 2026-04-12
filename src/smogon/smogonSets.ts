@@ -1,10 +1,10 @@
 import { PokemonDb } from "../pokemon/pokemonDb";
 import { FileHelper } from "../common/fileHelper";
-import { PokemonSet } from "./setsModels";
-import { Pokemon } from "../pokemon/models";
+import { PokemonSet } from "../models/smogonSets";
+import { Pokemon } from "../models/pokemon";
 import { getMap, areEquals } from "../common/objectHelper";
 import { FormatHelper } from "./formatHelper";
-import { SmogonFormat } from "./usageModels";
+import { SmogonFormat } from "../models/smogonUsage";
 
 type PokemonSetMap = Map<string, PokemonSet[]>;
 type PokemonSetDb = Map<string, PokemonSetMap>;
@@ -21,12 +21,14 @@ export class SmogonSets {
 
   public get(pokemon: Pokemon, format: SmogonFormat): PokemonSet[] {
     const gen = format.generation;
-    if (!this.setsDb.has(gen))
+    const genSets = this.setsDb.get(gen);
+
+    if (!genSets)
       return [];
 
-    const sets = this.setsDb.get(gen).get(pokemon.name);
+    const sets = genSets.get(pokemon.name);
     return sets
-      ? sets.filter(set => areEquals(set.format, format))
+      ? sets.filter(set => set.format ? areEquals(set.format, format) : false)
       : [];
   }
 
@@ -49,8 +51,10 @@ export class SmogonSets {
           }
 
           const set = pokemonSets.get(setName);
-          set.name = setName;
-          set.format = { meta: setMeta, generation: gen };
+          if (set) {
+            set.name = setName;
+            set.format = { meta: setMeta, generation: gen };
+          }
         }
 
         genSetMap.set(pokemon, Array.from(pokemonSets.values()));

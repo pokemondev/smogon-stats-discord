@@ -2,7 +2,7 @@ import assert = require('assert');
 import FakeTimers = require('@sinonjs/fake-timers');
 import { FileHelper } from '../common/fileHelper';
 import { SmogonStats } from './smogonStats';
-import { SmogonFormat } from './usageModels';
+import { SmogonFormat } from '../models/smogonUsage';
 
 interface TestCase {
   name: string;

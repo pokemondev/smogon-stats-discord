@@ -52,7 +52,7 @@ export class HelpCommand implements SlashCommandHandler {
     const defaultFormat = FormatConfig.getDefaultFormat();
     const embed = new EmbedBuilder()
       .setTitle(`${this.botName} Help`)
-      .setDescription(`Start with \`/pokemon\` for a specific Pokemon or \`/stats\` for format-wide rankings. Current configured default format: ${FormatHelper.toUserString(defaultFormat)}. If only generation is provided, that generation uses its default VGC format.`);
+      .setDescription(`Start with \`/pokemon\` for a specific Pokemon, \`/stats\` for format-wide rankings, or \`/vgc\` for regulation team lists. Current configured default format: ${FormatHelper.toUserString(defaultFormat)}. If only generation is provided, that generation uses its default VGC format.`);
 
     for (const topic of this.helpTopics) {
       embed.addFields({ name: `/${topic.command}`, value: topic.description, inline: false });
@@ -66,6 +66,8 @@ export class HelpCommand implements SlashCommandHandler {
         '/pokemon sets name:landorus-therian meta:OU generation:"Gen 8"',
         '/stats usage',
         '/stats leads meta:OU generation:"Gen 8"',
+        '/vgc teams regulation:"VGC 2026 Reg. I" pokemon1:zamazenta',
+        '/vgc team-details team-id:I1280',
       ].join('\n'),
       inline: false,
     });

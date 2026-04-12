@@ -1,7 +1,7 @@
 import assert = require('assert');
 import { AppDataSource } from '../appDataSource';
 import { ConfigHelper } from '../config/configHelper';
-import { MoveSetUsage } from '../smogon/usageModels';
+import { MoveSetUsage } from '../models/smogonUsage';
 
 process.env.BOT_NAME = process.env.BOT_NAME || 'Smogon Stats';
 process.env.TOKEN = process.env.TOKEN || 'test-token';

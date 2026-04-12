@@ -1,5 +1,5 @@
 import FuzzyMatching = require('fuzzy-matching');
-import { Pokemon } from "./models";
+import { Pokemon } from "../models/pokemon";
 import { FileHelper } from "../common/fileHelper";
 
 export class PokemonDb {
@@ -13,7 +13,7 @@ export class PokemonDb {
     this.fuzzyMatching = new FuzzyMatching(this.database.map(p => p.name));
   }
 
-  public getPokemon(name: string): Pokemon {
+  public getPokemon(name: string): Pokemon | undefined {
     const pokemon = this.pokemonMap[name.toLowerCase()];
     if (pokemon)
       return pokemon;

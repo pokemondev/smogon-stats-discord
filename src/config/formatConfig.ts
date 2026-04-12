@@ -1,4 +1,4 @@
-import { SmogonFormat } from '../smogon/usageModels';
+import { SmogonFormat } from '../models/smogonUsage';
 import { FormatCatalog } from '../smogon/formatCatalog';
 
 export class FormatConfig {
