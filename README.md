@@ -134,17 +134,26 @@ Metagame-wide rankings. Meta subcommands use:
 
 - `meta` optional
 - `generation` optional
+- `mode` optional for `speed-tier` only: `faster` (default) or `slower`
 
 Subcommands:
 
 - `usage` — most used Pokemon
 - `leads` — most common leads
+- `speed-tier` — highest or lowest base Speed among the top 100 used Pokemon in the format
 - `megas` — most common Mega Stone users
+
+Notes:
+
+- `speed-tier` filters the pool to the top 100 most used Pokemon in the selected format before sorting by base Speed
+- `speed-tier` output is capped at the top 15 displayed entries, matching the other `/stats` ranking views
 
 Examples:
 
 ```text
 /stats usage
+/stats speed-tier
+/stats speed-tier meta:OU generation:"Gen 8" mode:slower
 /stats leads meta:UU
 /stats megas meta:OU generation:"Gen 6"
 ```

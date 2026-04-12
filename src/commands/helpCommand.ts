@@ -65,6 +65,7 @@ export class HelpCommand implements SlashCommandHandler {
         '/pokemon info name:gholdengo category:items meta:OU',
         '/pokemon sets name:landorus-therian meta:OU generation:"Gen 8"',
         '/stats usage',
+        '/stats speed-tier mode:slower meta:OU',
         '/stats leads meta:OU generation:"Gen 8"',
         '/vgc teams regulation:"VGC 2026 Reg. I" pokemon1:zamazenta',
         '/vgc team-details team-id:I1280',
