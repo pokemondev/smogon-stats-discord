@@ -1,3 +1,5 @@
+import { PokemonUsage } from './smogonUsage';
+
 export interface BaseStats {
     hp: number;
     atk: number;
@@ -21,6 +23,13 @@ export interface Pokemon {
     weight: number;
     height: number;
     usage?: any;
+}
+
+export interface PokemonStatsEntry {
+    pokemon: Pokemon;
+    usage: PokemonUsage;
+    stats: number;
+    statsName: string;
 }
 
 export enum PokemonType {

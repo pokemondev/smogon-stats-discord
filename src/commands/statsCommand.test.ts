@@ -9,7 +9,7 @@ process.env.TOKEN = process.env.TOKEN || 'test-token';
 process.env.DEFAULT_GENERATION = process.env.DEFAULT_GENERATION || 'gen9';
 process.env.DEFAULT_META = process.env.DEFAULT_META || 'vgc2026regf';
 
-const { StatsCommand } = require('./statsCommand') as typeof import('./statsCommand');
+const { StatsCommand, createStatsCommandData } = require('./statsCommand') as typeof import('./statsCommand');
 
 interface TestCase {
   name: string;
@@ -68,23 +68,26 @@ class FakeChatInputCommandInteraction {
 
 const dataSource = new AppDataSource(ConfigHelper.loadAndValidate({ loadEnvironment: false }));
 
-function createInteraction(strings: Record<string, string | undefined>): FakeChatInputCommandInteraction {
-  return new FakeChatInputCommandInteraction('speed-tier', strings);
+function createInteraction(
+  subcommand: string,
+  strings: Record<string, string | undefined> = {}
+): FakeChatInputCommandInteraction {
+  return new FakeChatInputCommandInteraction(subcommand, strings);
 }
 
-function createPokemon(name: string, speed: number): Pokemon {
+function createPokemon(name: string, baseStats: Partial<Pokemon['baseStats']> = {}): Pokemon {
   return {
     name,
     type1: 'Dragon' as never,
     type2: undefined as never,
     baseStats: {
-      hp: 1,
-      atk: 1,
-      def: 1,
-      spA: 1,
-      spD: 1,
-      spe: speed,
-      tot: 6,
+      hp: baseStats.hp ?? 1,
+      atk: baseStats.atk ?? 1,
+      def: baseStats.def ?? 1,
+      spA: baseStats.spA ?? 1,
+      spD: baseStats.spD ?? 1,
+      spe: baseStats.spe ?? 1,
+      tot: baseStats.tot ?? 6,
     },
     tier: 'OU',
     possiblesAbilities: [],
@@ -116,6 +119,10 @@ function getEmbedFields(interaction: FakeChatInputCommandInteraction): Array<{ n
   return embed ? embed.toJSON().fields ?? [] : [];
 }
 
+function getFieldNames(interaction: FakeChatInputCommandInteraction): string[] {
+  return getEmbedFields(interaction).map(field => field.name);
+}
+
 function withStubbedStatsData(
   usages: PokemonUsage[],
   pokemonByName: Record<string, Pokemon | undefined>,
@@ -137,16 +144,30 @@ function withStubbedStatsData(
 
 const tests: TestCase[] = [
   {
+    name: 'stats command data includes attackers and defenders mode choices',
+    run: async () => {
+      const commandData = createStatsCommandData().toJSON();
+      const options = (commandData.options ?? []) as Array<{ name: string; options?: Array<{ name: string; choices?: Array<{ value: string }> }> }>;
+      const attackers = options.find(option => option.name === 'attackers');
+      const defenders = options.find(option => option.name === 'defenders');
+
+      assert.ok(attackers);
+      assert.ok(defenders);
+      assert.deepStrictEqual(attackers?.options?.find(option => option.name === 'mode')?.choices?.map(choice => choice.value), ['both', 'physical', 'special']);
+      assert.deepStrictEqual(defenders?.options?.find(option => option.name === 'mode')?.choices?.map(choice => choice.value), ['both', 'physical', 'special']);
+    }
+  },
+  {
     name: 'speed-tier defers before editing successful responses',
     run: async () => {
       await withStubbedStatsData(
         [createUsage('Dragapult', 4, 18.84), createUsage('Iron Bundle', 9, 10.12)],
         {
-          Dragapult: createPokemon('Dragapult', 142),
-          'Iron Bundle': createPokemon('Iron Bundle', 136),
+          Dragapult: createPokemon('Dragapult', { spe: 142 }),
+          'Iron Bundle': createPokemon('Iron Bundle', { spe: 136 }),
         },
         async (command) => {
-          const interaction = createInteraction({ generation: '9', meta: 'ou' });
+          const interaction = createInteraction('speed-tier', { generation: '9', meta: 'ou' });
 
           await command.execute(interaction as never);
 
@@ -161,19 +182,18 @@ const tests: TestCase[] = [
       await withStubbedStatsData(
         [createUsage('Dragapult', 4, 18.84), createUsage('Garchomp', 7, 12.31), createUsage('Shuckle', 40, 2.1)],
         {
-          Dragapult: createPokemon('Dragapult', 142),
-          Garchomp: createPokemon('Garchomp', 102),
-          Shuckle: createPokemon('Shuckle', 5),
+          Dragapult: createPokemon('Dragapult', { spe: 142 }),
+          Garchomp: createPokemon('Garchomp', { spe: 102 }),
+          Shuckle: createPokemon('Shuckle', { spe: 5 }),
         },
         async (command) => {
-          const interaction = createInteraction({ generation: '9', meta: 'ou' });
+          const interaction = createInteraction('speed-tier', { generation: '9', meta: 'ou' });
 
           await command.execute(interaction as never);
 
-          const fields = getEmbedFields(interaction);
-          assert.strictEqual(fields[0].name, 'Speed 1º Dragapult');
-          assert.strictEqual(fields[1].name, 'Speed 2º Garchomp');
-          assert.strictEqual(fields[2].name, 'Speed 3º Shuckle');
+          const payload = getEditReplyPayload(interaction);
+          assert.strictEqual(payload.content, '**__Speed Tier:__** Top 3 Pokemon of OU (Gen 9) - fastest to slowest, filtered to top 100 usage entries');
+          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Dragapult', '2º) Garchomp', '3º) Shuckle']);
         }
       );
     }
@@ -184,19 +204,16 @@ const tests: TestCase[] = [
       await withStubbedStatsData(
         [createUsage('Dragapult', 4, 18.84), createUsage('Garchomp', 7, 12.31), createUsage('Shuckle', 40, 2.1)],
         {
-          Dragapult: createPokemon('Dragapult', 142),
-          Garchomp: createPokemon('Garchomp', 102),
-          Shuckle: createPokemon('Shuckle', 5),
+          Dragapult: createPokemon('Dragapult', { spe: 142 }),
+          Garchomp: createPokemon('Garchomp', { spe: 102 }),
+          Shuckle: createPokemon('Shuckle', { spe: 5 }),
         },
         async (command) => {
-          const interaction = createInteraction({ generation: '9', meta: 'ou', mode: 'slower' });
+          const interaction = createInteraction('speed-tier', { generation: '9', meta: 'ou', mode: 'slower' });
 
           await command.execute(interaction as never);
 
-          const fields = getEmbedFields(interaction);
-          assert.strictEqual(fields[0].name, 'Speed 1º Shuckle');
-          assert.strictEqual(fields[1].name, 'Speed 2º Garchomp');
-          assert.strictEqual(fields[2].name, 'Speed 3º Dragapult');
+          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Shuckle', '2º) Garchomp', '3º) Dragapult']);
         }
       );
     }
@@ -205,20 +222,20 @@ const tests: TestCase[] = [
     name: 'speed-tier only uses the top 100 usage entries before sorting',
     run: async () => {
       const usages = Array.from({ length: 101 }, (_, index) => createUsage(`Mon${index + 1}`, index + 1, 100 - index));
-      const pokemonByName = Object.fromEntries(usages.map((usage, index) => [usage.name, createPokemon(usage.name, 200 - index)]));
-      pokemonByName.Mon101 = createPokemon('Mon101', 999);
+      const pokemonByName = Object.fromEntries(usages.map((usage, index) => [usage.name, createPokemon(usage.name, { spe: 200 - index })]));
+      pokemonByName.Mon101 = createPokemon('Mon101', { spe: 999 });
 
       await withStubbedStatsData(
         usages,
         pokemonByName,
         async (command) => {
-          const interaction = createInteraction({ generation: '9', meta: 'ou' });
+          const interaction = createInteraction('speed-tier', { generation: '9', meta: 'ou' });
 
           await command.execute(interaction as never);
 
           const fields = getEmbedFields(interaction);
           assert.ok(fields.every(field => field.name.indexOf('Mon101') < 0));
-          assert.strictEqual(fields[0].name, 'Speed 1º Mon1');
+          assert.strictEqual(fields[0].name, '1º) Mon1');
         }
       );
     }
@@ -229,17 +246,17 @@ const tests: TestCase[] = [
       await withStubbedStatsData(
         [createUsage('Dragapult', 4, 18.84)],
         {
-          Dragapult: createPokemon('Dragapult', 142),
+          Dragapult: createPokemon('Dragapult', { spe: 142 }),
         },
         async (command) => {
-          const interaction = createInteraction({ generation: '9', meta: 'ou' });
+          const interaction = createInteraction('speed-tier', { generation: '9', meta: 'ou' });
 
           await command.execute(interaction as never);
 
           const payload = getEditReplyPayload(interaction);
           const fields = getEmbedFields(interaction);
           assert.ok((payload.content ?? '').indexOf('filtered to top 100 usage') >= 0);
-          assert.strictEqual(fields[0].value, 'Base Speed: 142\nUsage: #4 (18.84%)');
+          assert.strictEqual(fields[0].value, 'Base Speed: `142`\nUsage: `#4` (18.84%)');
         }
       );
     }
@@ -251,7 +268,7 @@ const tests: TestCase[] = [
         [],
         {},
         async (command) => {
-          const interaction = createInteraction({ generation: '9', meta: 'ou' });
+          const interaction = createInteraction('speed-tier', { generation: '9', meta: 'ou' });
 
           await command.execute(interaction as never);
 
@@ -269,13 +286,137 @@ const tests: TestCase[] = [
         [createUsage('Unknownmon', 1, 50.5)],
         {},
         async (command) => {
-          const interaction = createInteraction({ generation: '9', meta: 'ou' });
+          const interaction = createInteraction('speed-tier', { generation: '9', meta: 'ou' });
 
           await command.execute(interaction as never);
 
           assert.deepStrictEqual(interaction.calls.map(call => call.name), ['deferReply', 'editReply']);
           const payload = getEditReplyPayload(interaction);
           assert.strictEqual(payload.content, 'No speed-tier data available for OU (Gen 9).');
+        }
+      );
+    }
+  },
+  {
+    name: 'attackers defaults to both mode and uses the stronger attacking stat per pokemon',
+    run: async () => {
+      await withStubbedStatsData(
+        [createUsage('Chi-Yu', 3, 22.1), createUsage('Garchomp', 5, 17.2), createUsage('Dragapult', 7, 14.8)],
+        {
+          'Chi-Yu': createPokemon('Chi-Yu', { atk: 80, spA: 135 }),
+          Garchomp: createPokemon('Garchomp', { atk: 130, spA: 80 }),
+          Dragapult: createPokemon('Dragapult', { atk: 120, spA: 100 }),
+        },
+        async (command) => {
+          const interaction = createInteraction('attackers', { generation: '9', meta: 'ou' });
+
+          await command.execute(interaction as never);
+
+          const payload = getEditReplyPayload(interaction);
+          const fields = getEmbedFields(interaction);
+          assert.strictEqual(payload.content, '**__Attackers:__** Top 3 Pokemon of OU (Gen 9) - both mode, filtered to top 100 usage entries');
+          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Chi-Yu', '2º) Garchomp', '3º) Dragapult']);
+          assert.strictEqual(fields[0].value, 'Base Sp. Atk: `135`\nUsage: `#3` (22.10%)');
+          assert.strictEqual(fields[1].value, 'Base Attack: `130`\nUsage: `#5` (17.20%)');
+        }
+      );
+    }
+  },
+  {
+    name: 'attackers physical mode breaks stat ties with usage rank',
+    run: async () => {
+      await withStubbedStatsData(
+        [createUsage('Dragonite', 2, 25.5), createUsage('Gallade', 8, 9.1), createUsage('Hydreigon', 5, 12.3)],
+        {
+          Dragonite: createPokemon('Dragonite', { atk: 134, spA: 100 }),
+          Gallade: createPokemon('Gallade', { atk: 134, spA: 65 }),
+          Hydreigon: createPokemon('Hydreigon', { atk: 105, spA: 125 }),
+        },
+        async (command) => {
+          const interaction = createInteraction('attackers', { generation: '9', meta: 'ou', mode: 'physical' });
+
+          await command.execute(interaction as never);
+
+          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Dragonite', '2º) Gallade', '3º) Hydreigon']);
+          assert.strictEqual(getEmbedFields(interaction)[0].value, 'Base Attack: `134`\nUsage: `#2` (25.50%)');
+        }
+      );
+    }
+  },
+  {
+    name: 'defenders special mode ranks by special defense',
+    run: async () => {
+      await withStubbedStatsData(
+        [createUsage('Blissey', 6, 11.1), createUsage('Goodra', 9, 8.4), createUsage('Skarmory', 12, 6.7)],
+        {
+          Blissey: createPokemon('Blissey', { def: 10, spD: 135 }),
+          Goodra: createPokemon('Goodra', { def: 70, spD: 150 }),
+          Skarmory: createPokemon('Skarmory', { def: 140, spD: 70 }),
+        },
+        async (command) => {
+          const interaction = createInteraction('defenders', { generation: '9', meta: 'ou', mode: 'special' });
+
+          await command.execute(interaction as never);
+
+          const payload = getEditReplyPayload(interaction);
+          assert.strictEqual(payload.content, '**__Defenders:__** Top 3 Pokemon of OU (Gen 9) - special mode, filtered to top 100 usage entries');
+          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Goodra', '2º) Blissey', '3º) Skarmory']);
+          assert.strictEqual(getEmbedFields(interaction)[0].value, 'Base Sp. Def: `150`\nUsage: `#9` (8.40%)');
+        }
+      );
+    }
+  },
+  {
+    name: 'attackers only use the top 100 usage entries before sorting',
+    run: async () => {
+      const usages = Array.from({ length: 101 }, (_, index) => createUsage(`Mon${index + 1}`, index + 1, 200 - index));
+      const pokemonByName = Object.fromEntries(usages.map((usage, index) => [usage.name, createPokemon(usage.name, { atk: 300 - index, spA: 50 })]));
+      pokemonByName.Mon101 = createPokemon('Mon101', { atk: 999, spA: 999 });
+
+      await withStubbedStatsData(
+        usages,
+        pokemonByName,
+        async (command) => {
+          const interaction = createInteraction('attackers', { generation: '9', meta: 'ou', mode: 'physical' });
+
+          await command.execute(interaction as never);
+
+          assert.ok(getFieldNames(interaction).every(name => name.indexOf('Mon101') < 0));
+          assert.strictEqual(getFieldNames(interaction)[0], '1º) Mon1');
+        }
+      );
+    }
+  },
+  {
+    name: 'defenders report no data when usage list is empty',
+    run: async () => {
+      await withStubbedStatsData(
+        [],
+        {},
+        async (command) => {
+          const interaction = createInteraction('defenders', { generation: '9', meta: 'ou' });
+
+          await command.execute(interaction as never);
+
+          assert.deepStrictEqual(interaction.calls.map(call => call.name), ['deferReply', 'editReply']);
+          assert.strictEqual(getEditReplyPayload(interaction).content, 'No defenders data available for OU (Gen 9).');
+        }
+      );
+    }
+  },
+  {
+    name: 'attackers report no data when no top usage entries resolve to pokemon data',
+    run: async () => {
+      await withStubbedStatsData(
+        [createUsage('Unknownmon', 1, 50.5)],
+        {},
+        async (command) => {
+          const interaction = createInteraction('attackers', { generation: '9', meta: 'ou' });
+
+          await command.execute(interaction as never);
+
+          assert.deepStrictEqual(interaction.calls.map(call => call.name), ['deferReply', 'editReply']);
+          assert.strictEqual(getEditReplyPayload(interaction).content, 'No attackers data available for OU (Gen 9).');
         }
       );
     }

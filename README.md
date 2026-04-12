@@ -9,7 +9,7 @@ The bot now runs on modern discord.js slash commands instead of prefix-based mes
 - Slash-command first command surface.
 - Fuzzy Pokemon name matching kept from the original bot.
 - Competitive summary command with moves, items, abilities, spreads, counters, and type profile.
-- Meta-wide rankings for usage, leads, and Mega Stone users.
+- Meta-wide rankings for usage, leads, speed tiers, attackers, defenders, and Mega Stone users.
 - Smogon sets lookup by Pokemon, generation, and metagame.
 - VGC team lookups by regulation with optional Pokemon member filters.
 - Static local data files for predictable responses and simple hosting.
@@ -135,17 +135,22 @@ Metagame-wide rankings. Meta subcommands use:
 - `meta` optional
 - `generation` optional
 - `mode` optional for `speed-tier` only: `faster` (default) or `slower`
+- `mode` optional for `attackers` and `defenders`: `both` (default), `physical`, or `special`
 
 Subcommands:
 
 - `usage` — most used Pokemon
 - `leads` — most common leads
 - `speed-tier` — highest or lowest base Speed among the top 100 used Pokemon in the format
+- `attackers` — highest base Attack, Sp. Atk, or the stronger of both among the top 100 used Pokemon in the format
+- `defenders` — highest base Defense, Sp. Def, or the stronger of both among the top 100 used Pokemon in the format
 - `megas` — most common Mega Stone users
 
 Notes:
 
 - `speed-tier` filters the pool to the top 100 most used Pokemon in the selected format before sorting by base Speed
+- `attackers` and `defenders` also filter the pool to the top 100 most used Pokemon in the selected format before sorting by the requested base stat mode
+- `attackers` and `defenders` use `both` mode by default, selecting the stronger relevant base stat for each Pokemon and showing which stat was used
 - `speed-tier` output is capped at the top 15 displayed entries, matching the other `/stats` ranking views
 
 Examples:
@@ -154,6 +159,8 @@ Examples:
 /stats usage
 /stats speed-tier
 /stats speed-tier meta:OU generation:"Gen 8" mode:slower
+/stats attackers meta:OU mode:special
+/stats defenders generation:"Gen 8" mode:physical
 /stats leads meta:UU
 /stats megas meta:OU generation:"Gen 6"
 ```
