@@ -140,8 +140,8 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     usageData.forEach((pokemon, index) => {
       embed.addFields({
-        name: `Rank ${index + 1}º ${pokemon.name}`,
-        value: `Usage: ${pokemon.usageRaw.toFixed(2)}%`,
+        name: this.formatRankedTitle(index + 1, pokemon.name),
+        value: `Usage: \`${pokemon.usageRaw.toFixed(2)}%\``,
         inline: true,
       });
     });
@@ -174,8 +174,8 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     leads.forEach((pokemon, index) => {
       embed.addFields({
-        name: `Lead ${index + 1}º ${pokemon.name}`,
-        value: `Usage: ${pokemon.usageRaw.toFixed(2)}%`,
+        name: this.formatRankedTitle(index + 1, pokemon.name),
+        value: `Usage: \`${pokemon.usageRaw.toFixed(2)}%\``,
         inline: true,
       });
     });
@@ -265,7 +265,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     options.entries.forEach((entry, index) => {
       embed.addFields({
-        name: `${index + 1}º) ${entry.pokemon.name}`,
+        name: this.formatRankedTitle(index + 1, entry.pokemon.name),
         value: `Base ${entry.statsName}: \`${entry.stats}\`\nUsage: \`#${entry.usage.rank}\` (${entry.usage.usageRaw.toFixed(2)}%)`,
         inline: true,
       });
@@ -299,10 +299,10 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
 
-    moveSets.forEach(moveSet => {
+    moveSets.forEach((moveSet, index) => {
       embed.addFields({
-        name: moveSet.name,
-        value: `Usage: ${(moveSet.usage ?? 0).toFixed(2)}%`,
+        name: this.formatRankedTitle(index + 1, moveSet.name),
+        value: `Usage: \`${(moveSet.usage ?? 0).toFixed(2)}%\``,
         inline: true,
       });
     });

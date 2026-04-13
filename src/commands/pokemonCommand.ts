@@ -192,10 +192,10 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
 
     this.addUsageFields(embed, usageData, usage => {
       if ('kOed' in usage) {
-        return `Knocked out: ${usage.kOed.toFixed(2)}%\nSwitched out: ${usage.switchedOut.toFixed(2)}%`;
+        return `KO-ed: \`${usage.kOed.toFixed(2)}%\`\nSW. out: \`${usage.switchedOut.toFixed(2)}%\``;
       }
 
-      return `Usage: ${usage.percentage.toFixed(2)}%`;
+      return `Usage: \`${usage.percentage.toFixed(2)}%\``;
     });
 
     await interaction.editReply({
@@ -245,10 +245,10 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
 
   private getBaseStatsData(cmd: MovesetCommandData) {
     const stats = cmd.pokemon.baseStats;
-    const baseStatsH1 = "__\`HP      Atk     Def\`__".replace(new RegExp(' ', 'g'), "\u2006");
-    const baseStatsH2 = "__\`Sp.Atk  Sp.Def  Spe\`__".replace(new RegExp(' ', 'g'), "\u2006");
-    const baseStatsL1 = `${baseStatsH1}\n\`${stats.hp.toString().padEnd(8, "\u2006")}${stats.atk.toString().padEnd(8, "\u2005")}${stats.def}\``;
-    const baseStatsL2 = `${baseStatsH2}\n\`${stats.spA.toString().padEnd(8, "\u2006")}${stats.spD.toString().padEnd(8, "\u2006")}${stats.spe}\``;
+    const baseStatsH1 = "__\`HP   Atk  Def\`__";
+    const baseStatsH2 = "__\`SpA  SpD  Spe\`__";
+    const baseStatsL1 = `${baseStatsH1}\n\`${stats.hp.toString().padEnd(5, " ")}${stats.atk.toString().padEnd(5, " ")}${stats.def}\``;
+    const baseStatsL2 = `${baseStatsH2}\n\`${stats.spA.toString().padEnd(5, " ")}${stats.spD.toString().padEnd(5, " ")}${stats.spe}\``;
     const baseStatsData = `${baseStatsL1}\n${baseStatsL2}`;
     return { stats, baseStatsData };
   }

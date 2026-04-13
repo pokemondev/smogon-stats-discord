@@ -2,7 +2,7 @@ import assert = require('assert');
 import { AppDataSource } from '../appDataSource';
 import { ConfigHelper } from '../config/configHelper';
 import { Pokemon } from '../models/pokemon';
-import { PokemonUsage } from '../models/smogonUsage';
+import { MoveSetUsage, PokemonUsage } from '../models/smogonUsage';
 
 process.env.BOT_NAME = process.env.BOT_NAME || 'Smogon Stats';
 process.env.TOKEN = process.env.TOKEN || 'test-token';
@@ -108,6 +108,20 @@ function createUsage(name: string, rank: number, usageRaw: number): PokemonUsage
   };
 }
 
+function createMoveSetUsage(name: string, usage?: number): MoveSetUsage {
+  return {
+    name,
+    abilities: [],
+    items: [],
+    spreads: [],
+    moves: [],
+    teraTypes: [],
+    teamMates: [],
+    checksAndCounters: [],
+    usage,
+  };
+}
+
 function getEditReplyPayload(interaction: FakeChatInputCommandInteraction): { content?: string; embeds?: Array<{ toJSON(): { fields?: Array<{ name: string; value: string }> } }> } {
   const editReplyCall = interaction.calls.find(call => call.name === 'editReply');
   return (editReplyCall?.payload ?? {}) as { content?: string; embeds?: Array<{ toJSON(): { fields?: Array<{ name: string; value: string }> } }> };
@@ -142,6 +156,44 @@ function withStubbedStatsData(
   });
 }
 
+function withStubbedLeadsData(
+  leads: PokemonUsage[],
+  pokemonByName: Record<string, Pokemon | undefined>,
+  runTest: (command: InstanceType<typeof StatsCommand>) => Promise<void>
+): Promise<void> {
+  const originalGetLeads = dataSource.smogonStats.getLeads.bind(dataSource.smogonStats);
+  const originalGetPokemon = dataSource.pokemonDb.getPokemon.bind(dataSource.pokemonDb);
+
+  dataSource.smogonStats.getLeads = async () => leads;
+  dataSource.pokemonDb.getPokemon = (name: string) => pokemonByName[name];
+
+  const command = new StatsCommand(dataSource);
+
+  return runTest(command).finally(() => {
+    dataSource.smogonStats.getLeads = originalGetLeads;
+    dataSource.pokemonDb.getPokemon = originalGetPokemon;
+  });
+}
+
+function withStubbedMegasData(
+  moveSets: MoveSetUsage[],
+  pokemonByName: Record<string, Pokemon | undefined>,
+  runTest: (command: InstanceType<typeof StatsCommand>) => Promise<void>
+): Promise<void> {
+  const originalGetMegasMoveSets = dataSource.smogonStats.getMegasMoveSets.bind(dataSource.smogonStats);
+  const originalGetPokemon = dataSource.pokemonDb.getPokemon.bind(dataSource.pokemonDb);
+
+  dataSource.smogonStats.getMegasMoveSets = async () => moveSets;
+  dataSource.pokemonDb.getPokemon = (name: string) => pokemonByName[name];
+
+  const command = new StatsCommand(dataSource);
+
+  return runTest(command).finally(() => {
+    dataSource.smogonStats.getMegasMoveSets = originalGetMegasMoveSets;
+    dataSource.pokemonDb.getPokemon = originalGetPokemon;
+  });
+}
+
 const tests: TestCase[] = [
   {
     name: 'stats command data includes attackers and defenders mode choices',
@@ -155,6 +207,50 @@ const tests: TestCase[] = [
       assert.ok(defenders);
       assert.deepStrictEqual(attackers?.options?.find(option => option.name === 'mode')?.choices?.map(choice => choice.value), ['both', 'physical', 'special']);
       assert.deepStrictEqual(defenders?.options?.find(option => option.name === 'mode')?.choices?.map(choice => choice.value), ['both', 'physical', 'special']);
+    }
+  },
+  {
+    name: 'usage renders numbered titles and preserves usage values',
+    run: async () => {
+      await withStubbedStatsData(
+        [createUsage('Dragapult', 1, 18.84), createUsage('Garchomp', 2, 12.31)],
+        {
+          Dragapult: createPokemon('Dragapult'),
+          Garchomp: createPokemon('Garchomp'),
+        },
+        async (command) => {
+          const interaction = createInteraction('usage', { generation: '9', meta: 'ou' });
+
+          await command.execute(interaction as never);
+
+          const fields = getEmbedFields(interaction);
+          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Dragapult', '2º) Garchomp']);
+          assert.strictEqual(fields[0].value, 'Usage: 18.84%');
+          assert.strictEqual(getEditReplyPayload(interaction).content, '**__Usage:__** Top 2 most used Pokemon of OU (Gen 9)');
+        }
+      );
+    }
+  },
+  {
+    name: 'leads renders numbered titles and preserves usage values',
+    run: async () => {
+      await withStubbedLeadsData(
+        [createUsage('Azelf', 1, 21.5), createUsage('Glimmora', 2, 19.25)],
+        {
+          Azelf: createPokemon('Azelf'),
+          Glimmora: createPokemon('Glimmora'),
+        },
+        async (command) => {
+          const interaction = createInteraction('leads', { generation: '9', meta: 'ou' });
+
+          await command.execute(interaction as never);
+
+          const fields = getEmbedFields(interaction);
+          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Azelf', '2º) Glimmora']);
+          assert.strictEqual(fields[1].value, 'Usage: 19.25%');
+          assert.strictEqual(getEditReplyPayload(interaction).content, '**__Leads:__** Top 2 leads of OU (Gen 9)');
+        }
+      );
     }
   },
   {
@@ -192,7 +288,7 @@ const tests: TestCase[] = [
           await command.execute(interaction as never);
 
           const payload = getEditReplyPayload(interaction);
-          assert.strictEqual(payload.content, '**__Speed Tier:__** Top 3 Pokemon of OU (Gen 9) - fastest to slowest, filtered to top 100 usage entries');
+          assert.strictEqual(payload.content, '**__Speed Tier:__** Top 3 Pokemon of OU (Gen 9)');
           assert.deepStrictEqual(getFieldNames(interaction), ['1º) Dragapult', '2º) Garchomp', '3º) Shuckle']);
         }
       );
@@ -255,7 +351,7 @@ const tests: TestCase[] = [
 
           const payload = getEditReplyPayload(interaction);
           const fields = getEmbedFields(interaction);
-          assert.ok((payload.content ?? '').indexOf('filtered to top 100 usage') >= 0);
+          assert.strictEqual(payload.content, '**__Speed Tier:__** Top 1 Pokemon of OU (Gen 9)');
           assert.strictEqual(fields[0].value, 'Base Speed: `142`\nUsage: `#4` (18.84%)');
         }
       );
@@ -314,7 +410,7 @@ const tests: TestCase[] = [
 
           const payload = getEditReplyPayload(interaction);
           const fields = getEmbedFields(interaction);
-          assert.strictEqual(payload.content, '**__Attackers:__** Top 3 Pokemon of OU (Gen 9) - both mode, filtered to top 100 usage entries');
+          assert.strictEqual(payload.content, '**__Attackers:__** Top 3 Pokemon of OU (Gen 9)');
           assert.deepStrictEqual(getFieldNames(interaction), ['1º) Chi-Yu', '2º) Garchomp', '3º) Dragapult']);
           assert.strictEqual(fields[0].value, 'Base Sp. Atk: `135`\nUsage: `#3` (22.10%)');
           assert.strictEqual(fields[1].value, 'Base Attack: `130`\nUsage: `#5` (17.20%)');
@@ -359,7 +455,7 @@ const tests: TestCase[] = [
           await command.execute(interaction as never);
 
           const payload = getEditReplyPayload(interaction);
-          assert.strictEqual(payload.content, '**__Defenders:__** Top 3 Pokemon of OU (Gen 9) - special mode, filtered to top 100 usage entries');
+          assert.strictEqual(payload.content, '**__Defenders:__** Top 3 Pokemon of OU (Gen 9) - *special side only mode*');
           assert.deepStrictEqual(getFieldNames(interaction), ['1º) Goodra', '2º) Blissey', '3º) Skarmory']);
           assert.strictEqual(getEmbedFields(interaction)[0].value, 'Base Sp. Def: `150`\nUsage: `#9` (8.40%)');
         }
@@ -417,6 +513,28 @@ const tests: TestCase[] = [
 
           assert.deepStrictEqual(interaction.calls.map(call => call.name), ['deferReply', 'editReply']);
           assert.strictEqual(getEditReplyPayload(interaction).content, 'No attackers data available for OU (Gen 9).');
+        }
+      );
+    }
+  },
+  {
+    name: 'megas renders numbered titles and preserves usage values',
+    run: async () => {
+      await withStubbedMegasData(
+        [createMoveSetUsage('Charizard', 12.34), createMoveSetUsage('Gengar', 9.87)],
+        {
+          Charizard: createPokemon('Charizard'),
+          Gengar: createPokemon('Gengar'),
+        },
+        async (command) => {
+          const interaction = createInteraction('megas', { generation: '6', meta: 'ou' });
+
+          await command.execute(interaction as never);
+
+          const fields = getEmbedFields(interaction);
+          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Charizard', '2º) Gengar']);
+          assert.strictEqual(fields[0].value, 'Usage: 12.34%');
+          assert.strictEqual(getEditReplyPayload(interaction).content, '**__Megas:__** Top 2 Mega Stone users of OU (Gen 6)');
         }
       );
     }

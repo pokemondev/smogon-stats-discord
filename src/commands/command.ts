@@ -149,7 +149,7 @@ export class CommandBase {
   protected addUsageFields(
     embed: EmbedBuilder,
     usageData: UsageData[] | ChecksAndCountersUsageData[] | undefined,
-    formatter?: (data: UsageData | ChecksAndCountersUsageData) => string,
+    formatter?: (data: UsageData | ChecksAndCountersUsageData) => string    
   ): void {
     const safeUsageData = usageData ? usageData.slice(0, 24) : [];
     if (!safeUsageData.length) {
@@ -157,13 +157,17 @@ export class CommandBase {
       return;
     }
 
-    for (const usage of safeUsageData) {
+    safeUsageData.forEach((usage, index) => {
+      const name = this.formatRankedTitle(index + 1, usage.name);
       const value = formatter
         ? formatter(usage)
-        : `Usage: ${usage.percentage.toFixed(2)}%`;
+        : `Usage: \`${usage.percentage.toFixed(2)}%\``;
 
-      embed.addFields({ name: usage.name, value, inline: true });
-    }
+      embed.addFields({ name, value, inline: true });
+    });
+  }
+  protected formatRankedTitle(position: number, title: string): string {
+    return `${position}º) ${title}`;
   }
 
   protected async replyNoData(interaction: ChatInputCommandInteraction, message: string): Promise<void> {

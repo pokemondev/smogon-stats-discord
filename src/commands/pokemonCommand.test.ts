@@ -96,6 +96,10 @@ function getEditReplyEmbed(interaction: FakeChatInputCommandInteraction): any {
   return embed.toJSON ? embed.toJSON() : embed;
 }
 
+function getFieldNames(interaction: FakeChatInputCommandInteraction): string[] {
+  return getEditReplyEmbed(interaction).fields.map((field: { name: string }) => field.name);
+}
+
 const tests: TestCase[] = [
   {
     name: 'sets defers before editing successful responses',
@@ -170,6 +174,66 @@ const tests: TestCase[] = [
       await command.execute(interaction as never);
 
       assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'deferReply', 'editReply' ]);
+    }
+  },
+  {
+    name: 'info renders numbered titles while keeping standard usage values unchanged',
+    run: async () => {
+      const command = new PokemonCommand(dataSource);
+      const interaction = createInteraction('info', {
+        name: 'incineroar',
+        category: 'items',
+        generation: '9',
+        meta: 'ou',
+      });
+
+      (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+        format: query.format,
+        pokemon: query.pokemon,
+        moveSet: {
+          ...createEmptyMoveSet(query.pokemon.name),
+          items: [
+            { name: 'Safety Goggles', percentage: 42.35 },
+            { name: 'Sitrus Berry', percentage: 18.5 },
+          ],
+        },
+      });
+
+      await command.execute(interaction as never);
+
+      const embed = getEditReplyEmbed(interaction);
+      assert.deepStrictEqual(getFieldNames(interaction), ['1º) Safety Goggles', '2º) Sitrus Berry']);
+      assert.strictEqual(embed.fields[0].value, 'Usage: 42.35%');
+      assert.strictEqual(embed.fields[1].value, 'Usage: 18.50%');
+    }
+  },
+  {
+    name: 'info renders numbered titles while keeping checks formatting unchanged',
+    run: async () => {
+      const command = new PokemonCommand(dataSource);
+      const interaction = createInteraction('info', {
+        name: 'incineroar',
+        category: 'checks',
+        generation: '9',
+        meta: 'ou',
+      });
+
+      (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+        format: query.format,
+        pokemon: query.pokemon,
+        moveSet: {
+          ...createEmptyMoveSet(query.pokemon.name),
+          checksAndCounters: [
+            { name: 'Great Tusk', percentage: 0, kOed: 51.2, switchedOut: 33.4 },
+          ],
+        },
+      });
+
+      await command.execute(interaction as never);
+
+      const embed = getEditReplyEmbed(interaction);
+      assert.deepStrictEqual(getFieldNames(interaction), ['1º) Great Tusk']);
+      assert.strictEqual(embed.fields[0].value, 'Knocked out: 51.20%\nSwitched out: 33.40%');
     }
   },
   {
