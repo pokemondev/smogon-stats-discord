@@ -6,32 +6,32 @@ import { FormatHelper } from '../smogon/formatHelper';
 import { FormatCatalog } from '../smogon/formatCatalog';
 import { TypeService } from '../pokemon/typeService';
 import { EffectivenessType } from '../models/pokemon';
-import { UsageData } from '../models/smogonUsage';
+import { MoveSetUsage, UsageData } from '../models/smogonUsage';
 
 const pokemonInfoHandlers = {
   moves: {
     title: 'Moves',
-    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.moves,
+    selector: (moveSet: MoveSetUsage) => moveSet.moves,
   },
   abilities: {
     title: 'Abilities',
-    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.abilities,
+    selector: (moveSet: MoveSetUsage) => moveSet.abilities,
   },
   items: {
     title: 'Items',
-    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.items,
+    selector: (moveSet: MoveSetUsage) => moveSet.items,
   },
   spreads: {
     title: 'Spreads',
-    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.spreads,
+    selector: (moveSet: MoveSetUsage) => moveSet.spreads,
   },
   checks: {
     title: 'Checks',
-    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.checksAndCounters,
+    selector: (moveSet: MoveSetUsage) => moveSet.checksAndCounters,
   },
   teammates: {
     title: 'Teammates',
-    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.teamMates,
+    selector: (moveSet: MoveSetUsage) => moveSet.teamMates,
   },
 } as const;
 
@@ -109,7 +109,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
       return;
     }
 
-    await this.handleMovesetBreakdown(
+    await this.handleMoveset(
       interaction,
       handler.title,
       handler.selector,
@@ -177,10 +177,10 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     });
   }
 
-  private async handleMovesetBreakdown(
+  private async handleMoveset(
     interaction: ChatInputCommandInteraction,
     title: string,
-    selector: (moveSet: MovesetCommandData['moveSet']) => UsageData[] | ReturnType<typeof this.getChecksData>,
+    selector: (moveSet: MoveSetUsage) => UsageData[] | ReturnType<typeof this.getChecksData>,
     formatPokemonNames: boolean = false
   ): Promise<void> {
     const query = this.resolvePokemonQuery(interaction);
@@ -197,14 +197,11 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const usageData = selector(cmd.moveSet);
 
     await this.addUsageFields(embed, usageData, usage => {
-      if ('kOed' in usage) {
-        return `KO-ed: \`${usage.kOed.toFixed(2)}%\`\nSW. out: \`${usage.switchedOut.toFixed(2)}%\``;
-      }
-
-      return `Usage: \`${usage.percentage.toFixed(2)}%\``;
-    }, {
-      formatPokemonNames,
-    });
+      return this.isCheckAndCounters(usage)
+        ? `KO-ed: \`${usage.kOed.toFixed(2)}%\`\nSW. out: \`${usage.switchedOut.toFixed(2)}%\``
+        : `Usage: \`${usage.percentage.toFixed(2)}%\``;
+    }, { formatPokemonNames }
+    );
 
     await interaction.editReply({
       content: `**__${cmd.pokemon.name} ${title}:__** ${FormatHelper.toUserString(cmd.format)}`,
@@ -307,22 +304,20 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
 
   private async getPokemonUsageData(usageData: UsageData[] | undefined, limit: number = 6): Promise<string> {
     const safeUsageData = (usageData ?? []).slice(0, limit);
-    if (!safeUsageData.length) {
+    if (!safeUsageData.length)
       return '-';
-    }
 
-    const displayNames = await this.formatPokemonDisplayNames(safeUsageData.map(entry => entry.name));
+    const displayNames = this.formatPokemonDisplayNames(safeUsageData.map(entry => entry.name));
     return safeUsageData.map((entry, index) => `${displayNames[index]}: \`${entry.percentage.toFixed(2)}%\``).join('\n');
   }
 
   private async getCountersChecksData(cmd: MovesetCommandData, limit: number = 4): Promise<string> {
     const cc = (cmd.moveSet.checksAndCounters ? cmd.moveSet.checksAndCounters : []);
     const safeChecks = cc.slice(0, limit);
-    if (!safeChecks.length) {
-      return '-';
-    }
+    if (!safeChecks.length)
+      return '-';    
 
-    const displayNames = await this.formatPokemonDisplayNames(safeChecks.map(entry => entry.name));
+    const displayNames = this.formatPokemonDisplayNames(safeChecks.map(entry => entry.name));
     let countersChecks = safeChecks.map((entry, index) => `${displayNames[index]}: \`KO ${entry.kOed.toFixed(1)}% / SW ${entry.switchedOut.toFixed(1)}%\``).join('\n');
     countersChecks = countersChecks ? countersChecks : "-";
     return countersChecks;

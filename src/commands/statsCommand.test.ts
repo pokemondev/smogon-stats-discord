@@ -149,7 +149,7 @@ function withStubbedStatsData(
 
   dataSource.smogonStats.getUsages = async () => usages;
   dataSource.pokemonDb.getPokemon = (name: string) => pokemonByName[name];
-  dataSource.pokemonEmojis.formatPokemonDisplayName = async (name: string) => emojiDisplayByPokemonName[name] ?? name;
+  dataSource.pokemonEmojis.formatPokemonDisplayName = (name: string) => emojiDisplayByPokemonName[name] ?? name;
 
   const command = new StatsCommand(dataSource);
 
@@ -172,7 +172,7 @@ function withStubbedLeadsData(
 
   dataSource.smogonStats.getLeads = async () => leads;
   dataSource.pokemonDb.getPokemon = (name: string) => pokemonByName[name];
-  dataSource.pokemonEmojis.formatPokemonDisplayName = async (name: string) => emojiDisplayByPokemonName[name] ?? name;
+  dataSource.pokemonEmojis.formatPokemonDisplayName = (name: string) => emojiDisplayByPokemonName[name] ?? name;
 
   const command = new StatsCommand(dataSource);
 
@@ -195,7 +195,7 @@ function withStubbedMegasData(
 
   dataSource.smogonStats.getMegasMoveSets = async () => moveSets;
   dataSource.pokemonDb.getPokemon = (name: string) => pokemonByName[name];
-  dataSource.pokemonEmojis.formatPokemonDisplayName = async (name: string) => emojiDisplayByPokemonName[name] ?? name;
+  dataSource.pokemonEmojis.formatPokemonDisplayName = (name: string) => emojiDisplayByPokemonName[name] ?? name;
 
   const command = new StatsCommand(dataSource);
 
@@ -236,7 +236,7 @@ const tests: TestCase[] = [
           await command.execute(interaction as never);
 
           const fields = getEmbedFields(interaction);
-          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Dragapult', '2º) Garchomp']);
+          assert.deepStrictEqual(getFieldNames(interaction), ['#1 Dragapult', '#2 Garchomp']);
           assert.strictEqual(fields[0].value, 'Usage: `18.84%`');
           assert.strictEqual(getEditReplyPayload(interaction).content, '**__Usage:__** Top 2 most used Pokemon of OU (Gen 9)');
         }
@@ -257,7 +257,7 @@ const tests: TestCase[] = [
 
           await command.execute(interaction as never);
 
-          assert.deepStrictEqual(getFieldNames(interaction), ['1º) <:dragapult:123> Dragapult', '2º) Garchomp']);
+          assert.deepStrictEqual(getFieldNames(interaction), ['#1 <:dragapult:123> Dragapult', '#2 Garchomp']);
         },
         {
           Dragapult: '<:dragapult:123> Dragapult',
@@ -280,7 +280,7 @@ const tests: TestCase[] = [
           await command.execute(interaction as never);
 
           const fields = getEmbedFields(interaction);
-          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Azelf', '2º) Glimmora']);
+          assert.deepStrictEqual(getFieldNames(interaction), ['#1 Azelf', '#2 Glimmora']);
           assert.strictEqual(fields[1].value, 'Usage: `19.25%`');
           assert.strictEqual(getEditReplyPayload(interaction).content, '**__Leads:__** Top 2 leads of OU (Gen 9)');
         }
@@ -301,7 +301,7 @@ const tests: TestCase[] = [
 
           await command.execute(interaction as never);
 
-          assert.deepStrictEqual(getFieldNames(interaction), ['1º) <:azelf:123> Azelf', '2º) Glimmora']);
+          assert.deepStrictEqual(getFieldNames(interaction), ['#1 <:azelf:123> Azelf', '#2 Glimmora']);
         },
         {
           Azelf: '<:azelf:123> Azelf',
@@ -345,7 +345,7 @@ const tests: TestCase[] = [
 
           const payload = getEditReplyPayload(interaction);
           assert.strictEqual(payload.content, '**__Speed Tier:__** Top 3 Pokemon of OU (Gen 9)');
-          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Dragapult', '2º) Garchomp', '3º) Shuckle']);
+          assert.deepStrictEqual(getFieldNames(interaction), ['#1 Dragapult', '#2 Garchomp', '#3 Shuckle']);
         }
       );
     }
@@ -365,7 +365,7 @@ const tests: TestCase[] = [
 
           await command.execute(interaction as never);
 
-          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Shuckle', '2º) Garchomp', '3º) Dragapult']);
+          assert.deepStrictEqual(getFieldNames(interaction), ['#1 Shuckle', '#2 Garchomp', '#3 Dragapult']);
         }
       );
     }
@@ -387,7 +387,7 @@ const tests: TestCase[] = [
 
           const fields = getEmbedFields(interaction);
           assert.ok(fields.every(field => field.name.indexOf('Mon101') < 0));
-          assert.strictEqual(fields[0].name, '1º) Mon1');
+          assert.strictEqual(fields[0].name, '#1 Mon1');
         }
       );
     }
@@ -467,7 +467,7 @@ const tests: TestCase[] = [
           const payload = getEditReplyPayload(interaction);
           const fields = getEmbedFields(interaction);
           assert.strictEqual(payload.content, '**__Attackers:__** Top 3 Pokemon of OU (Gen 9)');
-          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Chi-Yu', '2º) Garchomp', '3º) Dragapult']);
+          assert.deepStrictEqual(getFieldNames(interaction), ['#1 Chi-Yu', '#2 Garchomp', '#3 Dragapult']);
           assert.strictEqual(fields[0].value, 'Base Sp. Atk: `135`\nUsage: `#3` (22.10%)');
           assert.strictEqual(fields[1].value, 'Base Attack: `130`\nUsage: `#5` (17.20%)');
         }
@@ -489,7 +489,7 @@ const tests: TestCase[] = [
 
           await command.execute(interaction as never);
 
-          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Dragonite', '2º) Gallade', '3º) Hydreigon']);
+          assert.deepStrictEqual(getFieldNames(interaction), ['#1 Dragonite', '#2 Gallade', '#3 Hydreigon']);
           assert.strictEqual(getEmbedFields(interaction)[0].value, 'Base Attack: `134`\nUsage: `#2` (25.50%)');
         }
       );
@@ -509,7 +509,7 @@ const tests: TestCase[] = [
 
           await command.execute(interaction as never);
 
-          assert.deepStrictEqual(getFieldNames(interaction), ['1º) <:dragonite:123> Dragonite', '2º) Gallade']);
+          assert.deepStrictEqual(getFieldNames(interaction), ['#1 <:dragonite:123> Dragonite', '#2 Gallade']);
         },
         {
           Dragonite: '<:dragonite:123> Dragonite',
@@ -534,7 +534,7 @@ const tests: TestCase[] = [
 
           const payload = getEditReplyPayload(interaction);
           assert.strictEqual(payload.content, '**__Defenders:__** Top 3 Pokemon of OU (Gen 9) - *special side only mode*');
-          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Goodra', '2º) Blissey', '3º) Skarmory']);
+          assert.deepStrictEqual(getFieldNames(interaction), ['#1 Goodra', '#2 Blissey', '#3 Skarmory']);
           assert.strictEqual(getEmbedFields(interaction)[0].value, 'Base Sp. Def: `150`\nUsage: `#9` (8.40%)');
         }
       );
@@ -556,7 +556,7 @@ const tests: TestCase[] = [
           await command.execute(interaction as never);
 
           assert.ok(getFieldNames(interaction).every(name => name.indexOf('Mon101') < 0));
-          assert.strictEqual(getFieldNames(interaction)[0], '1º) Mon1');
+          assert.strictEqual(getFieldNames(interaction)[0], '#1 Mon1');
         }
       );
     }
@@ -610,7 +610,7 @@ const tests: TestCase[] = [
           await command.execute(interaction as never);
 
           const fields = getEmbedFields(interaction);
-          assert.deepStrictEqual(getFieldNames(interaction), ['1º) Charizard', '2º) Gengar']);
+          assert.deepStrictEqual(getFieldNames(interaction), ['#1 Charizard', '#2 Gengar']);
           assert.strictEqual(fields[0].value, 'Usage: `12.34%`');
           assert.strictEqual(getEditReplyPayload(interaction).content, '**__Megas:__** Top 2 Mega Stone users of OU (Gen 6)');
         }
@@ -631,7 +631,7 @@ const tests: TestCase[] = [
 
           await command.execute(interaction as never);
 
-          assert.deepStrictEqual(getFieldNames(interaction), ['1º) <:charizard:123> Charizard', '2º) Gengar']);
+          assert.deepStrictEqual(getFieldNames(interaction), ['#1 <:charizard:123> Charizard', '#2 Gengar']);
         },
         {
           Charizard: '<:charizard:123> Charizard',

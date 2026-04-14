@@ -158,7 +158,7 @@ const tests: TestCase[] = [
       const command = new VgcCommand({
         pokemonDb,
         pokemonEmojis: {
-          formatPokemonDisplayName: async (name: string) => name === 'Charizard' ? '<:charizard:123> Charizard' : name,
+          formatPokemonDisplayName: (name: string) => name === 'Charizard' ? '<:charizard:123> Charizard' : name,
         },
         vgcTeams: {
           getTeams: () => [

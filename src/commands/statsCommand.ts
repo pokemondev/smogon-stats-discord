@@ -128,16 +128,14 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
       return;
     }
 
-    const firstMon = usageData
-      .map((usage) => this.dataSource.pokemonDb.getPokemon(usage.name))
-      .find((pokemon): pokemon is Pokemon => !!pokemon);
+    const firstMon = this.findFirstPokemon(usageData.map(usage => usage.name));
     if (!firstMon) {
       await this.replyNoData(interaction, `No usage data available for ${FormatHelper.toUserString(format)}.`);
       return;
     }
 
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
-    const displayNames = await this.formatPokemonDisplayNames(usageData.map(pokemon => pokemon.name));
+    const displayNames = this.formatPokemonDisplayNames(usageData.map(pokemon => pokemon.name));
 
     usageData.forEach((pokemon, index) => {
       embed.addFields({
@@ -163,17 +161,14 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
       return;
     }
 
-    const firstMon = leads
-      .map((usage) => this.dataSource.pokemonDb.getPokemon(usage.name))
-      .find((pokemon): pokemon is Pokemon => !!pokemon);
+    const firstMon = this.findFirstPokemon(leads.map(usage => usage.name));
     if (!firstMon) {
       await this.replyNoData(interaction, `No leads data available for ${FormatHelper.toUserString(format)}.`);
       return;
     }
 
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
-
-    const displayNames = await this.formatPokemonDisplayNames(leads.map(pokemon => pokemon.name));
+    const displayNames = this.formatPokemonDisplayNames(leads.map(pokemon => pokemon.name));
 
     leads.forEach((pokemon, index) => {
       embed.addFields({
@@ -265,7 +260,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     const firstMon = options.entries[0].pokemon;
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
-    const displayNames = await this.formatPokemonDisplayNames(options.entries.map(entry => entry.pokemon.name));
+    const displayNames = this.formatPokemonDisplayNames(options.entries.map(entry => entry.pokemon.name));
 
     options.entries.forEach((entry, index) => {
       embed.addFields({
@@ -293,17 +288,14 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
       return;
     }
 
-    const firstMon = moveSets
-      .map((moveSet) => this.dataSource.pokemonDb.getPokemon(moveSet.name))
-      .find((pokemon): pokemon is Pokemon => !!pokemon);
+    const firstMon = this.findFirstPokemon(moveSets.map(moveSet => moveSet.name));
     if (!firstMon) {
       await this.replyNoData(interaction, `No Mega usage data available for ${FormatHelper.toUserString(format)}.`);
       return;
     }
 
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
-
-    const displayNames = await this.formatPokemonDisplayNames(moveSets.map(moveSet => moveSet.name));
+    const displayNames = this.formatPokemonDisplayNames(moveSets.map(moveSet => moveSet.name));
 
     moveSets.forEach((moveSet, index) => {
       embed.addFields({

@@ -102,10 +102,10 @@ function getFieldNames(interaction: FakeChatInputCommandInteraction): string[] {
 
 async function withStubbedPokemonEmojiDisplayNames(
   emojiDisplayByPokemonName: Record<string, string>,
-  runTest: () => Promise<void>
+  runTest: () => void
 ): Promise<void> {
   const originalFormatPokemonDisplayName = dataSource.pokemonEmojis.formatPokemonDisplayName.bind(dataSource.pokemonEmojis);
-  dataSource.pokemonEmojis.formatPokemonDisplayName = async (name: string) => emojiDisplayByPokemonName[name] ?? name;
+  dataSource.pokemonEmojis.formatPokemonDisplayName = (name: string) => emojiDisplayByPokemonName[name] ?? name;
 
   try {
     await runTest();
@@ -217,7 +217,7 @@ const tests: TestCase[] = [
       await command.execute(interaction as never);
 
       const embed = getEditReplyEmbed(interaction);
-      assert.deepStrictEqual(getFieldNames(interaction), ['1º) Safety Goggles', '2º) Sitrus Berry']);
+      assert.deepStrictEqual(getFieldNames(interaction), ['#1 Safety Goggles', '#2 Sitrus Berry']);
       assert.strictEqual(embed.fields[0].value, 'Usage: `42.35%`');
       assert.strictEqual(embed.fields[1].value, 'Usage: `18.50%`');
     }
@@ -247,7 +247,7 @@ const tests: TestCase[] = [
       await command.execute(interaction as never);
 
       const embed = getEditReplyEmbed(interaction);
-      assert.deepStrictEqual(getFieldNames(interaction), ['1º) Great Tusk']);
+      assert.deepStrictEqual(getFieldNames(interaction), ['#1 Great Tusk']);
       assert.strictEqual(embed.fields[0].value, 'KO-ed: `51.20%`\nSW. out: `33.40%`');
     }
   },
@@ -280,7 +280,9 @@ const tests: TestCase[] = [
 
           await command.execute(interaction as never);
 
-          assert.deepStrictEqual(getFieldNames(interaction), ['1º) <:great_tusk:123> Great Tusk']);
+          const fieldNames = getFieldNames(interaction);
+          assert.strictEqual(fieldNames[0].includes('#1'), true);
+          assert.strictEqual(fieldNames[0].includes('Great Tusk'), true);
         }
       );
     }

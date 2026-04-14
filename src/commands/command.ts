@@ -28,7 +28,7 @@ const pokemonInfoCategoryChoices = [
   { name: 'Abilities', value: 'abilities' },
   { name: 'Items', value: 'items' },
   { name: 'Spreads', value: 'spreads' },
-  { name: 'Checks', value: 'checks' },
+  { name: 'Checks & Counters', value: 'checks' },
   { name: 'Teammates', value: 'teammates' },
 ] as const;
 
@@ -90,23 +90,10 @@ export function withFormatOptions(subcommand: SlashCommandSubcommandBuilder): Sl
 export class CommandBase {
   constructor(protected readonly dataSource: AppDataSource) {
   }
-
-  protected async formatPokemonDisplayName(name: string): Promise<string> {
-    const pokemonEmojis = (this.dataSource as Partial<AppDataSource>).pokemonEmojis;
-    if (!pokemonEmojis?.formatPokemonDisplayName) {
-      return name;
-    }
-
-    return pokemonEmojis.formatPokemonDisplayName(name);
-  }
-
-  protected async formatPokemonDisplayNames(names: string[]): Promise<string[]> {
-    return Promise.all(names.map(name => this.formatPokemonDisplayName(name)));
-  }
-
+  
   protected getRequestedPokemonName(interaction: ChatInputCommandInteraction): string {
     return interaction.options.getString('name', true).trim();
-  }
+  }  
 
   protected getFormat(interaction: ChatInputCommandInteraction): SmogonFormat {
     const generation = interaction.options.getString('generation');
@@ -136,7 +123,7 @@ export class CommandBase {
       moveSet: moveSet ? moveSet : {} as MoveSetUsage,
       pokemon: query.pokemon,
     };
-  }
+  }  
 
   protected createPokemonEmbed(
     pokemon: Pokemon,
@@ -172,7 +159,7 @@ export class CommandBase {
     }
 
     const titles = options.formatPokemonNames
-      ? await this.formatPokemonDisplayNames(safeUsageData.map(usage => usage.name))
+      ? this.formatPokemonDisplayNames(safeUsageData.map(usage => usage.name))
       : safeUsageData.map(usage => usage.name);
 
     safeUsageData.forEach((usage, index) => {
@@ -184,8 +171,23 @@ export class CommandBase {
       embed.addFields({ name, value, inline: true });
     });
   }
+  
   protected formatRankedTitle(position: number, title: string): string {
-    return `${position}º) ${title}`;
+    //return `${position}º) ${title}`;
+    return `#${position} ${title}`;
+  }
+
+  protected findFirstPokemon(names: string[]): Pokemon | undefined {
+    return names
+      .map(name => this.dataSource.pokemonDb.getPokemon(name))
+      .find((pokemon): pokemon is Pokemon => !!pokemon);
+  }
+
+  protected formatPokemonDisplayNames(names: string[]): string[] {
+    var emojiService = this.dataSource.pokemonEmojis;
+    if (!emojiService)
+      return names;
+    return names.map(name => emojiService.formatPokemonDisplayName(name));
   }
 
   protected async replyNoData(interaction: ChatInputCommandInteraction, message: string): Promise<void> {
@@ -213,7 +215,7 @@ export class CommandBase {
     return args.join(' ');
   }
 
-  private isCheckAndCounters(usage: UsageData | ChecksAndCountersUsageData): usage is ChecksAndCountersUsageData {
+  protected isCheckAndCounters(usage: UsageData | ChecksAndCountersUsageData): usage is ChecksAndCountersUsageData {
     return (usage as ChecksAndCountersUsageData).kOed !== undefined;
   }
 }
