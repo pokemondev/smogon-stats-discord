@@ -100,6 +100,21 @@ function getFieldNames(interaction: FakeChatInputCommandInteraction): string[] {
   return getEditReplyEmbed(interaction).fields.map((field: { name: string }) => field.name);
 }
 
+async function withStubbedPokemonEmojiDisplayNames(
+  emojiDisplayByPokemonName: Record<string, string>,
+  runTest: () => Promise<void>
+): Promise<void> {
+  const originalFormatPokemonDisplayName = dataSource.pokemonEmojis.formatPokemonDisplayName.bind(dataSource.pokemonEmojis);
+  dataSource.pokemonEmojis.formatPokemonDisplayName = async (name: string) => emojiDisplayByPokemonName[name] ?? name;
+
+  try {
+    await runTest();
+  }
+  finally {
+    dataSource.pokemonEmojis.formatPokemonDisplayName = originalFormatPokemonDisplayName;
+  }
+}
+
 const tests: TestCase[] = [
   {
     name: 'sets defers before editing successful responses',
@@ -203,8 +218,8 @@ const tests: TestCase[] = [
 
       const embed = getEditReplyEmbed(interaction);
       assert.deepStrictEqual(getFieldNames(interaction), ['1º) Safety Goggles', '2º) Sitrus Berry']);
-      assert.strictEqual(embed.fields[0].value, 'Usage: 42.35%');
-      assert.strictEqual(embed.fields[1].value, 'Usage: 18.50%');
+      assert.strictEqual(embed.fields[0].value, 'Usage: `42.35%`');
+      assert.strictEqual(embed.fields[1].value, 'Usage: `18.50%`');
     }
   },
   {
@@ -233,7 +248,41 @@ const tests: TestCase[] = [
 
       const embed = getEditReplyEmbed(interaction);
       assert.deepStrictEqual(getFieldNames(interaction), ['1º) Great Tusk']);
-      assert.strictEqual(embed.fields[0].value, 'Knocked out: 51.20%\nSwitched out: 33.40%');
+      assert.strictEqual(embed.fields[0].value, 'KO-ed: `51.20%`\nSW. out: `33.40%`');
+    }
+  },
+  {
+    name: 'info renders application emojis for pokemon-name categories',
+    run: async () => {
+      await withStubbedPokemonEmojiDisplayNames(
+        {
+          'Great Tusk': '<:great_tusk:123> Great Tusk',
+        },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('info', {
+            name: 'incineroar',
+            category: 'checks',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: {
+              ...createEmptyMoveSet(query.pokemon.name),
+              checksAndCounters: [
+                { name: 'Great Tusk', percentage: 0, kOed: 51.2, switchedOut: 33.4 },
+              ],
+            },
+          });
+
+          await command.execute(interaction as never);
+
+          assert.deepStrictEqual(getFieldNames(interaction), ['1º) <:great_tusk:123> Great Tusk']);
+        }
+      );
     }
   },
   {
@@ -284,6 +333,43 @@ const tests: TestCase[] = [
     }
   },
   {
+    name: 'summary renders application emojis in VGC Team Mates field',
+    run: async () => {
+      await withStubbedPokemonEmojiDisplayNames(
+        {
+          Miraidon: '<:miraidon:123> Miraidon',
+        },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('summary', {
+            name: 'incineroar',
+            generation: '9',
+            meta: 'vgc2026regi',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: {
+              ...createEmptyMoveSet(query.pokemon.name),
+              teamMates: [
+                { name: 'Miraidon', percentage: 42.345 },
+              ],
+            },
+          });
+          (command as any).getGeneralInfoData = async () => 'Meta: `VGC 2026 Reg. I`';
+
+          await command.execute(interaction as never);
+
+          const embed = getEditReplyEmbed(interaction);
+          const teamMatesField = embed.fields.find((field: { name: string; value: string }) => field.name === 'Team Mates');
+
+          assert.strictEqual(teamMatesField?.value, '<:miraidon:123> Miraidon: `42.34%`');
+        }
+      );
+    }
+  },
+  {
     name: 'summary keeps Counters & Checks for non-VGC formats',
     run: async () => {
       const command = new PokemonCommand(dataSource);
@@ -315,7 +401,44 @@ const tests: TestCase[] = [
 
       assert.ok(countersField, 'Expected Counters & Checks field for non-VGC summary.');
       assert.strictEqual(embed.fields.some((field: { name: string }) => field.name === 'Team Mates'), false);
-      assert.strictEqual(countersField.value, '`Great Tusk: KO 51.2% / SW 33.4%`');
+      assert.strictEqual(countersField.value, 'Great Tusk: `KO 51.2% / SW 33.4%`');
+    }
+  },
+  {
+    name: 'summary renders application emojis in Counters & Checks field',
+    run: async () => {
+      await withStubbedPokemonEmojiDisplayNames(
+        {
+          'Great Tusk': '<:great_tusk:123> Great Tusk',
+        },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('summary', {
+            name: 'incineroar',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: {
+              ...createEmptyMoveSet(query.pokemon.name),
+              checksAndCounters: [
+                { name: 'Great Tusk', percentage: 0, kOed: 51.2, switchedOut: 33.4 },
+              ],
+            },
+          });
+          (command as any).getGeneralInfoData = async () => 'Meta: `OU`';
+
+          await command.execute(interaction as never);
+
+          const embed = getEditReplyEmbed(interaction);
+          const countersField = embed.fields.find((field: { name: string; value: string }) => field.name === 'Counters & Checks');
+
+          assert.strictEqual(countersField?.value, '<:great_tusk:123> Great Tusk: `KO 51.2% / SW 33.4%`');
+        }
+      );
     }
   }
 ];

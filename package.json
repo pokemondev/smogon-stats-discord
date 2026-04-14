@@ -9,6 +9,7 @@
     "build": "tsc -b ./",
     "bot": "node ./dist/app.js",
     "register:commands": "npm run build && node ./dist/registerCommands.js",
+    "register:emojis": "npm run build && node ./dist/registerEmojis.js",
     "start": "npm run build && npm run bot",
     "dev": "npm-run-all --parallel watch:build watch:bot",
     "watch:build": "tsc --watch --preserveWatchOutput",

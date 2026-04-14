@@ -137,10 +137,11 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
     }
 
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
+    const displayNames = await this.formatPokemonDisplayNames(usageData.map(pokemon => pokemon.name));
 
     usageData.forEach((pokemon, index) => {
       embed.addFields({
-        name: this.formatRankedTitle(index + 1, pokemon.name),
+        name: this.formatRankedTitle(index + 1, displayNames[index]),
         value: `Usage: \`${pokemon.usageRaw.toFixed(2)}%\``,
         inline: true,
       });
@@ -172,9 +173,11 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
 
+    const displayNames = await this.formatPokemonDisplayNames(leads.map(pokemon => pokemon.name));
+
     leads.forEach((pokemon, index) => {
       embed.addFields({
-        name: this.formatRankedTitle(index + 1, pokemon.name),
+        name: this.formatRankedTitle(index + 1, displayNames[index]),
         value: `Usage: \`${pokemon.usageRaw.toFixed(2)}%\``,
         inline: true,
       });
@@ -262,10 +265,11 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     const firstMon = options.entries[0].pokemon;
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
+    const displayNames = await this.formatPokemonDisplayNames(options.entries.map(entry => entry.pokemon.name));
 
     options.entries.forEach((entry, index) => {
       embed.addFields({
-        name: this.formatRankedTitle(index + 1, entry.pokemon.name),
+        name: this.formatRankedTitle(index + 1, displayNames[index]),
         value: `Base ${entry.statsName}: \`${entry.stats}\`\nUsage: \`#${entry.usage.rank}\` (${entry.usage.usageRaw.toFixed(2)}%)`,
         inline: true,
       });
@@ -299,9 +303,11 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
 
+    const displayNames = await this.formatPokemonDisplayNames(moveSets.map(moveSet => moveSet.name));
+
     moveSets.forEach((moveSet, index) => {
       embed.addFields({
-        name: this.formatRankedTitle(index + 1, moveSet.name),
+        name: this.formatRankedTitle(index + 1, displayNames[index]),
         value: `Usage: \`${(moveSet.usage ?? 0).toFixed(2)}%\``,
         inline: true,
       });

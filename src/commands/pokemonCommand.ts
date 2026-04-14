@@ -109,7 +109,12 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
       return;
     }
 
-    await this.handleMovesetBreakdown(interaction, handler.title, handler.selector);
+    await this.handleMovesetBreakdown(
+      interaction,
+      handler.title,
+      handler.selector,
+      category === 'checks' || category === 'teammates'
+    );
   }
 
   private async handleSummary(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -145,8 +150,8 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const spreads = this.getData(cmd.moveSet.spreads, 4, true);
     const matchupFieldName = isVgc ? 'Team Mates' : 'Counters & Checks';
     const matchupFieldData = isVgc
-      ? this.getData(cmd.moveSet.teamMates, 4)
-      : this.getCountersChecksData(cmd);
+      ? await this.getPokemonUsageData(cmd.moveSet.teamMates, 4)
+      : await this.getCountersChecksData(cmd);
 
     embed.addFields(
       { name: `Base Stats Total: ${stats.tot}`, value: baseStatsData, inline: true },
@@ -175,7 +180,8 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
   private async handleMovesetBreakdown(
     interaction: ChatInputCommandInteraction,
     title: string,
-    selector: (moveSet: MovesetCommandData['moveSet']) => UsageData[] | ReturnType<typeof this.getChecksData>
+    selector: (moveSet: MovesetCommandData['moveSet']) => UsageData[] | ReturnType<typeof this.getChecksData>,
+    formatPokemonNames: boolean = false
   ): Promise<void> {
     const query = this.resolvePokemonQuery(interaction);
     if (!query) {
@@ -190,12 +196,14 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const embed = this.createPokemonEmbed(cmd.pokemon, { thumbnail: true });
     const usageData = selector(cmd.moveSet);
 
-    this.addUsageFields(embed, usageData, usage => {
+    await this.addUsageFields(embed, usageData, usage => {
       if ('kOed' in usage) {
         return `KO-ed: \`${usage.kOed.toFixed(2)}%\`\nSW. out: \`${usage.switchedOut.toFixed(2)}%\``;
       }
 
       return `Usage: \`${usage.percentage.toFixed(2)}%\``;
+    }, {
+      formatPokemonNames,
     });
 
     await interaction.editReply({
@@ -297,9 +305,25 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     return data ? data : "-";
   }
 
-  private getCountersChecksData(cmd: MovesetCommandData, limit: number = 4): string {
+  private async getPokemonUsageData(usageData: UsageData[] | undefined, limit: number = 6): Promise<string> {
+    const safeUsageData = (usageData ?? []).slice(0, limit);
+    if (!safeUsageData.length) {
+      return '-';
+    }
+
+    const displayNames = await this.formatPokemonDisplayNames(safeUsageData.map(entry => entry.name));
+    return safeUsageData.map((entry, index) => `${displayNames[index]}: \`${entry.percentage.toFixed(2)}%\``).join('\n');
+  }
+
+  private async getCountersChecksData(cmd: MovesetCommandData, limit: number = 4): Promise<string> {
     const cc = (cmd.moveSet.checksAndCounters ? cmd.moveSet.checksAndCounters : []);
-    let countersChecks = cc.slice(0, limit).map(iv => `\`${iv.name}: KO ${iv.kOed.toFixed(1)}% / SW ${iv.switchedOut.toFixed(1)}%\``).join('\n');
+    const safeChecks = cc.slice(0, limit);
+    if (!safeChecks.length) {
+      return '-';
+    }
+
+    const displayNames = await this.formatPokemonDisplayNames(safeChecks.map(entry => entry.name));
+    let countersChecks = safeChecks.map((entry, index) => `${displayNames[index]}: \`KO ${entry.kOed.toFixed(1)}% / SW ${entry.switchedOut.toFixed(1)}%\``).join('\n');
     countersChecks = countersChecks ? countersChecks : "-";
     return countersChecks;
   }

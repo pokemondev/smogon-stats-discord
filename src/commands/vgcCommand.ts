@@ -108,9 +108,11 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
       .setTitle(`${FormatHelper.getMetaDisplayName(resolvedTeam.format.meta)} - ${resolvedTeam.team.description}`)
       .setDescription(this.buildTeamDetailsDescription(resolvedTeam));
 
+    const memberDisplayNames = await this.formatPokemonDisplayNames(resolvedTeam.team.members.map(member => member.name));
+
     resolvedTeam.team.members.forEach((member, index) => {
       embed.addFields({
-        name: member.name,
+        name: memberDisplayNames[index],
         value: `\`\`\`${FormatHelper.getSmogonSet(member)}\`\`\`\u2006`,
         inline: true,
       });
@@ -166,10 +168,12 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
       .setTitle(this.buildEmbedTitle(format, primaryPokemon, secondaryPokemon))
       .setDescription(`Showing ${displayedTeams.length} of ${teams.length} matching teams.`);
 
+    const teamMemberDisplays = await Promise.all(displayedTeams.map(team => this.buildTeamMembersList(team)));
+
     displayedTeams.forEach((team, index) => {
       embed.addFields({
         name: `#${index + 1} ${team.description} (ID ${team.teamId})`,
-        value: this.buildTeamMembersCodeBlock(team),
+        value: teamMemberDisplays[index],
         inline: true,
       });
 
@@ -280,8 +284,9 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     return `No VGC teams available for ${FormatHelper.getMetaDisplayName(format.meta)}.`;
   }
 
-  private buildTeamMembersCodeBlock(team: VgcTeam): string {
-    return `\`\`\`\n${team.members.map(member => member.name).join('\n')}\n\`\`\``;
+  private async buildTeamMembersList(team: VgcTeam): Promise<string> {
+    const displayNames = await this.formatPokemonDisplayNames(team.members.map(member => member.name));
+    return displayNames.join('\n');
   }
 
   private isTeamMemberUsage(usage: PokemonUsage, teamMemberNames: Set<string>): boolean {

@@ -91,6 +91,19 @@ export class CommandBase {
   constructor(protected readonly dataSource: AppDataSource) {
   }
 
+  protected async formatPokemonDisplayName(name: string): Promise<string> {
+    const pokemonEmojis = (this.dataSource as Partial<AppDataSource>).pokemonEmojis;
+    if (!pokemonEmojis?.formatPokemonDisplayName) {
+      return name;
+    }
+
+    return pokemonEmojis.formatPokemonDisplayName(name);
+  }
+
+  protected async formatPokemonDisplayNames(names: string[]): Promise<string[]> {
+    return Promise.all(names.map(name => this.formatPokemonDisplayName(name)));
+  }
+
   protected getRequestedPokemonName(interaction: ChatInputCommandInteraction): string {
     return interaction.options.getString('name', true).trim();
   }
@@ -146,19 +159,24 @@ export class CommandBase {
     return embed;
   }
 
-  protected addUsageFields(
+  protected async addUsageFields(
     embed: EmbedBuilder,
     usageData: UsageData[] | ChecksAndCountersUsageData[] | undefined,
-    formatter?: (data: UsageData | ChecksAndCountersUsageData) => string    
-  ): void {
+    formatter?: (data: UsageData | ChecksAndCountersUsageData) => string,
+    options: { formatPokemonNames?: boolean } = {}
+  ): Promise<void> {
     const safeUsageData = usageData ? usageData.slice(0, 24) : [];
     if (!safeUsageData.length) {
       embed.setDescription('No data available for this query.');
       return;
     }
 
+    const titles = options.formatPokemonNames
+      ? await this.formatPokemonDisplayNames(safeUsageData.map(usage => usage.name))
+      : safeUsageData.map(usage => usage.name);
+
     safeUsageData.forEach((usage, index) => {
-      const name = this.formatRankedTitle(index + 1, usage.name);
+      const name = this.formatRankedTitle(index + 1, titles[index]);
       const value = formatter
         ? formatter(usage)
         : `Usage: \`${usage.percentage.toFixed(2)}%\``;
