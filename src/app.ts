@@ -20,11 +20,11 @@ client.once(Events.ClientReady, async readyClient => {
   console.log(`Loaded ${commands.size} slash commands.`);
 
   try {
-    await dataSource.pokemonEmojis.initialize(readyClient);
-    console.log(`Loaded ${dataSource.pokemonEmojis.getLoadedEmojiCount()} application Pokemon emoji(s).`);
+    await dataSource.emojiService.initialize(readyClient);
+    console.log(`Loaded ${dataSource.emojiService.getLoadedEmojiCount()} application emoji(s).`);
   }
   catch (error) {
-    console.error('Failed to initialize application Pokemon emoji cache.', error);
+    console.error('Failed to initialize application emoji cache.', error);
   }
 });
 

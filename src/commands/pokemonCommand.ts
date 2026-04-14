@@ -113,7 +113,10 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
       interaction,
       handler.title,
       handler.selector,
-      category === 'checks' || category === 'teammates'
+      {
+        formatPokemonNames: category === 'checks' || category === 'teammates',
+        formatItemNames: category === 'items',
+      }
     );
   }
 
@@ -142,7 +145,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const info = await this.getGeneralInfoData(cmd);
     const abilities = this.getData(cmd.moveSet.abilities);
     const moves = this.getData(cmd.moveSet.moves);
-    const items = this.getData(cmd.moveSet.items);
+    const items = this.getItemUsageData(cmd.moveSet.items);
     const defensiveProfile = this.getWeakResistData(cmd);
     const teraTypes = this.getTeraTypesData(cmd);
     const typeFieldName = isGen9 ? 'Tera Types' : 'Weak/Resist';
@@ -181,7 +184,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     interaction: ChatInputCommandInteraction,
     title: string,
     selector: (moveSet: MoveSetUsage) => UsageData[] | ReturnType<typeof this.getChecksData>,
-    formatPokemonNames: boolean = false
+    options: { formatPokemonNames?: boolean; formatItemNames?: boolean } = {}
   ): Promise<void> {
     const query = this.resolvePokemonQuery(interaction);
     if (!query) {
@@ -200,7 +203,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
       return this.isCheckAndCounters(usage)
         ? `KO-ed: \`${usage.kOed.toFixed(2)}%\`\nSW. out: \`${usage.switchedOut.toFixed(2)}%\``
         : `Usage: \`${usage.percentage.toFixed(2)}%\``;
-    }, { formatPokemonNames }
+    }, options
     );
 
     await interaction.editReply({
@@ -301,13 +304,20 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const data = (usageData ? usageData : []).slice(0, limit).map(iv => `${hl1}${iv.name}: ${hl2}${iv.percentage.toFixed(2)}%\``).join('\n');
     return data ? data : "-";
   }
+  private getItemUsageData(usageData: UsageData[] | undefined, limit: number = 6): string {
+    const safeData = (usageData ?? []).slice(0, limit);
+    if (!safeData.length) {
+      return '-';
+    }
 
+    return safeData.map(item => `${this.formatItemDisplayName(item.name)}: \`${item.percentage.toFixed(2)}%\``).join('\n');
+  }
   private async getPokemonUsageData(usageData: UsageData[] | undefined, limit: number = 6): Promise<string> {
     const safeUsageData = (usageData ?? []).slice(0, limit);
     if (!safeUsageData.length)
       return '-';
 
-    const displayNames = this.formatPokemonDisplayNames(safeUsageData.map(entry => entry.name));
+    const displayNames = safeUsageData.map(entry => this.formatPokemonDisplayName(entry.name));
     return safeUsageData.map((entry, index) => `${displayNames[index]}: \`${entry.percentage.toFixed(2)}%\``).join('\n');
   }
 
@@ -317,7 +327,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     if (!safeChecks.length)
       return '-';    
 
-    const displayNames = this.formatPokemonDisplayNames(safeChecks.map(entry => entry.name));
+    const displayNames = safeChecks.map(entry => this.formatPokemonDisplayName(entry.name));
     let countersChecks = safeChecks.map((entry, index) => `${displayNames[index]}: \`KO ${entry.kOed.toFixed(1)}% / SW ${entry.switchedOut.toFixed(1)}%\``).join('\n');
     countersChecks = countersChecks ? countersChecks : "-";
     return countersChecks;

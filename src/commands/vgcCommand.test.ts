@@ -146,7 +146,7 @@ const tests: TestCase[] = [
       const embed = payload.embeds[0].toJSON ? payload.embeds[0].toJSON() : payload.embeds[0];
 
       assert.strictEqual(embed.footer?.text, 'Check more details at x.com/VGCPastes and limitlessvgc.com');
-      assert.strictEqual(embed.fields[0].name, '#1 Sample Team 1 (ID I1280)');
+      assert.strictEqual(embed.fields[0].name, '#1 place at Event (ID I1280)');
       assert.strictEqual(embed.fields[0].value, 'Charizard\nIncineroar\nAmoonguss\nDragonite\nWhimsicott\nZamazenta');
       assert.strictEqual(embed.fields[2].name, '\u200b');
       assert.strictEqual(embed.fields[2].inline, false);
@@ -157,8 +157,8 @@ const tests: TestCase[] = [
     run: async () => {
       const command = new VgcCommand({
         pokemonDb,
-        pokemonEmojis: {
-          formatPokemonDisplayName: (name: string) => name === 'Charizard' ? '<:charizard:123> Charizard' : name,
+        emojiService: {
+          getPokemonEmoji: (name: string) => name === 'Charizard' ? '<:charizard:123>' : undefined,
         },
         vgcTeams: {
           getTeams: () => [
@@ -289,7 +289,7 @@ const tests: TestCase[] = [
       assert.ok(incineroar, 'Expected Incineroar in the pokemon database.');
 
       assert.strictEqual(payload.content, '**__VGC Team Details:__** I1280');
-      assert.strictEqual(embed.title, 'VGC 2026 Reg. I - Sample Team');
+      assert.strictEqual(embed.title, 'Sample Team');
       assert.strictEqual(embed.color, getNumericColor(ColorService.getColorForType(incineroar.type1)));
       assert.ok((embed.thumbnail?.url ?? '').toLowerCase().includes('incineroar'));
       assert.strictEqual(embed.fields[0].name, 'Charizard');

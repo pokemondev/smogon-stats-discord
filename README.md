@@ -50,13 +50,18 @@ npm run register:commands
 
 If `DEV_GUILD_ID` is set, commands are registered to that guild for instant updates. Otherwise, commands are registered globally.
 
-4. Register application Pokemon emojis:
+4. Register application emojis:
 
 ```bash
 npm run register:emojis
 ```
 
-This uses the same `TOKEN` and `CLIENT_ID` values as command registration. The workflow uploads missing application-owned `pkm_` emojis from Smogon XY mini sprites in sequential batches of 8 concurrent uploads. Existing matching `pkm_` emojis are kept, stale `pkm_` emojis are left untouched, and Discord's 256 KiB emoji upload limit still applies.
+This uses the same `TOKEN` and `CLIENT_ID` values as command registration. The workflow uploads missing emojis in two categories:
+
+- **Pokemon emojis** (`pkm_` prefix) — sourced from Smogon XY mini sprites at `https://www.smogon.com/dex/media/sprites/xyicons/`. These appear next to Pokemon names in command outputs.
+- **Item emojis** (`item_` prefix) — sourced from Smogon forum mini sprites at `https://www.smogon.com/forums/media/minisprites/`. These appear next to item names in usage outputs such as `/pokemon info items`.
+
+Both categories are uploaded in sequential batches of 8 concurrent uploads. Existing matching emojis are kept, stale emojis within each prefix group are left untouched, and Discord's 256 KiB emoji upload limit still applies.
 
 5. Start the bot:
 

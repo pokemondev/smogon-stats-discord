@@ -135,7 +135,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
     }
 
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
-    const displayNames = this.formatPokemonDisplayNames(usageData.map(pokemon => pokemon.name));
+    const displayNames = usageData.map(pokemon => this.formatPokemonDisplayName(pokemon.name));
 
     usageData.forEach((pokemon, index) => {
       embed.addFields({
@@ -168,7 +168,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
     }
 
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
-    const displayNames = this.formatPokemonDisplayNames(leads.map(pokemon => pokemon.name));
+    const displayNames = leads.map(pokemon => this.formatPokemonDisplayName(pokemon.name));
 
     leads.forEach((pokemon, index) => {
       embed.addFields({
@@ -260,7 +260,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     const firstMon = options.entries[0].pokemon;
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
-    const displayNames = this.formatPokemonDisplayNames(options.entries.map(entry => entry.pokemon.name));
+    const displayNames = options.entries.map(entry => this.formatPokemonDisplayName(entry.pokemon.name));
 
     options.entries.forEach((entry, index) => {
       embed.addFields({
@@ -295,7 +295,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
     }
 
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
-    const displayNames = this.formatPokemonDisplayNames(moveSets.map(moveSet => moveSet.name));
+    const displayNames = moveSets.map(moveSet => this.formatPokemonDisplayName(moveSet.name));
 
     moveSets.forEach((moveSet, index) => {
       embed.addFields({

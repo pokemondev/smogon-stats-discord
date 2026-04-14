@@ -145,18 +145,18 @@ function withStubbedStatsData(
 ): Promise<void> {
   const originalGetUsages = dataSource.smogonStats.getUsages.bind(dataSource.smogonStats);
   const originalGetPokemon = dataSource.pokemonDb.getPokemon.bind(dataSource.pokemonDb);
-  const originalFormatPokemonDisplayName = dataSource.pokemonEmojis.formatPokemonDisplayName.bind(dataSource.pokemonEmojis);
+  const originalGetPokemonEmoji = dataSource.emojiService.getPokemonEmoji.bind(dataSource.emojiService);
 
   dataSource.smogonStats.getUsages = async () => usages;
   dataSource.pokemonDb.getPokemon = (name: string) => pokemonByName[name];
-  dataSource.pokemonEmojis.formatPokemonDisplayName = (name: string) => emojiDisplayByPokemonName[name] ?? name;
+  dataSource.emojiService.getPokemonEmoji = (name: string) => emojiDisplayByPokemonName[name];
 
   const command = new StatsCommand(dataSource);
 
   return runTest(command).finally(() => {
     dataSource.smogonStats.getUsages = originalGetUsages;
     dataSource.pokemonDb.getPokemon = originalGetPokemon;
-    dataSource.pokemonEmojis.formatPokemonDisplayName = originalFormatPokemonDisplayName;
+    dataSource.emojiService.getPokemonEmoji = originalGetPokemonEmoji;
   });
 }
 
@@ -168,18 +168,18 @@ function withStubbedLeadsData(
 ): Promise<void> {
   const originalGetLeads = dataSource.smogonStats.getLeads.bind(dataSource.smogonStats);
   const originalGetPokemon = dataSource.pokemonDb.getPokemon.bind(dataSource.pokemonDb);
-  const originalFormatPokemonDisplayName = dataSource.pokemonEmojis.formatPokemonDisplayName.bind(dataSource.pokemonEmojis);
+  const originalGetPokemonEmoji = dataSource.emojiService.getPokemonEmoji.bind(dataSource.emojiService);
 
   dataSource.smogonStats.getLeads = async () => leads;
   dataSource.pokemonDb.getPokemon = (name: string) => pokemonByName[name];
-  dataSource.pokemonEmojis.formatPokemonDisplayName = (name: string) => emojiDisplayByPokemonName[name] ?? name;
+  dataSource.emojiService.getPokemonEmoji = (name: string) => emojiDisplayByPokemonName[name];
 
   const command = new StatsCommand(dataSource);
 
   return runTest(command).finally(() => {
     dataSource.smogonStats.getLeads = originalGetLeads;
     dataSource.pokemonDb.getPokemon = originalGetPokemon;
-    dataSource.pokemonEmojis.formatPokemonDisplayName = originalFormatPokemonDisplayName;
+    dataSource.emojiService.getPokemonEmoji = originalGetPokemonEmoji;
   });
 }
 
@@ -191,18 +191,18 @@ function withStubbedMegasData(
 ): Promise<void> {
   const originalGetMegasMoveSets = dataSource.smogonStats.getMegasMoveSets.bind(dataSource.smogonStats);
   const originalGetPokemon = dataSource.pokemonDb.getPokemon.bind(dataSource.pokemonDb);
-  const originalFormatPokemonDisplayName = dataSource.pokemonEmojis.formatPokemonDisplayName.bind(dataSource.pokemonEmojis);
+  const originalGetPokemonEmoji = dataSource.emojiService.getPokemonEmoji.bind(dataSource.emojiService);
 
   dataSource.smogonStats.getMegasMoveSets = async () => moveSets;
   dataSource.pokemonDb.getPokemon = (name: string) => pokemonByName[name];
-  dataSource.pokemonEmojis.formatPokemonDisplayName = (name: string) => emojiDisplayByPokemonName[name] ?? name;
+  dataSource.emojiService.getPokemonEmoji = (name: string) => emojiDisplayByPokemonName[name];
 
   const command = new StatsCommand(dataSource);
 
   return runTest(command).finally(() => {
     dataSource.smogonStats.getMegasMoveSets = originalGetMegasMoveSets;
     dataSource.pokemonDb.getPokemon = originalGetPokemon;
-    dataSource.pokemonEmojis.formatPokemonDisplayName = originalFormatPokemonDisplayName;
+    dataSource.emojiService.getPokemonEmoji = originalGetPokemonEmoji;
   });
 }
 
@@ -260,7 +260,7 @@ const tests: TestCase[] = [
           assert.deepStrictEqual(getFieldNames(interaction), ['#1 <:dragapult:123> Dragapult', '#2 Garchomp']);
         },
         {
-          Dragapult: '<:dragapult:123> Dragapult',
+          Dragapult: '<:dragapult:123>',
         }
       );
     }
@@ -304,7 +304,7 @@ const tests: TestCase[] = [
           assert.deepStrictEqual(getFieldNames(interaction), ['#1 <:azelf:123> Azelf', '#2 Glimmora']);
         },
         {
-          Azelf: '<:azelf:123> Azelf',
+          Azelf: '<:azelf:123>',
         }
       );
     }
@@ -512,7 +512,7 @@ const tests: TestCase[] = [
           assert.deepStrictEqual(getFieldNames(interaction), ['#1 <:dragonite:123> Dragonite', '#2 Gallade']);
         },
         {
-          Dragonite: '<:dragonite:123> Dragonite',
+          Dragonite: '<:dragonite:123>',
         }
       );
     }
@@ -634,7 +634,7 @@ const tests: TestCase[] = [
           assert.deepStrictEqual(getFieldNames(interaction), ['#1 <:charizard:123> Charizard', '#2 Gengar']);
         },
         {
-          Charizard: '<:charizard:123> Charizard',
+          Charizard: '<:charizard:123>',
         }
       );
     }

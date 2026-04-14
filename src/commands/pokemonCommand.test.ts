@@ -104,14 +104,29 @@ async function withStubbedPokemonEmojiDisplayNames(
   emojiDisplayByPokemonName: Record<string, string>,
   runTest: () => void
 ): Promise<void> {
-  const originalFormatPokemonDisplayName = dataSource.pokemonEmojis.formatPokemonDisplayName.bind(dataSource.pokemonEmojis);
-  dataSource.pokemonEmojis.formatPokemonDisplayName = (name: string) => emojiDisplayByPokemonName[name] ?? name;
+  const originalGetPokemonEmoji = dataSource.emojiService.getPokemonEmoji.bind(dataSource.emojiService);
+  dataSource.emojiService.getPokemonEmoji = (name: string) => emojiDisplayByPokemonName[name];
 
   try {
     await runTest();
   }
   finally {
-    dataSource.pokemonEmojis.formatPokemonDisplayName = originalFormatPokemonDisplayName;
+    dataSource.emojiService.getPokemonEmoji = originalGetPokemonEmoji;
+  }
+}
+
+async function withStubbedItemEmojiDisplayNames(
+  emojiDisplayByItemName: Record<string, string>,
+  runTest: () => void
+): Promise<void> {
+  const originalGetItemEmoji = dataSource.emojiService.getItemEmoji.bind(dataSource.emojiService);
+  dataSource.emojiService.getItemEmoji = (name: string) => emojiDisplayByItemName[name];
+
+  try {
+    await runTest();
+  }
+  finally {
+    dataSource.emojiService.getItemEmoji = originalGetItemEmoji;
   }
 }
 
@@ -339,7 +354,7 @@ const tests: TestCase[] = [
     run: async () => {
       await withStubbedPokemonEmojiDisplayNames(
         {
-          Miraidon: '<:miraidon:123> Miraidon',
+          Miraidon: '<:miraidon:123>',
         },
         async () => {
           const command = new PokemonCommand(dataSource);
@@ -411,7 +426,7 @@ const tests: TestCase[] = [
     run: async () => {
       await withStubbedPokemonEmojiDisplayNames(
         {
-          'Great Tusk': '<:great_tusk:123> Great Tusk',
+          'Great Tusk': '<:great_tusk:123>',
         },
         async () => {
           const command = new PokemonCommand(dataSource);
@@ -439,6 +454,85 @@ const tests: TestCase[] = [
           const countersField = embed.fields.find((field: { name: string; value: string }) => field.name === 'Counters & Checks');
 
           assert.strictEqual(countersField?.value, '<:great_tusk:123> Great Tusk: `KO 51.2% / SW 33.4%`');
+        }
+      );
+    }
+  },
+  {
+    name: 'info renders application emojis for item categories when registered',
+    run: async () => {
+      await withStubbedItemEmojiDisplayNames(
+        {
+          'Safety Goggles': '<:item_safety_goggles:123>',
+        },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('info', {
+            name: 'incineroar',
+            category: 'items',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: {
+              ...createEmptyMoveSet(query.pokemon.name),
+              items: [
+                { name: 'Safety Goggles', percentage: 42.35 },
+                { name: 'Sitrus Berry', percentage: 18.5 },
+              ],
+            },
+          });
+
+          await command.execute(interaction as never);
+
+          const fieldNames = getFieldNames(interaction);
+          assert.strictEqual(fieldNames[0].includes('#1'), true);
+          assert.strictEqual(fieldNames[0].includes('<:item_safety_goggles:123>'), true);
+          assert.strictEqual(fieldNames[0].includes('Safety Goggles'), true);
+          assert.strictEqual(fieldNames[1], '#2 Sitrus Berry');
+        }
+      );
+    }
+  },
+  {
+    name: 'summary renders application emojis in items summary field',
+    run: async () => {
+      await withStubbedItemEmojiDisplayNames(
+        {
+          'Choice Band': '<:item_choice_band:456>',
+        },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('summary', {
+            name: 'incineroar',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: {
+              ...createEmptyMoveSet(query.pokemon.name),
+              items: [
+                { name: 'Choice Band', percentage: 55.0 },
+                { name: 'Life Orb', percentage: 22.5 },
+              ],
+              moves: [{ name: 'Knock Off', percentage: 90.0 }],
+            },
+          });
+          (command as any).getGeneralInfoData = async () => 'Meta: `OU`';
+
+          await command.execute(interaction as never);
+
+          const embed = getEditReplyEmbed(interaction);
+          const itemsField = embed.fields.find((field: { name: string; value: string }) => field.name === 'Items');
+
+          assert.ok(itemsField, 'Expected an Items field in the summary embed.');
+          assert.strictEqual(itemsField.value, '<:item_choice_band:456> Choice Band: `55.00%`\nLife Orb: `22.50%`');
         }
       );
     }

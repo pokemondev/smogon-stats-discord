@@ -150,7 +150,7 @@ export class CommandBase {
     embed: EmbedBuilder,
     usageData: UsageData[] | ChecksAndCountersUsageData[] | undefined,
     formatter?: (data: UsageData | ChecksAndCountersUsageData) => string,
-    options: { formatPokemonNames?: boolean } = {}
+    options: { formatPokemonNames?: boolean; formatItemNames?: boolean } = {}
   ): Promise<void> {
     const safeUsageData = usageData ? usageData.slice(0, 24) : [];
     if (!safeUsageData.length) {
@@ -159,8 +159,10 @@ export class CommandBase {
     }
 
     const titles = options.formatPokemonNames
-      ? this.formatPokemonDisplayNames(safeUsageData.map(usage => usage.name))
-      : safeUsageData.map(usage => usage.name);
+      ? safeUsageData.map(usage => this.formatPokemonDisplayName(usage.name))
+      : options.formatItemNames
+        ? safeUsageData.map(usage => this.formatItemDisplayName(usage.name))
+        : safeUsageData.map(usage => usage.name);
 
     safeUsageData.forEach((usage, index) => {
       const name = this.formatRankedTitle(index + 1, titles[index]);
@@ -183,11 +185,24 @@ export class CommandBase {
       .find((pokemon): pokemon is Pokemon => !!pokemon);
   }
 
-  protected formatPokemonDisplayNames(names: string[]): string[] {
-    var emojiService = this.dataSource.pokemonEmojis;
-    if (!emojiService)
-      return names;
-    return names.map(name => emojiService.formatPokemonDisplayName(name));
+  protected formatPokemonDisplayName(name: string): string {
+    const emojiService = this.dataSource.emojiService;
+    if (!emojiService) {
+      return name;
+    }
+
+    const emoji = emojiService.getPokemonEmoji(name);
+    return emoji ? `${emoji} ${name}` : name;
+  }
+
+  protected formatItemDisplayName(name: string): string {
+    const emojiService = this.dataSource.emojiService;
+    if (!emojiService) {
+      return name;
+    }
+
+    const emoji = emojiService.getItemEmoji(name);
+    return emoji ? `${emoji} ${name}` : name;
   }
 
   protected async replyNoData(interaction: ChatInputCommandInteraction, message: string): Promise<void> {

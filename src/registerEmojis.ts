@@ -2,10 +2,16 @@ import { once } from 'events';
 import { ApplicationEmojiManager, Client, DiscordAPIError, Events, GatewayIntentBits } from 'discord.js';
 import { AppDataSource } from './appDataSource';
 import { ConfigHelper } from './config/configHelper';
-import { PokemonEmoji, PokemonEmojiRosterEntry } from './pokemon/pokemonEmoji';
+import { PokemonEmoji } from './pokemon/pokemonEmoji';
+import { ItemEmoji } from './pokemon/itemEmoji';
+
+interface EmojiRegistrationEntry {
+  emojiName: string;
+  minispriteUrl: string;
+}
 
 type EmojiFailure = {
-  entry: PokemonEmojiRosterEntry;
+  entry: EmojiRegistrationEntry;
   error: unknown;
 };
 
@@ -13,7 +19,10 @@ const botConfig = ConfigHelper.loadAndValidate({ requireClientId: true });
 const dataSource = new AppDataSource(botConfig);
 
 async function registerEmojis(): Promise<void> {
-  const roster = await PokemonEmoji.buildRoster(dataSource.smogonStats, dataSource.pokemonDb);
+  const pokemonRoster = await PokemonEmoji.buildRoster(dataSource.smogonStats, dataSource.pokemonDb);
+  const itemRoster = await ItemEmoji.buildRoster(dataSource.smogonStats);
+  const allEntries: EmojiRegistrationEntry[] = [...pokemonRoster.entries, ...itemRoster.entries];
+
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
   try {
@@ -31,29 +40,37 @@ async function registerEmojis(): Promise<void> {
         .map(emoji => emoji.name)
         .filter((name): name is string => !!name)
     );
-    const targetEmojiNames = new Set(roster.entries.map(entry => entry.emojiName));
+    const targetEmojiNames = new Set(allEntries.map(entry => entry.emojiName));
+
     const stalePokemonEmojiCount = existingEmojis.filter(
       emoji => !!emoji.name && emoji.name.startsWith(`${PokemonEmoji.Prefix}_`) && !targetEmojiNames.has(emoji.name)
     ).size;
+    const staleItemEmojiCount = existingEmojis.filter(
+      emoji => !!emoji.name && emoji.name.startsWith(`${ItemEmoji.Prefix}_`) && !targetEmojiNames.has(emoji.name)
+    ).size;
 
-    const entriesToCreate = roster.entries.filter(entry => !existingNames.has(entry.emojiName));
+    const entriesToCreate = allEntries.filter(entry => !existingNames.has(entry.emojiName));
 
-    console.log(`Computed ${roster.entries.length} unique Pokemon emoji(s) across ${roster.sources.length} source format(s).`);
-    console.log(`Found ${existingEmojis.size} existing application emoji(s). ${roster.entries.length - entriesToCreate.length} matching Pokemon emoji(s) already exist.`);
+    console.log(`Computed ${pokemonRoster.entries.length} unique Pokemon emoji(s) across ${pokemonRoster.sources.length} source format(s).`);
+    console.log(`Computed ${itemRoster.entries.length} unique item emoji(s).`);
+    console.log(`Found ${existingEmojis.size} existing application emoji(s). ${allEntries.length - entriesToCreate.length} matching emoji(s) already exist.`);
     if (stalePokemonEmojiCount > 0) {
       console.log(`Leaving ${stalePokemonEmojiCount} stale ${PokemonEmoji.Prefix}_ emoji(s) untouched.`);
     }
+    if (staleItemEmojiCount > 0) {
+      console.log(`Leaving ${staleItemEmojiCount} stale ${ItemEmoji.Prefix}_ emoji(s) untouched.`);
+    }
 
-    if (roster.unresolvedNames.length > 0) {
-      console.warn(`Proceeding with ${roster.unresolvedNames.length} unresolved Pokemon name(s): ${roster.unresolvedNames.join(', ')}`);
+    if (pokemonRoster.unresolvedNames.length > 0) {
+      console.warn(`Proceeding with ${pokemonRoster.unresolvedNames.length} unresolved Pokemon name(s): ${pokemonRoster.unresolvedNames.join(', ')}`);
     }
 
     if (!entriesToCreate.length) {
-      console.log('No missing Pokemon emojis were found.');
+      console.log('No missing emojis were found.');
       return;
     }
 
-    const createdEntries: PokemonEmojiRosterEntry[] = [];
+    const createdEntries: EmojiRegistrationEntry[] = [];
     const failedEntries: EmojiFailure[] = [];
     const batches = PokemonEmoji.chunkIntoBatches(entriesToCreate, PokemonEmoji.ImportBatchSize);
 
@@ -74,10 +91,12 @@ async function registerEmojis(): Promise<void> {
       });
     }
 
-    console.log(`Created ${createdEntries.length} Pokemon emoji(s).`);
-    console.log(`Skipped ${roster.entries.length - entriesToCreate.length} already-existing Pokemon emoji(s).`);
+    const createdPokemon = createdEntries.filter(e => e.emojiName.startsWith(`${PokemonEmoji.Prefix}_`)).length;
+    const createdItems = createdEntries.filter(e => e.emojiName.startsWith(`${ItemEmoji.Prefix}_`)).length;
+    console.log(`Created ${createdEntries.length} emoji(s) (${createdPokemon} Pokemon, ${createdItems} item).`);
+    console.log(`Skipped ${allEntries.length - entriesToCreate.length} already-existing emoji(s).`);
     if (failedEntries.length > 0) {
-      console.error(`Failed to create ${failedEntries.length} Pokemon emoji(s).`);
+      console.error(`Failed to create ${failedEntries.length} emoji(s).`);
       failedEntries.forEach(({ entry, error }) => {
         console.error(`- ${entry.emojiName} (${entry.minispriteUrl})`, error);
       });
@@ -91,7 +110,7 @@ async function registerEmojis(): Promise<void> {
 
 async function createApplicationEmojiWithRetry(
   emojiManager: ApplicationEmojiManager,
-  entry: PokemonEmojiRosterEntry,
+  entry: EmojiRegistrationEntry,
   attempt = 1
 ): Promise<void> {
   try {
