@@ -49,7 +49,7 @@ export class PokemonEmoji {
     ];
   }
 
-  public static async buildRoster(stats: StatsLike, pokemonDb: PokemonDbLike): Promise<PokemonEmojiRosterResult> {
+  public static async buildList(stats: StatsLike, pokemonDb: PokemonDbLike): Promise<PokemonEmojiRosterResult> {
     const sources = PokemonEmoji.buildRosterSources();
     const entriesByKey = new Map<string, PokemonEmojiRosterEntry>();
     const unresolvedNames = new Set<string>();

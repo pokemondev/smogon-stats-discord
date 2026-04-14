@@ -120,7 +120,7 @@ const tests: TestCase[] = [
         Incineroar: createPokemon('Incineroar'),
       });
 
-      const roster = await PokemonEmoji.buildRoster(stats as never, pokemonDb as never);
+      const roster = await PokemonEmoji.buildList(stats as never, pokemonDb as never);
 
       assert.deepStrictEqual(
         roster.entries.map(entry => entry.emojiName),

@@ -108,7 +108,7 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
       .setTitle(resolvedTeam.team.description)
       .setDescription(this.buildTeamDetailsDescription(resolvedTeam));
 
-    const memberDisplayNames = resolvedTeam.team.members.map(member => this.formatPokemonDisplayName(member.name));
+    const memberDisplayNames = resolvedTeam.team.members.map(member => this.formatPokemonDisplay(member.name));
 
     resolvedTeam.team.members.forEach((member, index) => {
       embed.addFields({
@@ -282,7 +282,7 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
   }
 
   private buildTeamMembersList(team: VgcTeam): string {
-    const displayNames = team.members.map(member => this.formatPokemonDisplayName(member.name));
+    const displayNames = team.members.map(member => this.formatPokemonDisplay(member.name));
     return displayNames.join('\n');
   }
 

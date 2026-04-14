@@ -159,9 +159,9 @@ export class CommandBase {
     }
 
     const titles = options.formatPokemonNames
-      ? safeUsageData.map(usage => this.formatPokemonDisplayName(usage.name))
+      ? safeUsageData.map(usage => this.formatPokemonDisplay(usage.name))
       : options.formatItemNames
-        ? safeUsageData.map(usage => this.formatItemDisplayName(usage.name))
+        ? safeUsageData.map(usage => this.formatItemDisplay(usage.name))
         : safeUsageData.map(usage => usage.name);
 
     safeUsageData.forEach((usage, index) => {
@@ -185,7 +185,7 @@ export class CommandBase {
       .find((pokemon): pokemon is Pokemon => !!pokemon);
   }
 
-  protected formatPokemonDisplayName(name: string): string {
+  protected formatPokemonDisplay(name: string): string {
     const emojiService = this.dataSource.emojiService;
     if (!emojiService) {
       return name;
@@ -195,13 +195,23 @@ export class CommandBase {
     return emoji ? `${emoji} ${name}` : name;
   }
 
-  protected formatItemDisplayName(name: string): string {
+  protected formatItemDisplay(name: string): string {
     const emojiService = this.dataSource.emojiService;
     if (!emojiService) {
       return name;
     }
 
     const emoji = emojiService.getItemEmoji(name);
+    return emoji ? `${emoji} ${name}` : name;
+  }
+
+  protected formatTypeDisplay(name: string): string {
+    const emojiService = this.dataSource.emojiService;
+    if (!emojiService) {
+      return name;
+    }
+
+    const emoji = emojiService.getTypeEmoji(name);
     return emoji ? `${emoji} ${name}` : name;
   }
 

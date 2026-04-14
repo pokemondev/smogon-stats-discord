@@ -267,7 +267,10 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     
     const info1 = `Meta: \`${cmd.format.meta.toUpperCase()}\``;
     const info2 = `Generation: \`Gen ${cmd.format.generation.replace(/^gen/i, '')}\``;
-    const info3 = `Type: \`${cmd.pokemon.type1} ${(cmd.pokemon.type2 ? '/ ' + cmd.pokemon.type2 : '')}\``;
+    const typeDisplay = cmd.pokemon.type2
+      ? `${this.formatTypeDisplay(cmd.pokemon.type1)} / ${this.formatTypeDisplay(cmd.pokemon.type2)}`
+      : this.formatTypeDisplay(cmd.pokemon.type1);
+    const info3 = `Type: ${typeDisplay}`;
     const info4 = `Usage: \`${usageInfo}\``;
     const infoX = `${info1}\n${info2}\n${info3}\n${info4}`;
     return infoX;
@@ -277,21 +280,26 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const effectiveness = TypeService.getFullEffectiveness(cmd.pokemon);
     const weakss = effectiveness.filter(e => e.effect == EffectivenessType.SuperEffective
                                             || e.effect == EffectivenessType.SuperEffective2x)
-                                .map((w, i) => ((i + 1) % 4 === 0 ? '\n' : '') + (w.effect == EffectivenessType.SuperEffective2x ? `**${w.type}**` : w.type))
+                                .map((w, i) => ((i + 1) % 4 === 0 ? '\n' : '') + (w.effect == EffectivenessType.SuperEffective2x ? `**${this.formatTypeDisplay(w.type)}**` : this.formatTypeDisplay(w.type)))
                                 .join(', ');
     const resist = effectiveness.filter(e => e.effect == EffectivenessType.NotVeryEffective
                                           || e.effect == EffectivenessType.NotVeryEffective2x)
-                                .map((w, i) => ((i + 1) % 4 === 0 ? '\n' : '') + (w.effect == EffectivenessType.NotVeryEffective2x ? `**${w.type}**` : w.type))
+                                .map((w, i) => ((i + 1) % 4 === 0 ? '\n' : '') + (w.effect == EffectivenessType.NotVeryEffective2x ? `**${this.formatTypeDisplay(w.type)}**` : this.formatTypeDisplay(w.type)))
                                 .join(', ');
     const immune = effectiveness.filter(e => e.effect == EffectivenessType.None)
-                                .map(w => w.type)
+                                .map(w => this.formatTypeDisplay(w.type))
                                 .join(', ');
     const weakResist = `__Weak to:__ \n${weakss}\n__Resist to:__ \n${resist  || 'None'}\n__Immune to:__\n${immune || 'None'}`;
     return weakResist;
   }
 
-  private getTeraTypesData(cmd: MovesetCommandData) {
-    return this.getData(cmd.moveSet.teraTypes);
+  private getTeraTypesData(cmd: MovesetCommandData): string {
+    const safeData = (cmd.moveSet.teraTypes ?? []).slice(0, 6);
+    if (!safeData.length) {
+      return '-';
+    }
+
+    return safeData.map(entry => `${this.formatTypeDisplay(entry.name)}: \`${entry.percentage.toFixed(2)}%\``).join('\n');
   }
 
   private getChecksData(moveSet: MovesetCommandData['moveSet']) {
@@ -310,14 +318,14 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
       return '-';
     }
 
-    return safeData.map(item => `${this.formatItemDisplayName(item.name)}: \`${item.percentage.toFixed(2)}%\``).join('\n');
+    return safeData.map(item => `${this.formatItemDisplay(item.name)}: \`${item.percentage.toFixed(2)}%\``).join('\n');
   }
   private async getPokemonUsageData(usageData: UsageData[] | undefined, limit: number = 6): Promise<string> {
     const safeUsageData = (usageData ?? []).slice(0, limit);
     if (!safeUsageData.length)
       return '-';
 
-    const displayNames = safeUsageData.map(entry => this.formatPokemonDisplayName(entry.name));
+    const displayNames = safeUsageData.map(entry => this.formatPokemonDisplay(entry.name));
     return safeUsageData.map((entry, index) => `${displayNames[index]}: \`${entry.percentage.toFixed(2)}%\``).join('\n');
   }
 
@@ -327,7 +335,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     if (!safeChecks.length)
       return '-';    
 
-    const displayNames = safeChecks.map(entry => this.formatPokemonDisplayName(entry.name));
+    const displayNames = safeChecks.map(entry => this.formatPokemonDisplay(entry.name));
     let countersChecks = safeChecks.map((entry, index) => `${displayNames[index]}: \`KO ${entry.kOed.toFixed(1)}% / SW ${entry.switchedOut.toFixed(1)}%\``).join('\n');
     countersChecks = countersChecks ? countersChecks : "-";
     return countersChecks;

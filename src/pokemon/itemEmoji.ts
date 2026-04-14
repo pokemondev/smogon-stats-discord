@@ -20,7 +20,7 @@ export class ItemEmoji {
 
   private static readonly IgnoredItemNames = new Set(['Other', 'Others', 'nothing', 'Nothing']);
 
-  public static async buildRoster(stats: StatsLike): Promise<ItemEmojiRosterResult> {
+  public static async buildList(stats: StatsLike): Promise<ItemEmojiRosterResult> {
     const sources = PokemonEmoji.buildRosterSources();
     const entriesByKey = new Map<string, ItemEmojiRosterEntry>();
 

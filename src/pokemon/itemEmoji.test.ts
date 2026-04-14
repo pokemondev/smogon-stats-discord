@@ -93,7 +93,7 @@ const tests: TestCase[] = [
         'gen9/nu': [],
       });
 
-      const roster = await ItemEmoji.buildRoster(stats as never);
+      const roster = await ItemEmoji.buildList(stats as never);
 
       const emojiNames = roster.entries.map(e => e.emojiName);
       assert.ok(emojiNames.includes('item_sitrus_berry'), 'Expected item_sitrus_berry');
@@ -127,7 +127,7 @@ const tests: TestCase[] = [
         'gen9/nu': [],
       });
 
-      const roster = await ItemEmoji.buildRoster(stats as never);
+      const roster = await ItemEmoji.buildList(stats as never);
 
       assert.strictEqual(roster.entries.length, 1);
       const entry = roster.entries[0];
