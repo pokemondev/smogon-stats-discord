@@ -6,7 +6,7 @@ import { FormatHelper } from '../smogon/formatHelper';
 import { FormatCatalog } from '../smogon/formatCatalog';
 import { TypeService } from '../pokemon/typeService';
 import { EffectivenessType } from '../models/pokemon';
-import { MoveSetUsage, UsageData } from '../models/smogonUsage';
+import { ChecksAndCountersUsageData, MoveSetUsage, PokemonMoveSetSearch, UsageData } from '../models/smogonUsage';
 
 const pokemonInfoHandlers = {
   moves: {
@@ -25,8 +25,12 @@ const pokemonInfoHandlers = {
     title: 'Spreads',
     selector: (moveSet: MoveSetUsage) => moveSet.spreads,
   },
+  checksCounters: {
+    title: 'Checks & Counters',
+    selector: (moveSet: MoveSetUsage) => moveSet.checksAndCounters,
+  },
   checks: {
-    title: 'Checks',
+    title: 'Checks & Counters',
     selector: (moveSet: MoveSetUsage) => moveSet.checksAndCounters,
   },
   teammates: {
@@ -39,16 +43,20 @@ type PokemonInfoCategory = keyof typeof pokemonInfoHandlers;
 
 export const pokemonHelpTopic: CommandHelpTopic = {
   command: 'pokemon',
-  description: 'Pokemon-specific competitive data, moveset usage, and Smogon sets.',
+  description: 'Pokemon-specific competitive data, moveset usage, filtered format searches, and Smogon sets.',
   arguments: [
     'name: Pokemon name to search for.',
     'category: Required for /pokemon info. One of moves, abilities, items, spreads, checks, or teammates.',
+    'move1: Optional for /pokemon search. First move filter.',
+    'move2: Optional for /pokemon search. Second move filter.',
+    'ability: Optional for /pokemon search. Ability filter.',
     'meta: Optional competitive metagame / (VGC) regulation filter. Uses the configured default when omitted.',
     'generation: Optional generation filter. Uses the configured default when omitted. If only generation is provided, that generation uses its default VGC format.',
   ],
   examples: [
     '/pokemon summary name:dragonite',
     '/pokemon info name:gholdengo category:items meta:OU',
+    '/pokemon search move1:protect ability:cursed body meta:OU',
     '/pokemon sets name:landorus-therian meta:OU generation:"Gen 8"',
   ],
 };
@@ -74,7 +82,27 @@ export function createPokemonCommandData(): SlashCommandData {
         .setName('sets')
         .setDescription('Show curated Smogon sets for a Pokemon'),
       'Pokemon name'
-    )));
+    )))
+    .addSubcommand(subcommand => withFormatOptions(
+      subcommand
+        .setName('search')
+        .setDescription('Find Pokemon in a format by move and ability usage')
+        .addStringOption(option =>
+          option
+            .setName('move1')
+            .setDescription('First move filter')
+        )
+        .addStringOption(option =>
+          option
+            .setName('move2')
+            .setDescription('Second move filter')
+        )
+        .addStringOption(option =>
+          option
+            .setName('ability')
+            .setDescription('Ability filter')
+        )
+      ));
 }
 
 export class PokemonCommand extends CommandBase implements SlashCommandHandler {
@@ -96,31 +124,15 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
       case 'sets':
         await this.handleSets(interaction);
         return;
+      case 'search':
+        await this.handleSearch(interaction);
+        return;
       default:
         await interaction.reply({ content: 'That subcommand is not supported.', flags: MessageFlags.Ephemeral });
     }
   }
 
-  private async handleInfo(interaction: ChatInputCommandInteraction): Promise<void> {
-    const category = interaction.options.getString('category', true) as PokemonInfoCategory;
-    const handler = pokemonInfoHandlers[category];
-    if (!handler) {
-      await interaction.reply({ content: 'That info category is not supported.', flags: MessageFlags.Ephemeral });
-      return;
-    }
-
-    await this.handleMoveset(
-      interaction,
-      handler.title,
-      handler.selector,
-      {
-        formatPokemonNames: category === 'checks' || category === 'teammates',
-        formatItemNames: category === 'items',
-        formatMoveNames: category === 'moves',
-      }
-    );
-  }
-
+  // handlers for each sub-command
   private async handleSummary(interaction: ChatInputCommandInteraction): Promise<void> {
     const query = this.resolvePokemonQuery(interaction);
     if (!query) {
@@ -181,36 +193,24 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     });
   }
 
-  private async handleMoveset(
-    interaction: ChatInputCommandInteraction,
-    title: string,
-    selector: (moveSet: MoveSetUsage) => UsageData[] | ReturnType<typeof this.getChecksData>,
-    options: { formatPokemonNames?: boolean; formatItemNames?: boolean; formatMoveNames?: boolean } = {}
-  ): Promise<void> {
-    const query = this.resolvePokemonQuery(interaction);
-    if (!query) {
-      const requestedName = this.getRequestedPokemonName(interaction);
-      await this.replyNoData(interaction, `Could not find the provided Pokemon: '${requestedName}'.`);
+  private async handleInfo(interaction: ChatInputCommandInteraction): Promise<void> {
+    const category = interaction.options.getString('category', true) as PokemonInfoCategory;
+    const handler = pokemonInfoHandlers[category];
+    if (!handler) {
+      await interaction.reply({ content: 'That info category is not supported.', flags: MessageFlags.Ephemeral });
       return;
     }
 
-    await DiscordHelper.deferCommandReply(interaction);
-
-    const cmd = await this.getMoveSetCommandData(query);
-    const embed = this.createPokemonEmbed(cmd.pokemon, { thumbnail: true });
-    const usageData = selector(cmd.moveSet);
-
-    await this.addUsageFields(embed, usageData, usage => {
-      return this.isCheckAndCounters(usage)
-        ? `KO-ed: \`${usage.kOed.toFixed(2)}%\`\nSW. out: \`${usage.switchedOut.toFixed(2)}%\``
-        : `Usage: \`${usage.percentage.toFixed(2)}%\``;
-    }, options
+    await this.processUsageData(
+      interaction,
+      handler.title,
+      handler.selector,
+      {
+        formatPokemon: category === 'checksCounters' || category === 'teammates',
+        formatItem: category === 'items',
+        formatMove: category === 'moves',
+      }
     );
-
-    await interaction.editReply({
-      content: `**__${cmd.pokemon.name} ${title}:__** ${FormatHelper.toUserString(cmd.format)}`,
-      embeds: [embed],
-    });
   }
 
   private async handleSets(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -248,6 +248,113 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
 
     await interaction.editReply({
       content: `**__Sets:__** Top ${query.pokemon.name} sets of ${FormatHelper.toUserString(query.format)}`,
+      embeds: [embed],
+    });
+  }
+
+  private async handleSearch(interaction: ChatInputCommandInteraction): Promise<void> {
+    const search = this.getResolvedSearch(interaction);
+    if (!search) {
+      return;
+    }
+
+    const format = this.getFormat(interaction);
+    await DiscordHelper.deferCommandReply(interaction);
+
+    const usages = await this.dataSource.smogonStats.searchPokemon(format, search);
+    if (!usages.length) {
+      await this.replyNoData(interaction, `No Pokemon found for ${this.getSearchDescription(search)} in ${FormatHelper.toUserString(format)}.`);
+      return;
+    }
+
+    const firstMon = this.findFirstPokemon(usages.map(usage => usage.name));
+    if (!firstMon) {
+      await this.replyNoData(interaction, `No Pokemon found for ${this.getSearchDescription(search)} in ${FormatHelper.toUserString(format)}.`);
+      return;
+    }
+
+    const embed = this.createPokemonEmbed(firstMon, { thumbnail: true })
+      .setTitle(this.getSearchTitle(search));
+    const displayNames = usages.map(usage => this.formatPokemonDisplay(usage.name));
+
+    usages.forEach((usage, index) => {
+      embed.addFields({
+        name: this.formatRankedTitle(index + 1, displayNames[index]),
+        value: `Usage: \`${usage.usageRaw.toFixed(2)}%\``,
+        inline: true,
+      });
+    });
+
+    await interaction.editReply({
+      content: `**__Search:__** Top ${usages.length} matching Pokemon of ${FormatHelper.toUserString(format)}`,
+      embeds: [embed],
+    });
+  }
+
+  // helper methods
+  private getResolvedSearch(interaction: ChatInputCommandInteraction): PokemonMoveSetSearch | undefined {
+    const move1 = interaction.options.getString('move1')?.trim();
+    const move2 = interaction.options.getString('move2')?.trim();
+    const ability = interaction.options.getString('ability')?.trim();
+
+    if (!move1 && !move2 && !ability) {
+      void this.replyNoData(interaction, 'Provide at least one of move1, move2, or ability for /pokemon search.');
+      return undefined;
+    }
+
+    const resolvedMove1 = move1 ? this.dataSource.movedex.getMove(move1)?.name : undefined;
+    if (move1 && !resolvedMove1) {
+      void this.replyNoData(interaction, `Could not find the provided move: '${move1}'.`);
+      return undefined;
+    }
+
+    const resolvedMove2 = move2 ? this.dataSource.movedex.getMove(move2)?.name : undefined;
+    if (move2 && !resolvedMove2) {
+      void this.replyNoData(interaction, `Could not find the provided move: '${move2}'.`);
+      return undefined;
+    }
+
+    const resolvedAbility = ability ? this.dataSource.pokemonDb.getAbility(ability) : undefined;
+    if (ability && !resolvedAbility) {
+      void this.replyNoData(interaction, `Could not find the provided ability: '${ability}'.`);
+      return undefined;
+    }
+
+    return {
+      ...(resolvedMove1 ? { move1: resolvedMove1 } : {}),
+      ...(resolvedMove2 ? { move2: resolvedMove2 } : {}),
+      ...(resolvedAbility ? { ability: resolvedAbility } : {}),
+    };
+  }
+
+  private async processUsageData(
+    interaction: ChatInputCommandInteraction,
+    title: string,
+    selector: (pokemonSet: MoveSetUsage) => UsageData[] | ChecksAndCountersUsageData[],
+    options: { formatPokemon?: boolean; formatItem?: boolean; formatMove?: boolean } = {}
+  ): Promise<void> {
+    const query = this.resolvePokemonQuery(interaction);
+    if (!query) {
+      const requestedName = this.getRequestedPokemonName(interaction);
+      await this.replyNoData(interaction, `Could not find the provided Pokemon: '${requestedName}'.`);
+      return;
+    }
+
+    await DiscordHelper.deferCommandReply(interaction);
+
+    const cmd = await this.getMoveSetCommandData(query);
+    const embed = this.createPokemonEmbed(cmd.pokemon, { thumbnail: true });
+    const usageData = selector(cmd.moveSet);
+
+    await this.addUsageFields(embed, usageData, usage => {
+      return this.isCheckAndCounters(usage)
+        ? `KO-ed: \`${usage.kOed.toFixed(2)}%\`\nSW. out: \`${usage.switchedOut.toFixed(2)}%\``
+        : `Usage: \`${usage.percentage.toFixed(2)}%\``;
+    }, options
+    );
+
+    await interaction.editReply({
+      content: `**__${cmd.pokemon.name} ${title}:__** ${FormatHelper.toUserString(cmd.format)}`,
       embeds: [embed],
     });
   }
@@ -303,39 +410,27 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     return safeData.map(entry => `${this.formatTypeDisplay(entry.name)}: \`${entry.percentage.toFixed(2)}%\``).join('\n');
   }
 
-  private getChecksData(moveSet: MovesetCommandData['moveSet']) {
-    return moveSet.checksAndCounters;
-  }
-
   private getData(usageData: UsageData[], limit: number = 6, highlighEverything: boolean = false): string {
     const hl1 = highlighEverything ? "\`" : "";
     const hl2 = highlighEverything ? ""   : "\`";
     const data = (usageData ? usageData : []).slice(0, limit).map(iv => `${hl1}${iv.name}: ${hl2}${iv.percentage.toFixed(2)}%\``).join('\n');
     return data ? data : "-";
   }
-  private getMoveUsageData(usageData: UsageData[] | undefined, limit: number = 6): string {
-    const safeData = (usageData ?? []).slice(0, limit);
-    if (!safeData.length) {
+  private formatData(usageData: UsageData[], formatter: (name: string) => string, limit: number = 6): string {
+    const data = usageData.slice(0, limit);
+    if (!data.length)
       return '-';
-    }
 
-    return safeData.map(move => `${this.formatMoveDisplay(move.name)}: \`${move.percentage.toFixed(2)}%\``).join('\n');
+    return data.map(e => `${formatter(e.name)}: \`${e.percentage.toFixed(2)}%\``).join('\n');
+  }
+  private getMoveUsageData(usageData: UsageData[] | undefined, limit: number = 6): string {
+    return this.formatData(usageData ?? [], name => this.formatMoveDisplay(name), limit);
   }
   private getItemUsageData(usageData: UsageData[] | undefined, limit: number = 6): string {
-    const safeData = (usageData ?? []).slice(0, limit);
-    if (!safeData.length) {
-      return '-';
-    }
-
-    return safeData.map(item => `${this.formatItemDisplay(item.name)}: \`${item.percentage.toFixed(2)}%\``).join('\n');
+    return this.formatData(usageData ?? [], name => this.formatItemDisplay(name), limit);
   }
   private async getPokemonUsageData(usageData: UsageData[] | undefined, limit: number = 6): Promise<string> {
-    const safeUsageData = (usageData ?? []).slice(0, limit);
-    if (!safeUsageData.length)
-      return '-';
-
-    const displayNames = safeUsageData.map(entry => this.formatPokemonDisplay(entry.name));
-    return safeUsageData.map((entry, index) => `${displayNames[index]}: \`${entry.percentage.toFixed(2)}%\``).join('\n');
+    return this.formatData(usageData ?? [], name => this.formatPokemonDisplay(name), limit);
   }
 
   private async getCountersChecksData(cmd: MovesetCommandData, limit: number = 4): Promise<string> {
@@ -355,5 +450,29 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const formatArgs = this.getSlashFormatArguments(interaction);
     
     return `Sets details on: /pokemon sets name:${pokemonName}${formatArgs ? ` ${formatArgs}` : ''}`;
+  }
+
+  private getSearchTitle(search: PokemonMoveSetSearch): string {
+    return `Pokemon using ${this.getSearchDescription(search)}`;
+  }
+
+  private getSearchDescription(search: PokemonMoveSetSearch): string {
+    const parts = [search.move1, search.move2]
+      .filter((value): value is string => !!value)
+      .map(value => `'${value}'`);
+
+    if (search.ability) {
+      parts.push(`'${search.ability}' ability`);
+    }
+
+    if (parts.length === 1) {
+      return parts[0];
+    }
+
+    if (parts.length === 2) {
+      return `${parts[0]} and ${parts[1]}`;
+    }
+
+    return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
   }
 }

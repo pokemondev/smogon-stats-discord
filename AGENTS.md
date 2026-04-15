@@ -9,7 +9,7 @@ Smogon Stats Discord Bot is a TypeScript Discord bot that serves Pokemon Showdow
 Important current decisions:
 
 - The bot is slash-command only.
-- The public command model uses `name`, `meta`, and `generation`.
+- Most public command flows use `name`, `meta`, and `generation`, with `/pokemon search` adding move and ability filters.
 - Internal code treats a format as `generation + meta`.
 - Fuzzy Pokemon matching is intentionally kept as the primary lookup behavior.
 - Autocomplete is not implemented.
@@ -130,6 +130,13 @@ That file contains:
 - shared format parsing entrypoint for command handlers
 
 If you change command names, subcommands, option names, or option choices, run `npm run register:commands` after building.
+
+`/pokemon` subcommands currently include:
+
+- `summary`
+- `info`
+- `search`
+- `sets`
 
 ## Data Folder
 

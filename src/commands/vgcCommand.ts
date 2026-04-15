@@ -222,29 +222,11 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     const fallbackPokemon = this.dataSource.pokemonDb.getPokemon(teamResult.team.members[0]?.name);
 
     try {
-      const usages = await this.dataSource.smogonStats.getUsages(teamResult.format, false);
-      const usageByPokemonName = new Map(usages.map(usage => [usage.name.toLowerCase(), usage] as const));
-      const rankedTeamMembers = teamResult.team.members
-        .map((member, index) => ({
-          pokemon: this.dataSource.pokemonDb.getPokemon(member.name),
-          index,
-          usage: usageByPokemonName.get(member.name.toLowerCase()),
-        }))
-        .filter(entry => !!entry.pokemon) as Array<{ pokemon: Pokemon; index: number; usage?: PokemonUsage }>;
+      const teamMembers = teamResult.team.members.map(m => this.dataSource.pokemonDb.getPokemon(m.name)).filter((p): p is Pokemon => !!p);
+      const highAtkStats = teamMembers.map(m => m.baseStats.atk > m.baseStats.spA ? m.baseStats.atk : m.baseStats.spA);
+      const highestStatsIndex = highAtkStats.indexOf(Math.max(...highAtkStats));
 
-      rankedTeamMembers
-        .sort((left, right) => {
-          const leftRank = left.usage?.rank ?? Number.MAX_SAFE_INTEGER;
-          const rightRank = right.usage?.rank ?? Number.MAX_SAFE_INTEGER;
-
-          if (leftRank !== rightRank) {
-            return leftRank - rightRank;
-          }
-
-          return left.index - right.index;
-        });
-
-      return rankedTeamMembers[0]?.pokemon ?? fallbackPokemon;
+      return teamMembers[highestStatsIndex] ?? fallbackPokemon;
     }
     catch {
       return fallbackPokemon;

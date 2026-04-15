@@ -117,12 +117,14 @@ Subcommands:
 
 - `summary` — full competitive overview
 - `info` — detailed usage data by category
+- `search` — filter format usage results by one or two moves and an optional ability
 - `sets` — curated Smogon sets
 
 Arguments:
 
 - `summary`: `name` required, `meta` optional, `generation` optional
 - `info`: `name` required, `category` required, `meta` optional, `generation` optional
+- `search`: `move1` optional, `move2` optional, `ability` optional, `meta` optional, `generation` optional
 - `sets`: `name` required, `meta` optional, `generation` optional
 
 `info` categories:
@@ -139,8 +141,17 @@ Examples:
 ```text
 /pokemon summary name:dragonite
 /pokemon info name:gholdengo category:items meta:OU
+/pokemon search move1:protect ability:cursed-body meta:OU
 /pokemon sets name:landorus-therian meta:OU generation:"Gen 8"
 ```
+
+`search` notes:
+
+- at least one of `move1`, `move2`, or `ability` must be provided
+- move inputs use the same fuzzy move matching as the movedex lookup
+- ability input is resolved fuzzily from known Pokemon possible abilities
+- all provided filters use AND semantics
+- results are ranked by overall format usage and capped at 15 entries
 
 ### `/stats`
 

@@ -2,7 +2,7 @@ import assert = require('assert');
 import FakeTimers = require('@sinonjs/fake-timers');
 import { FileHelper } from '../common/fileHelper';
 import { SmogonStats } from './smogonStats';
-import { SmogonFormat } from '../models/smogonUsage';
+import { MoveSetUsage, SmogonFormat } from '../models/smogonUsage';
 
 interface TestCase {
   name: string;
@@ -25,6 +25,14 @@ function getStatsPayload(statsType: string): any {
     };
   }
 
+  if (statsType === 'moveset') {
+    return [
+      createMoveSet('Dragapult', ['Fire Blast', 'Protect'], ['Cursed Body']),
+      createMoveSet('Crawdaunt', ['Protect', 'Crabhammer'], ['Adaptability']),
+      createMoveSet('Clawitzer', ['Water Pulse', 'Protect'], ['Mega Launcher']),
+    ];
+  }
+
   return {
     data: {
       rows: [
@@ -32,6 +40,19 @@ function getStatsPayload(statsType: string): any {
         [2, 'Dragapult', 18.84]
       ]
     }
+  };
+}
+
+function createMoveSet(name: string, moves: string[], abilities: string[]): MoveSetUsage {
+  return {
+    name,
+    abilities: abilities.map(ability => ({ name: ability, percentage: 100 })),
+    items: [],
+    spreads: [],
+    moves: moves.map(move => ({ name: move, percentage: 100 })),
+    teraTypes: [],
+    teamMates: [],
+    checksAndCounters: [],
   };
 }
 
@@ -43,6 +64,27 @@ async function withStubbedLoader(runTest: (calls: string[]) => Promise<void>): P
     calls.push(filename);
     const statsType = filename.split('/').pop().split('-')[0];
     return getStatsPayload(statsType);
+  };
+
+  try {
+    await runTest(calls);
+  }
+  finally {
+    (FileHelper as any).loadFileDataAsAny = originalLoader;
+  }
+}
+
+async function withStubbedPayloads(
+  payloads: Partial<Record<string, any>>,
+  runTest: (calls: string[]) => Promise<void>
+): Promise<void> {
+  const calls: string[] = [];
+  const originalLoader = FileHelper.loadFileDataAsAny;
+
+  (FileHelper as any).loadFileDataAsAny = (filename: string) => {
+    calls.push(filename);
+    const statsType = filename.split('/').pop().split('-')[0];
+    return payloads[statsType] ?? getStatsPayload(statsType);
   };
 
   try {
@@ -241,6 +283,80 @@ const tests: TestCase[] = [
       await assertMoveset('gen8', gen8Metas);
       await assertMoveset('gen7', ['ou']);
       await assertMoveset('gen6', ['ou']);
+    }
+  },
+  {
+    name: 'searchPokemon filters by moves and ability and sorts by usage',
+    run: async () => {
+      const format = { generation: 'gen9', meta: 'ou' } as SmogonFormat;
+
+      await withStubbedPayloads(
+        {
+          usage: {
+            data: {
+              rows: [
+                [1, 'Dragapult', 18.84],
+                [2, 'Crawdaunt', 12.31],
+                [3, 'Clawitzer', 9.44],
+              ]
+            }
+          },
+          moveset: [
+            createMoveSet('Dragapult', ['Fire Blast', 'Protect'], ['Cursed Body']),
+            createMoveSet('Crawdaunt', ['Protect', 'Crabhammer'], ['Adaptability']),
+            createMoveSet('Clawitzer', ['Water Pulse', 'Protect'], ['Mega Launcher']),
+          ],
+        },
+        async () => {
+          const stats = new SmogonStats();
+          const results = await stats.searchPokemon(format, {
+            move1: 'Fire Blast',
+            move2: 'Protect',
+            ability: 'Cursed Body',
+          });
+
+          assert.deepStrictEqual(results.map(result => result.name), ['Dragapult']);
+          assert.strictEqual(results[0].usageRaw, 18.84);
+        }
+      );
+    }
+  },
+  {
+    name: 'searchPokemon caps results at top 15 matches',
+    run: async () => {
+      const format = { generation: 'gen9', meta: 'ou' } as SmogonFormat;
+      const usageRows = Array.from({ length: 20 }, (_, index) => [index + 1, `Pokemon-${index + 1}`, 100 - index]);
+      const moveSets = Array.from({ length: 20 }, (_, index) => createMoveSet(`Pokemon-${index + 1}`, ['Protect'], ['Pressure']));
+
+      await withStubbedPayloads(
+        {
+          usage: { data: { rows: usageRows } },
+          moveset: moveSets,
+        },
+        async () => {
+          const stats = new SmogonStats();
+          const results = await stats.searchPokemon(format, { move1: 'Protect' });
+
+          assert.strictEqual(results.length, 15);
+          assert.deepStrictEqual(results.slice(0, 3).map(result => result.name), ['Pokemon-1', 'Pokemon-2', 'Pokemon-3']);
+        }
+      );
+    }
+  },
+  {
+    name: 'searchPokemon reuses cached usage and moveset data',
+    run: async () => {
+      const format = { generation: 'gen9', meta: 'ou' } as SmogonFormat;
+
+      await withStubbedLoader(async (calls) => {
+        const stats = new SmogonStats();
+
+        await stats.searchPokemon(format, { move1: 'Protect' });
+        await stats.searchPokemon(format, { ability: 'Adaptability' });
+
+        assert.strictEqual(getCallCount(calls, 'usage', format), 1);
+        assert.strictEqual(getCallCount(calls, 'moveset', format), 1);
+      });
     }
   },
   {

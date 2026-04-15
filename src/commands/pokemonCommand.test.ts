@@ -1,15 +1,16 @@
 import assert = require('assert');
 import { AppDataSource } from '../appDataSource';
 import { ConfigHelper } from '../config/configHelper';
-import { MoveSetUsage } from '../models/smogonUsage';
+import { MoveSetUsage, PokemonMoveSetSearch, PokemonUsage, SmogonFormat } from '../models/smogonUsage';
 import { PokemonType } from '../models/pokemon';
+import { MessageFlags } from 'discord.js';
 
 process.env.BOT_NAME = process.env.BOT_NAME || 'Smogon Stats';
 process.env.TOKEN = process.env.TOKEN || 'test-token';
 process.env.DEFAULT_GENERATION = process.env.DEFAULT_GENERATION || 'gen9';
 process.env.DEFAULT_META = process.env.DEFAULT_META || 'vgc2026regf';
 
-const { PokemonCommand } = require('./pokemonCommand') as typeof import('./pokemonCommand');
+const { PokemonCommand, createPokemonCommandData } = require('./pokemonCommand') as typeof import('./pokemonCommand');
 
 interface TestCase {
   name: string;
@@ -83,6 +84,21 @@ function createEmptyMoveSet(pokemonName: string): MoveSetUsage {
     teamMates: [],
     checksAndCounters: [],
   };
+}
+
+function createUsage(name: string, rank: number, usageRaw: number): PokemonUsage {
+  return {
+    name,
+    rank,
+    usageRaw,
+    usagePercentage: usageRaw,
+  };
+}
+
+function getReplyPayload(interaction: FakeChatInputCommandInteraction): { content?: string; flags?: MessageFlags } {
+  const replyCall = interaction.calls.find(call => call.name === 'reply');
+  assert.ok(replyCall, 'Expected a reply call.');
+  return (replyCall?.payload ?? {}) as { content?: string; flags?: MessageFlags };
 }
 
 function getEditReplyPayload(interaction: FakeChatInputCommandInteraction): { content?: string; embeds: Array<{ toJSON?: () => any }> } {
@@ -168,7 +184,48 @@ async function withStubbedMoveLookup(
   }
 }
 
+async function withStubbedSearch(
+  implementation: (format: SmogonFormat, search: PokemonMoveSetSearch) => Promise<PokemonUsage[]>,
+  runTest: (command: InstanceType<typeof PokemonCommand>) => Promise<void>
+): Promise<void> {
+  const originalSearchPokemon = dataSource.smogonStats.searchPokemon.bind(dataSource.smogonStats);
+  dataSource.smogonStats.searchPokemon = implementation;
+
+  try {
+    await runTest(new PokemonCommand(dataSource));
+  }
+  finally {
+    dataSource.smogonStats.searchPokemon = originalSearchPokemon;
+  }
+}
+
+async function withStubbedAbilityLookup(
+  implementation: (name: string) => string | undefined,
+  runTest: () => Promise<void>
+): Promise<void> {
+  const originalGetAbility = dataSource.pokemonDb.getAbility.bind(dataSource.pokemonDb);
+  dataSource.pokemonDb.getAbility = implementation;
+
+  try {
+    await runTest();
+  }
+  finally {
+    dataSource.pokemonDb.getAbility = originalGetAbility;
+  }
+}
+
 const tests: TestCase[] = [
+  {
+    name: 'command data includes search subcommand with move and ability filters before format args',
+    run: async () => {
+      const commandData = createPokemonCommandData().toJSON();
+      const options = (commandData.options ?? []) as Array<{ name: string; options?: Array<{ name: string }> }>;
+      const search = options.find(option => option.name === 'search');
+
+      assert.ok(search);
+      assert.deepStrictEqual(search?.options?.map(option => option.name), ['move1', 'move2', 'ability', 'meta', 'generation']);
+    }
+  },
   {
     name: 'sets defers before editing successful responses',
     run: async () => {
@@ -242,6 +299,192 @@ const tests: TestCase[] = [
       await command.execute(interaction as never);
 
       assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'deferReply', 'editReply' ]);
+    }
+  },
+  {
+    name: 'search rejects empty filters before deferring',
+    run: async () => {
+      const command = new PokemonCommand(dataSource);
+      const interaction = createInteraction('search', {
+        generation: '9',
+        meta: 'ou',
+      });
+
+      await command.execute(interaction as never);
+
+      assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'reply' ]);
+      assert.strictEqual(getReplyPayload(interaction).content, 'Provide at least one of move1, move2, or ability for /pokemon search.');
+      assert.strictEqual(getReplyPayload(interaction).flags, MessageFlags.Ephemeral);
+    }
+  },
+  {
+    name: 'search rejects unknown moves before deferring',
+    run: async () => {
+      const command = new PokemonCommand(dataSource);
+      const interaction = createInteraction('search', {
+        move1: 'DefinitelyNotAMove',
+        generation: '9',
+        meta: 'ou',
+      });
+
+      await command.execute(interaction as never);
+
+      assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'reply' ]);
+      assert.strictEqual(getReplyPayload(interaction).content, "Could not find the provided move: 'DefinitelyNotAMove'.");
+    }
+  },
+  {
+    name: 'search rejects unknown abilities before deferring',
+    run: async () => {
+      await withStubbedAbilityLookup(
+        () => undefined,
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('search', {
+            ability: 'DefinitelyNotAnAbility',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          await command.execute(interaction as never);
+
+          assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'reply' ]);
+          assert.strictEqual(getReplyPayload(interaction).content, "Could not find the provided ability: 'DefinitelyNotAnAbility'.");
+        }
+      );
+    }
+  },
+  {
+    name: 'search resolves fuzzy move and ability inputs before querying stats',
+    run: async () => {
+      await withStubbedAbilityLookup(
+        (name: string) => name === 'Cursed Bodi' ? 'Cursed Body' : undefined,
+        async () => {
+          await withStubbedMoveLookup(
+            {
+              Protect: PokemonType.Normal,
+            },
+            async () => {
+              await withStubbedSearch(
+                async (_format, _search) => [],
+                async (command) => {
+                  const originalGetMove = dataSource.movedex.getMove.bind(dataSource.movedex);
+                  let capturedFormat: SmogonFormat | undefined;
+                  let capturedSearch: PokemonMoveSetSearch | undefined;
+
+                  dataSource.movedex.getMove = (name: string) => {
+                    if (name === 'Protectt') {
+                      return { name: 'Protect', type: PokemonType.Normal } as never;
+                    }
+
+                    return originalGetMove(name);
+                  };
+
+                  dataSource.smogonStats.searchPokemon = async (format, search) => {
+                    capturedFormat = format;
+                    capturedSearch = search;
+                    return [];
+                  };
+
+                  try {
+                    const interaction = createInteraction('search', {
+                      move1: 'Protectt',
+                      ability: 'Cursed Bodi',
+                      generation: '9',
+                      meta: 'ou',
+                    });
+
+                    await command.execute(interaction as never);
+
+                    assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'deferReply', 'editReply' ]);
+                    assert.deepStrictEqual(capturedFormat, { generation: 'gen9', meta: 'ou' });
+                    assert.deepStrictEqual(capturedSearch, { move1: 'Protect', ability: 'Cursed Body' });
+                  }
+                  finally {
+                    dataSource.movedex.getMove = originalGetMove;
+                  }
+                }
+              );
+            }
+          );
+        }
+      );
+    }
+  },
+  {
+    name: 'search renders ranked usage results with query title',
+    run: async () => {
+      await withStubbedSearch(
+        async () => [createUsage('Dragapult', 1, 18.84), createUsage('Gengar', 5, 9.45)],
+        async (command) => {
+          const interaction = createInteraction('search', {
+            move1: 'Fire Blast',
+            move2: 'Protect',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          await command.execute(interaction as never);
+
+          const payload = getEditReplyPayload(interaction);
+          const embed = getEditReplyEmbed(interaction);
+
+          assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'deferReply', 'editReply' ]);
+          assert.strictEqual(payload.content, '**__Search:__** Top 2 matching Pokemon of OU (Gen 9)');
+          assert.strictEqual(embed.title, "Pokemon using 'Fire Blast' and 'Protect'");
+          assert.deepStrictEqual(getFieldNames(interaction), ['#1 Dragapult', '#2 Gengar']);
+          assert.strictEqual(embed.fields[0].value, 'Usage: `18.84%`');
+          assert.strictEqual(embed.fields[1].value, 'Usage: `9.45%`');
+        }
+      );
+    }
+  },
+  {
+    name: 'search renders application pokemon emojis when available',
+    run: async () => {
+      await withStubbedPokemonEmojiDisplayNames(
+        {
+          Dragapult: '<:dragapult:123>',
+        },
+        async () => {
+          await withStubbedSearch(
+            async () => [createUsage('Dragapult', 1, 18.84)],
+            async (command) => {
+              const interaction = createInteraction('search', {
+                ability: 'Cursed Body',
+                generation: '9',
+                meta: 'ou',
+              });
+
+              await command.execute(interaction as never);
+
+              assert.deepStrictEqual(getFieldNames(interaction), ['#1 <:dragapult:123> Dragapult']);
+            }
+          );
+        }
+      );
+    }
+  },
+  {
+    name: 'search reports no data when filters resolve but nothing matches',
+    run: async () => {
+      await withStubbedSearch(
+        async () => [],
+        async (command) => {
+          const interaction = createInteraction('search', {
+            move1: 'Water Pulse',
+            move2: 'Protect',
+            ability: 'Cursed Body',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          await command.execute(interaction as never);
+
+          const payload = getEditReplyPayload(interaction);
+          assert.strictEqual(payload.content, "No Pokemon found for 'Water Pulse', 'Protect' and 'Cursed Body' ability in OU (Gen 9).");
+        }
+      );
     }
   },
   {
