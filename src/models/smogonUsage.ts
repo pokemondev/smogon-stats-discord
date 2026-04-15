@@ -21,6 +21,12 @@ export interface MoveSetUsage {
     usage?: number;
 }
 
+export interface PokemonMoveSetSearch {
+    move1?: string;
+    move2?: string;
+    ability?: string;
+}
+
 export interface PokemonUsage {
     rank: number;
     name: string;

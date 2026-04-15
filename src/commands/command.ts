@@ -236,12 +236,7 @@ export class CommandBase {
   }
 
   protected formatPokemonWithItemDisplay(pokemon: string, item: string): string {
-    return this.formatWithEmoji(pokemon, svc => {
-      const safeEmojiService = svc as Partial<EmojiService>;
-      const pokemonEmoji = safeEmojiService.getPokemonEmoji?.(pokemon) ?? '';
-      const itemEmoji = safeEmojiService.getItemEmoji?.(item) ?? '';
-      return `${pokemonEmoji}${itemEmoji}`;
-    });
+    return this.formatWithEmoji(pokemon, svc => `${svc.getPokemonEmoji(pokemon) ?? ''}${svc.getItemEmoji(item) ?? ''}`);
   }
 
   private formatWithEmoji(name: string, getEmoji: (svc: EmojiService) => string | undefined): string {

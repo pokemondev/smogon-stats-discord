@@ -1,5 +1,5 @@
 import cacheManager = require('cache-manager');
-import { PokemonUsage, MoveSetUsage, SmogonFormat } from "../models/smogonUsage";
+import { PokemonMoveSetSearch, PokemonUsage, MoveSetUsage, SmogonFormat } from "../models/smogonUsage";
 import { FormatHelper } from "./formatHelper";
 import { FileHelper } from "../common/fileHelper";
 import { SmogonStatsError } from "../models/errors";
@@ -44,8 +44,10 @@ export class SmogonStats {
     return usages.find(u => u.name == pokemon);
   }
 
-  public async getMoveSets(format: SmogonFormat,
-                           filter: (pkm: MoveSetUsage) => boolean = undefined): Promise<MoveSetUsage[]> {
+  public async getMoveSets(
+    format: SmogonFormat,
+    filter: ((pkm: MoveSetUsage) => boolean) | undefined = undefined
+  ): Promise<MoveSetUsage[]> {
     const statsType = 'moveset';
     const sets = await this.getStatsData<MoveSetUsage[]>(statsType, format);
     
@@ -74,7 +76,48 @@ export class SmogonStats {
       .slice(0, 15);
   }
 
+  public async searchPokemon(format: SmogonFormat, search: PokemonMoveSetSearch): Promise<PokemonUsage[]> {
+    const matchedMoveSets = await this.getMoveSets(format, (moveSet) => this.matchesSearch(moveSet, search));
+    if (!matchedMoveSets.length) {
+      return [];
+    }
+
+    const matchedNames = new Set(matchedMoveSets.map(moveSet => moveSet.name.toLowerCase()));
+    return (await this.getUsages(format, false))
+      .filter(usage => matchedNames.has(usage.name.toLowerCase()))
+      .sort((left, right) => {
+        if (left.usageRaw !== right.usageRaw) {
+          return right.usageRaw - left.usageRaw;
+        }
+
+        if (left.rank !== right.rank) {
+          return left.rank - right.rank;
+        }
+
+        return left.name.localeCompare(right.name);
+      })
+      .slice(0, 15);
+  }
+
   // private methods
+  private matchesSearch(moveSet: MoveSetUsage, search: PokemonMoveSetSearch): boolean {
+    const moves = new Set((moveSet.moves ?? []).map(move => move.name.toLowerCase()));
+    const abilities = new Set((moveSet.abilities ?? []).map(ability => ability.name.toLowerCase()));
+    const requiredMoves = [search.move1, search.move2]
+      .filter((move): move is string => !!move)
+      .map(move => move.toLowerCase());
+
+    if (!requiredMoves.every(move => moves.has(move))) {
+      return false;
+    }
+
+    if (search.ability && !abilities.has(search.ability.toLowerCase())) {
+      return false;
+    }
+
+    return true;
+  }
+
   private async getStatsData<T>(statsType: string, format: SmogonFormat, callback: (stats: any) => any = undefined): Promise<T> {
     const fmt = FormatHelper.getKeyFrom(format);
     const cacheKey = `${statsType}_${fmt}`;

@@ -63,6 +63,7 @@ export class HelpCommand implements SlashCommandHandler {
       value: [
         '/pokemon summary name:dragonite',
         '/pokemon info name:gholdengo category:items meta:OU',
+        '/pokemon search move1:protect ability:cursed body meta:OU',
         '/pokemon sets name:landorus-therian meta:OU generation:"Gen 8"',
         '/stats usage',
         '/stats speed-tier mode:slower meta:OU',
