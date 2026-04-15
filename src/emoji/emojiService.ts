@@ -1,7 +1,7 @@
 import { Client } from 'discord.js';
-import { PokemonEmoji } from '../pokemon/pokemonEmoji';
-import { ItemEmoji } from '../pokemon/itemEmoji';
-import { TypeEmoji } from '../pokemon/typeEmoji';
+import { PokemonEmoji } from './pokemonEmoji';
+import { ItemEmoji } from './itemEmoji';
+import { TypeEmoji } from './typeEmoji';
 
 export class EmojiService {
   private client?: Client;

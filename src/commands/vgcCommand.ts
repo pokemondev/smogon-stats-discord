@@ -89,45 +89,7 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     }
   }
 
-  private async handleTeamDetails(interaction: ChatInputCommandInteraction): Promise<void> {
-    const requestedTeamId = interaction.options.getString('team-id', true).trim();
-    const resolvedTeam = this.dataSource.vgcTeams.getTeamById(requestedTeamId);
-    if (!resolvedTeam) {
-      await this.replyNoData(interaction, `${TeamDetailsMissingMessage} (${requestedTeamId})`);
-      return;
-    }
-
-    await DiscordHelper.deferCommandReply(interaction);
-
-    const previewPokemon = await this.getMostUsedTeamPokemon(resolvedTeam);
-    const embed = previewPokemon
-      ? this.createPokemonEmbed(previewPokemon, { footer: TeamLinksFooterText, thumbnail: true })
-      : new EmbedBuilder().setFooter({ text: TeamLinksFooterText });
-
-    embed
-      .setTitle(resolvedTeam.team.description)
-      .setDescription(this.buildTeamDetailsDescription(resolvedTeam));
-
-    const memberDisplayNames = resolvedTeam.team.members.map(member => this.formatPokemonDisplay(member.name));
-
-    resolvedTeam.team.members.forEach((member, index) => {
-      embed.addFields({
-        name: memberDisplayNames[index],
-        value: `\`\`\`${FormatHelper.getSmogonSet(member)}\`\`\`\u2006`,
-        inline: true,
-      });
-
-      if ((index + 1) % 2 === 0 && index !== resolvedTeam.team.members.length - 1) {
-        embed.addFields({ name: '\u200b', value: '\u200b', inline: false });
-      }
-    });
-
-    await interaction.editReply({
-      content: `**__VGC Team Details:__** ${resolvedTeam.team.teamId}`,
-      embeds: [embed],
-    });
-  }
-
+  // handlers for each subcommand
   private async handleTeams(interaction: ChatInputCommandInteraction): Promise<void> {
     const requestedFilters = this.getRequestedPokemonFilters(interaction);
     const primaryPokemon = requestedFilters.pokemon1
@@ -159,7 +121,7 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     }
 
     const displayedTeams = teams.slice(0, MaxDisplayedTeams);
-    const previewPokemon = primaryPokemon ?? this.findPreviewPokemon(displayedTeams);
+    const previewPokemon = primaryPokemon ?? this.dataSource.pokemonDb.getPokemon(displayedTeams[0].members[0].name);
     const embed = previewPokemon
       ? this.createPokemonEmbed(previewPokemon, { footer: TeamLinksFooterText, thumbnail: true })
       : new EmbedBuilder();
@@ -172,7 +134,7 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
 
     displayedTeams.forEach((team, index) => {
       embed.addFields({
-        name: `#${team.rank} place at ${team.event} (ID ${team.teamId})`,
+        name: `#${(team.rank ?? '??')} place at ${team.event} (ID ${team.teamId})`,
         value: teamMemberDisplays[index],
         inline: true,
       });
@@ -189,6 +151,46 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     });
   }
 
+  private async handleTeamDetails(interaction: ChatInputCommandInteraction): Promise<void> {
+    const requestedTeamId = interaction.options.getString('team-id', true).trim();
+    const resolvedTeam = this.dataSource.vgcTeams.getTeamById(requestedTeamId);
+    if (!resolvedTeam) {
+      await this.replyNoData(interaction, `${TeamDetailsMissingMessage} (${requestedTeamId})`);
+      return;
+    }
+
+    await DiscordHelper.deferCommandReply(interaction);
+
+    const previewPokemon = await this.getHighlightTeamPokemon(resolvedTeam);
+    const embed = previewPokemon
+      ? this.createPokemonEmbed(previewPokemon, { footer: TeamLinksFooterText, thumbnail: true })
+      : new EmbedBuilder().setFooter({ text: TeamLinksFooterText });
+
+    embed
+      .setTitle(resolvedTeam.team.description)
+      .setDescription(this.buildTeamDetailsDescription(resolvedTeam));
+
+    const memberDisplayNames = resolvedTeam.team.members.map(member => this.formatPokemonWithItemDisplay(member.name, member.item));
+
+    resolvedTeam.team.members.forEach((member, index) => {
+      embed.addFields({
+        name: memberDisplayNames[index],
+        value: `\`\`\`${FormatHelper.getSmogonSet(member)}\`\`\`\u2006`,
+        inline: true,
+      });
+
+      if ((index + 1) % 2 === 0 && index !== resolvedTeam.team.members.length - 1) {
+        embed.addFields({ name: '\u200b', value: '\u200b', inline: false });
+      }
+    });
+
+    await interaction.editReply({
+      content: `**__VGC Team Details:__** ${resolvedTeam.team.teamId}`,
+      embeds: [embed],
+    });
+  }
+
+  // helper methods
   private getRequestedPokemonFilters(interaction: ChatInputCommandInteraction): { pokemon1?: string; pokemon2?: string } {
     let pokemon1 = interaction.options.getString('pokemon1')?.trim();
     let pokemon2 = interaction.options.getString('pokemon2')?.trim();
@@ -216,35 +218,37 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
       : FormatCatalog.getGenerationDefaultVgcFormat(configuredDefault.generation);
   }
 
-  private async getMostUsedTeamPokemon(teamResult: VgcResolvedTeam): Promise<Pokemon | undefined> {
+  private async getHighlightTeamPokemon(teamResult: VgcResolvedTeam): Promise<Pokemon | undefined> {
     const fallbackPokemon = this.dataSource.pokemonDb.getPokemon(teamResult.team.members[0]?.name);
 
     try {
       const usages = await this.dataSource.smogonStats.getUsages(teamResult.format, false);
-      const teamMemberNames = new Set(teamResult.team.members.map(member => member.name));
-      const previewUsage = usages.find(usage => this.isTeamMemberUsage(usage, teamMemberNames));
-      if (!previewUsage) {
-        return fallbackPokemon;
-      }
+      const usageByPokemonName = new Map(usages.map(usage => [usage.name.toLowerCase(), usage] as const));
+      const rankedTeamMembers = teamResult.team.members
+        .map((member, index) => ({
+          pokemon: this.dataSource.pokemonDb.getPokemon(member.name),
+          index,
+          usage: usageByPokemonName.get(member.name.toLowerCase()),
+        }))
+        .filter(entry => !!entry.pokemon) as Array<{ pokemon: Pokemon; index: number; usage?: PokemonUsage }>;
 
-      return this.dataSource.pokemonDb.getPokemon(previewUsage.name) ?? fallbackPokemon;
+      rankedTeamMembers
+        .sort((left, right) => {
+          const leftRank = left.usage?.rank ?? Number.MAX_SAFE_INTEGER;
+          const rightRank = right.usage?.rank ?? Number.MAX_SAFE_INTEGER;
+
+          if (leftRank !== rightRank) {
+            return leftRank - rightRank;
+          }
+
+          return left.index - right.index;
+        });
+
+      return rankedTeamMembers[0]?.pokemon ?? fallbackPokemon;
     }
     catch {
       return fallbackPokemon;
     }
-  }
-
-  private findPreviewPokemon(teams: VgcTeam[]): Pokemon | undefined {
-    for (const team of teams) {
-      for (const member of team.members) {
-        const pokemon = this.dataSource.pokemonDb.getPokemon(member.name);
-        if (pokemon) {
-          return pokemon;
-        }
-      }
-    }
-
-    return undefined;
   }
 
   private buildEmbedTitle(pokemon1?: Pokemon, pokemon2?: Pokemon): string {
@@ -282,14 +286,8 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
   }
 
   private buildTeamMembersList(team: VgcTeam): string {
-    const displayNames = team.members.map(member => this.formatPokemonDisplay(member.name));
+    const displayNames = team.members.map(member => this.formatPokemonWithItemDisplay(member.name, member.item));
     return displayNames.join('\n');
-  }
-
-  private isTeamMemberUsage(usage: PokemonUsage, teamMemberNames: Set<string>): boolean {
-    const usagePokemon = this.dataSource.pokemonDb.getPokemon(usage.name);
-    const usageName = usagePokemon ? usagePokemon.name : usage.name;
-    return teamMemberNames.has(usageName);
   }
 }
 

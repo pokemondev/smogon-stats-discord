@@ -2,9 +2,9 @@ import { once } from 'events';
 import { ApplicationEmojiManager, Client, DiscordAPIError, Events, GatewayIntentBits } from 'discord.js';
 import { AppDataSource } from './appDataSource';
 import { ConfigHelper } from './config/configHelper';
-import { PokemonEmoji } from './pokemon/pokemonEmoji';
-import { ItemEmoji } from './pokemon/itemEmoji';
-import { TypeEmoji } from './pokemon/typeEmoji';
+import { PokemonEmoji } from './emoji/pokemonEmoji';
+import { ItemEmoji } from './emoji/itemEmoji';
+import { TypeEmoji } from './emoji/typeEmoji';
 
 interface EmojiRegistrationEntry {
   emojiName: string;

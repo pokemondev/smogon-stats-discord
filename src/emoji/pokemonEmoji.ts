@@ -1,4 +1,4 @@
-import { PokemonDb } from './pokemonDb';
+import { PokemonDb } from '../pokemon/pokemonDb';
 import { SmogonStats } from '../smogon/smogonStats';
 import { FormatCatalog } from '../smogon/formatCatalog';
 import { SmogonFormat } from '../models/smogonUsage';
@@ -33,19 +33,26 @@ export class PokemonEmoji {
   public static readonly SmogonMiniSpriteBaseUrl = 'https://www.smogon.com/dex/media/sprites/xyicons';
 
   public static buildRosterSources(): PokemonEmojiSource[] {
-    const latestGeneration = FormatCatalog.Generations[0];
+    const latestGen = FormatCatalog.Generations[0];
+    const prevGen = FormatCatalog.Generations[1];
+    const prevPrevGen = FormatCatalog.Generations[2];
     const latestVgcFormats = FormatCatalog.VgcSeasons
-      .filter(season => season.gen === latestGeneration)
+      .filter(season => season.gen === latestGen)
       .slice(0, 2)
       .map(season => ({ format: { generation: season.gen, meta: season.meta }, limit: 100 }));
 
     return [
       ...latestVgcFormats,
-      { format: { generation: latestGeneration, meta: 'ubers' }, limit: 100 },
-      { format: { generation: latestGeneration, meta: 'ou' }, limit: 100 },
-      { format: { generation: latestGeneration, meta: 'uu' }, limit: 50 },
-      { format: { generation: latestGeneration, meta: 'ru' }, limit: 50 },
-      { format: { generation: latestGeneration, meta: 'nu' }, limit: 50 },
+      { format: { generation: latestGen, meta: 'ubers' }, limit: 100 },
+      { format: { generation: latestGen, meta: 'ou' }, limit: 100 },
+      { format: { generation: latestGen, meta: 'uu' }, limit: 50 },
+      { format: { generation: latestGen, meta: 'ru' }, limit: 50 },
+      { format: { generation: latestGen, meta: 'nu' }, limit: 50 },
+      // prev gens
+      { format: { generation: prevGen, meta: 'ubers' }, limit: 25 },
+      { format: { generation: prevGen, meta: 'ou' }, limit: 25 },
+      { format: { generation: prevPrevGen, meta: 'ubers' }, limit: 25 },
+      { format: { generation: prevPrevGen, meta: 'ou' }, limit: 25 },
     ];
   }
 
