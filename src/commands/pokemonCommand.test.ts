@@ -2,6 +2,7 @@ import assert = require('assert');
 import { AppDataSource } from '../appDataSource';
 import { ConfigHelper } from '../config/configHelper';
 import { MoveSetUsage } from '../models/smogonUsage';
+import { PokemonType } from '../models/pokemon';
 
 process.env.BOT_NAME = process.env.BOT_NAME || 'Smogon Stats';
 process.env.TOKEN = process.env.TOKEN || 'test-token';
@@ -142,6 +143,28 @@ async function withStubbedTypeEmojiDisplayNames(
   }
   finally {
     dataSource.emojiService.getTypeEmoji = originalGetTypeEmoji;
+  }
+}
+
+async function withStubbedMoveLookup(
+  moveTypeByName: Record<string, PokemonType>,
+  runTest: () => void
+): Promise<void> {
+  const originalGetMove = dataSource.movedex.getMove.bind(dataSource.movedex);
+  dataSource.movedex.getMove = (name: string) => {
+    const type = moveTypeByName[name];
+    if (!type) {
+      return undefined;
+    }
+
+    return { name, type } as never;
+  };
+
+  try {
+    await runTest();
+  }
+  finally {
+    dataSource.movedex.getMove = originalGetMove;
   }
 }
 
@@ -665,6 +688,134 @@ const tests: TestCase[] = [
           const teraField = embed.fields.find((field: { name: string }) => field.name === 'Tera Types');
           assert.ok(teraField, 'Expected a Tera Types field for gen9 summary.');
           assert.strictEqual(teraField.value, '<:type_fire:1> Fire: `45.50%`\n<:type_water:2> Water: `30.00%`');
+        }
+      );
+    }
+  },
+  {
+    name: 'summary renders type emojis in Moves compact field',
+    run: async () => {
+      await withStubbedMoveLookup(
+        {
+          'Knock Off': PokemonType.Dark,
+          'Fake Out': PokemonType.Normal,
+        },
+        async () => {
+          await withStubbedTypeEmojiDisplayNames(
+            {
+              Dark: '<:type_dark:10>',
+              Normal: '<:type_normal:11>',
+            },
+            async () => {
+              const command = new PokemonCommand(dataSource);
+              const interaction = createInteraction('summary', {
+                name: 'incineroar',
+                generation: '9',
+                meta: 'ou',
+              });
+
+              (command as any).getMoveSetCommandData = async (query: { pokemon: any; format: any }) => ({
+                format: query.format,
+                pokemon: query.pokemon,
+                moveSet: {
+                  ...createEmptyMoveSet(query.pokemon.name),
+                  moves: [
+                    { name: 'Knock Off', percentage: 80.0 },
+                    { name: 'Fake Out', percentage: 65.5 },
+                  ],
+                  items: [{ name: 'Safety Goggles', percentage: 60.0 }],
+                },
+              });
+              (command as any).getGeneralInfoData = async () => 'Meta: `OU`';
+
+              await command.execute(interaction as never);
+
+              const embed = getEditReplyEmbed(interaction);
+              const movesField = embed.fields.find((field: { name: string }) => field.name === 'Moves');
+              assert.ok(movesField, 'Expected a Moves field in summary embed.');
+              assert.strictEqual(movesField.value, '<:type_dark:10> Knock Off: `80.00%`\n<:type_normal:11> Fake Out: `65.50%`');
+            }
+          );
+        }
+      );
+    }
+  },
+  {
+    name: 'info/moves renders type emojis in field titles',
+    run: async () => {
+      await withStubbedMoveLookup(
+        {
+          'Knock Off': PokemonType.Dark,
+          'Flare Blitz': PokemonType.Fire,
+        },
+        async () => {
+          await withStubbedTypeEmojiDisplayNames(
+            {
+              Dark: '<:type_dark:10>',
+              Fire: '<:type_fire:12>',
+            },
+            async () => {
+              const command = new PokemonCommand(dataSource);
+              const interaction = createInteraction('info', {
+                name: 'incineroar',
+                category: 'moves',
+                generation: '9',
+                meta: 'ou',
+              });
+
+              (command as any).getMoveSetCommandData = async (query: { pokemon: any; format: any }) => ({
+                format: query.format,
+                pokemon: query.pokemon,
+                moveSet: {
+                  ...createEmptyMoveSet(query.pokemon.name),
+                  moves: [
+                    { name: 'Knock Off', percentage: 80.0 },
+                    { name: 'Flare Blitz', percentage: 60.0 },
+                  ],
+                },
+              });
+
+              await command.execute(interaction as never);
+
+              const fieldNames = getFieldNames(interaction);
+              assert.strictEqual(fieldNames[0], '#1 <:type_dark:10> Knock Off');
+              assert.strictEqual(fieldNames[1], '#2 <:type_fire:12> Flare Blitz');
+            }
+          );
+        }
+      );
+    }
+  },
+  {
+    name: 'moves fall back to plain name when move is not in movedex',
+    run: async () => {
+      await withStubbedTypeEmojiDisplayNames(
+        { Dark: '<:type_dark:10>' },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('summary', {
+            name: 'incineroar',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: any; format: any }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: {
+              ...createEmptyMoveSet(query.pokemon.name),
+              moves: [{ name: 'UnknownMove', percentage: 30.0 }],
+              items: [{ name: 'Safety Goggles', percentage: 60.0 }],
+            },
+          });
+          (command as any).getGeneralInfoData = async () => 'Meta: `OU`';
+
+          await command.execute(interaction as never);
+
+          const embed = getEditReplyEmbed(interaction);
+          const movesField = embed.fields.find((field: { name: string }) => field.name === 'Moves');
+          assert.ok(movesField, 'Expected a Moves field.');
+          assert.strictEqual(movesField.value, 'UnknownMove: `30.00%`');
         }
       );
     }

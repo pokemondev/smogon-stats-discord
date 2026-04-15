@@ -150,7 +150,7 @@ export class CommandBase {
     embed: EmbedBuilder,
     usageData: UsageData[] | ChecksAndCountersUsageData[] | undefined,
     formatter?: (data: UsageData | ChecksAndCountersUsageData) => string,
-    options: { formatPokemonNames?: boolean; formatItemNames?: boolean } = {}
+    options: { formatPokemonNames?: boolean; formatItemNames?: boolean; formatMoveNames?: boolean } = {}
   ): Promise<void> {
     const safeUsageData = usageData ? usageData.slice(0, 24) : [];
     if (!safeUsageData.length) {
@@ -162,7 +162,9 @@ export class CommandBase {
       ? safeUsageData.map(usage => this.formatPokemonDisplay(usage.name))
       : options.formatItemNames
         ? safeUsageData.map(usage => this.formatItemDisplay(usage.name))
-        : safeUsageData.map(usage => usage.name);
+        : options.formatMoveNames
+          ? safeUsageData.map(usage => this.formatMoveDisplay(usage.name))
+          : safeUsageData.map(usage => usage.name);
 
     safeUsageData.forEach((usage, index) => {
       const name = this.formatRankedTitle(index + 1, titles[index]);
@@ -213,6 +215,17 @@ export class CommandBase {
 
     const emoji = emojiService.getTypeEmoji(name);
     return emoji ? `${emoji} ${name}` : name;
+  }
+
+  protected formatMoveDisplay(name: string): string {
+    const emojiService = this.dataSource.emojiService;
+    const move = this.dataSource.movedex.getMove(name);
+    if (!emojiService || !move) {
+      return name;
+    }
+
+    const typeEmoji = emojiService.getTypeEmoji(move.type);
+    return typeEmoji ? `${typeEmoji} ${name}` : name;
   }
 
   protected async replyNoData(interaction: ChatInputCommandInteraction, message: string): Promise<void> {

@@ -116,6 +116,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
       {
         formatPokemonNames: category === 'checks' || category === 'teammates',
         formatItemNames: category === 'items',
+        formatMoveNames: category === 'moves',
       }
     );
   }
@@ -144,7 +145,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     
     const info = await this.getGeneralInfoData(cmd);
     const abilities = this.getData(cmd.moveSet.abilities);
-    const moves = this.getData(cmd.moveSet.moves);
+    const moves = this.getMoveUsageData(cmd.moveSet.moves);
     const items = this.getItemUsageData(cmd.moveSet.items);
     const defensiveProfile = this.getWeakResistData(cmd);
     const teraTypes = this.getTeraTypesData(cmd);
@@ -184,7 +185,7 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     interaction: ChatInputCommandInteraction,
     title: string,
     selector: (moveSet: MoveSetUsage) => UsageData[] | ReturnType<typeof this.getChecksData>,
-    options: { formatPokemonNames?: boolean; formatItemNames?: boolean } = {}
+    options: { formatPokemonNames?: boolean; formatItemNames?: boolean; formatMoveNames?: boolean } = {}
   ): Promise<void> {
     const query = this.resolvePokemonQuery(interaction);
     if (!query) {
@@ -311,6 +312,14 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const hl2 = highlighEverything ? ""   : "\`";
     const data = (usageData ? usageData : []).slice(0, limit).map(iv => `${hl1}${iv.name}: ${hl2}${iv.percentage.toFixed(2)}%\``).join('\n');
     return data ? data : "-";
+  }
+  private getMoveUsageData(usageData: UsageData[] | undefined, limit: number = 6): string {
+    const safeData = (usageData ?? []).slice(0, limit);
+    if (!safeData.length) {
+      return '-';
+    }
+
+    return safeData.map(move => `${this.formatMoveDisplay(move.name)}: \`${move.percentage.toFixed(2)}%\``).join('\n');
   }
   private getItemUsageData(usageData: UsageData[] | undefined, limit: number = 6): string {
     const safeData = (usageData ?? []).slice(0, limit);
