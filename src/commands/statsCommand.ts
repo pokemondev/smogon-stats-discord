@@ -118,6 +118,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
     }
   }
 
+  // sub-commands handling
   private async handleUsage(interaction: ChatInputCommandInteraction): Promise<void> {
     const format = this.getFormat(interaction);
     await DiscordHelper.deferCommandReply(interaction);
@@ -184,6 +185,39 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
     });
   }
 
+  private async handleMegas(interaction: ChatInputCommandInteraction): Promise<void> {
+    const format = this.getFormat(interaction);
+    await DiscordHelper.deferCommandReply(interaction);
+
+    const moveSets = await this.dataSource.smogonStats.getMegasMoveSets(format);
+    if (!moveSets.length) {
+      await this.replyNoData(interaction, `No Mega usage data available for ${FormatHelper.toUserString(format)}.`);
+      return;
+    }
+
+    const firstMon = this.findFirstPokemon(moveSets.map(moveSet => moveSet.name));
+    if (!firstMon) {
+      await this.replyNoData(interaction, `No Mega usage data available for ${FormatHelper.toUserString(format)}.`);
+      return;
+    }
+
+    const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
+    const displayNames = moveSets.map(moveSet => this.formatPokemonDisplay(moveSet.name));
+
+    moveSets.forEach((moveSet, index) => {
+      embed.addFields({
+        name: this.formatRankedTitle(index + 1, displayNames[index]),
+        value: `Usage: \`${(moveSet.usage ?? 0).toFixed(2)}%\``,
+        inline: true,
+      });
+    });
+
+    await interaction.editReply({
+      content: `**__Megas:__** Top ${moveSets.length} Mega Stone users of ${FormatHelper.toUserString(format)}`,
+      embeds: [embed],
+    });
+  }
+
   private async handleSpeedTier(interaction: ChatInputCommandInteraction): Promise<void> {
     const format = this.getFormat(interaction);
     const mode = this.getSpeedTierMode(interaction);
@@ -211,14 +245,15 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
   }
 
   private async handleAttackers(interaction: ChatInputCommandInteraction): Promise<void> {    
-    await this.handleStatsRanking(interaction, 'Attackers', (pokemon, mode) => this.getAttackerStats(pokemon, mode));
+    await this.processStatsRanking(interaction, 'Attackers', (pokemon, mode) => this.getAttackerStats(pokemon, mode));
   }
 
   private async handleDefenders(interaction: ChatInputCommandInteraction): Promise<void> {    
-    await this.handleStatsRanking(interaction, 'Defenders', (pokemon, mode) => this.getDefenderStats(pokemon, mode));
+    await this.processStatsRanking(interaction, 'Defenders', (pokemon, mode) => this.getDefenderStats(pokemon, mode));
   }
 
-  private async handleStatsRanking(
+  // helper methods
+  private async processStatsRanking(
     interaction: ChatInputCommandInteraction, 
     statsName: string,
     getStats: (pokemon: Pokemon, mode: PokemonStatsMode) => Pick<PokemonStatsEntry, 'stats' | 'statsName'>
@@ -266,7 +301,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
       embed.addFields({
         name: this.formatRankedTitle(index + 1, displayNames[index]),
         value: `Base ${entry.statsName}: \`${entry.stats}\`\nUsage: \`#${entry.usage.rank}\` (${entry.usage.usageRaw.toFixed(2)}%)`,
-        inline: true,
+        inline: true,        
       });
     });
 
@@ -274,39 +309,6 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     await interaction.editReply({
       content: `**__${options.heading}:__** Top ${options.entries.length} Pokemon of ${FormatHelper.toUserString(options.format)}${subtitle}`,
-      embeds: [embed],
-    });
-  }
-
-  private async handleMegas(interaction: ChatInputCommandInteraction): Promise<void> {
-    const format = this.getFormat(interaction);
-    await DiscordHelper.deferCommandReply(interaction);
-
-    const moveSets = await this.dataSource.smogonStats.getMegasMoveSets(format);
-    if (!moveSets.length) {
-      await this.replyNoData(interaction, `No Mega usage data available for ${FormatHelper.toUserString(format)}.`);
-      return;
-    }
-
-    const firstMon = this.findFirstPokemon(moveSets.map(moveSet => moveSet.name));
-    if (!firstMon) {
-      await this.replyNoData(interaction, `No Mega usage data available for ${FormatHelper.toUserString(format)}.`);
-      return;
-    }
-
-    const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
-    const displayNames = moveSets.map(moveSet => this.formatPokemonDisplay(moveSet.name));
-
-    moveSets.forEach((moveSet, index) => {
-      embed.addFields({
-        name: this.formatRankedTitle(index + 1, displayNames[index]),
-        value: `Usage: \`${(moveSet.usage ?? 0).toFixed(2)}%\``,
-        inline: true,
-      });
-    });
-
-    await interaction.editReply({
-      content: `**__Megas:__** Top ${moveSets.length} Mega Stone users of ${FormatHelper.toUserString(format)}`,
       embeds: [embed],
     });
   }

@@ -72,6 +72,11 @@ export class ColorService {
 		this.versionColorMap["moon"] =  '#5599CA';
 		this.versionColorMap["ultrasun"] =  '#FAA71B';
 		this.versionColorMap["ultramoon"] =  '#179CD7';
+		this.versionColorMap["sword"] =  '#019ee5'; 
+		this.versionColorMap["shield"] =  '#e00058';
+		this.versionColorMap["scarlet"] =  '#ad2c30';
+		this.versionColorMap["violet"] =  '#542887';
+
 	}
 }
 ColorService.initialize();

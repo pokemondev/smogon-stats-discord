@@ -7,7 +7,6 @@ import {
   SlashCommandSubcommandBuilder,
 } from 'discord.js';
 import { AppDataSource } from "../appDataSource";
-import { DiscordHelper } from '../common/discordHelper';
 import { MoveSetUsage, UsageData, ChecksAndCountersUsageData, SmogonFormat } from "../models/smogonUsage";
 import { ColorService } from '../pokemon/colorService';
 import { FormatHelper } from '../smogon/formatHelper';
@@ -15,6 +14,7 @@ import { Pokemon } from '../models/pokemon';
 import { ImageService } from '../pokemon/imageService';
 import { FormatConfig } from '../config/formatConfig';
 import { FormatCatalog } from '../smogon/formatCatalog';
+import { EmojiService } from '../emoji/emojiService';
 
 const generationChoices = [
   { name: 'Gen 9', value: '9' },
@@ -28,7 +28,7 @@ const pokemonInfoCategoryChoices = [
   { name: 'Abilities', value: 'abilities' },
   { name: 'Items', value: 'items' },
   { name: 'Spreads', value: 'spreads' },
-  { name: 'Checks & Counters', value: 'checks' },
+  { name: 'Checks & Counters', value: 'checksCounters' },
   { name: 'Teammates', value: 'teammates' },
 ] as const;
 
@@ -150,7 +150,7 @@ export class CommandBase {
     embed: EmbedBuilder,
     usageData: UsageData[] | ChecksAndCountersUsageData[] | undefined,
     formatter?: (data: UsageData | ChecksAndCountersUsageData) => string,
-    options: { formatPokemonNames?: boolean; formatItemNames?: boolean; formatMoveNames?: boolean } = {}
+    options: { formatPokemon?: boolean; formatItem?: boolean; formatMove?: boolean } = {}
   ): Promise<void> {
     const safeUsageData = usageData ? usageData.slice(0, 24) : [];
     if (!safeUsageData.length) {
@@ -158,11 +158,11 @@ export class CommandBase {
       return;
     }
 
-    const titles = options.formatPokemonNames
+    const titles = options.formatPokemon
       ? safeUsageData.map(usage => this.formatPokemonDisplay(usage.name))
-      : options.formatItemNames
+      : options.formatItem
         ? safeUsageData.map(usage => this.formatItemDisplay(usage.name))
-        : options.formatMoveNames
+        : options.formatMove
           ? safeUsageData.map(usage => this.formatMoveDisplay(usage.name))
           : safeUsageData.map(usage => usage.name);
 
@@ -175,58 +175,12 @@ export class CommandBase {
       embed.addFields({ name, value, inline: true });
     });
   }
-  
-  protected formatRankedTitle(position: number, title: string): string {
-    //return `${position}º) ${title}`;
-    return `#${position} ${title}`;
-  }
 
   protected findFirstPokemon(names: string[]): Pokemon | undefined {
     return names
       .map(name => this.dataSource.pokemonDb.getPokemon(name))
       .find((pokemon): pokemon is Pokemon => !!pokemon);
-  }
-
-  protected formatPokemonDisplay(name: string): string {
-    const emojiService = this.dataSource.emojiService;
-    if (!emojiService) {
-      return name;
-    }
-
-    const emoji = emojiService.getPokemonEmoji(name);
-    return emoji ? `${emoji} ${name}` : name;
-  }
-
-  protected formatItemDisplay(name: string): string {
-    const emojiService = this.dataSource.emojiService;
-    if (!emojiService) {
-      return name;
-    }
-
-    const emoji = emojiService.getItemEmoji(name);
-    return emoji ? `${emoji} ${name}` : name;
-  }
-
-  protected formatTypeDisplay(name: string): string {
-    const emojiService = this.dataSource.emojiService;
-    if (!emojiService) {
-      return name;
-    }
-
-    const emoji = emojiService.getTypeEmoji(name);
-    return emoji ? `${emoji} ${name}` : name;
-  }
-
-  protected formatMoveDisplay(name: string): string {
-    const emojiService = this.dataSource.emojiService;
-    const move = this.dataSource.movedex.getMove(name);
-    if (!emojiService || !move) {
-      return name;
-    }
-
-    const typeEmoji = emojiService.getTypeEmoji(move.type);
-    return typeEmoji ? `${typeEmoji} ${name}` : name;
-  }
+  }  
 
   protected async replyNoData(interaction: ChatInputCommandInteraction, message: string): Promise<void> {
     if (interaction.deferred || interaction.replied) {
@@ -255,6 +209,48 @@ export class CommandBase {
 
   protected isCheckAndCounters(usage: UsageData | ChecksAndCountersUsageData): usage is ChecksAndCountersUsageData {
     return (usage as ChecksAndCountersUsageData).kOed !== undefined;
+  }
+
+  protected formatRankedTitle(position: number, title: string): string {
+    //return `${position}º) ${title}`;
+    return `#${position} ${title}`;
+  }
+
+  protected formatPokemonDisplay(name: string): string {
+    return this.formatWithEmoji(name, svc => svc.getPokemonEmoji(name));
+  }
+
+  protected formatItemDisplay(name: string): string {
+    return this.formatWithEmoji(name, svc => svc.getItemEmoji(name));
+  }
+
+  protected formatTypeDisplay(name: string): string {
+    return this.formatWithEmoji(name, svc => svc.getTypeEmoji(name));
+  }
+
+  protected formatMoveDisplay(name: string): string {
+    return this.formatWithEmoji(name, svc => {
+      const move = this.dataSource.movedex.getMove(name);
+      return move ? svc.getTypeEmoji(move.type) : undefined;
+    });
+  }
+
+  protected formatPokemonWithItemDisplay(pokemon: string, item: string): string {
+    return this.formatWithEmoji(pokemon, svc => {
+      const safeEmojiService = svc as Partial<EmojiService>;
+      const pokemonEmoji = safeEmojiService.getPokemonEmoji?.(pokemon) ?? '';
+      const itemEmoji = safeEmojiService.getItemEmoji?.(item) ?? '';
+      return `${pokemonEmoji}${itemEmoji}`;
+    });
+  }
+
+  private formatWithEmoji(name: string, getEmoji: (svc: EmojiService) => string | undefined): string {
+    const emojiService = this.dataSource.emojiService;
+    if (!emojiService)
+      return name;    
+
+    const emoji = getEmoji(emojiService);
+    return emoji ? `${emoji} ${name}` : name;
   }
 }
 
