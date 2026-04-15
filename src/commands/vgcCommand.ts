@@ -105,12 +105,14 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
       : new EmbedBuilder().setFooter({ text: TeamLinksFooterText });
 
     embed
-      .setTitle(`${FormatHelper.getMetaDisplayName(resolvedTeam.format.meta)} - ${resolvedTeam.team.description}`)
+      .setTitle(resolvedTeam.team.description)
       .setDescription(this.buildTeamDetailsDescription(resolvedTeam));
+
+    const memberDisplayNames = resolvedTeam.team.members.map(member => this.formatPokemonDisplay(member.name));
 
     resolvedTeam.team.members.forEach((member, index) => {
       embed.addFields({
-        name: member.name,
+        name: memberDisplayNames[index],
         value: `\`\`\`${FormatHelper.getSmogonSet(member)}\`\`\`\u2006`,
         inline: true,
       });
@@ -163,13 +165,15 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
       : new EmbedBuilder();
 
     embed
-      .setTitle(this.buildEmbedTitle(format, primaryPokemon, secondaryPokemon))
+      .setTitle(this.buildEmbedTitle(primaryPokemon, secondaryPokemon))
       .setDescription(`Showing ${displayedTeams.length} of ${teams.length} matching teams.`);
+
+    const teamMemberDisplays = displayedTeams.map(team => this.buildTeamMembersList(team));
 
     displayedTeams.forEach((team, index) => {
       embed.addFields({
-        name: `#${index + 1} ${team.description} (ID ${team.teamId})`,
-        value: this.buildTeamMembersCodeBlock(team),
+        name: `#${team.rank} place at ${team.event} (ID ${team.teamId})`,
+        value: teamMemberDisplays[index],
         inline: true,
       });
 
@@ -243,16 +247,13 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     return undefined;
   }
 
-  private buildEmbedTitle(format: SmogonFormat, pokemon1?: Pokemon, pokemon2?: Pokemon): string {
-    const parts = [FormatHelper.getMetaDisplayName(format.meta)];
-    if (pokemon1 && pokemon2) {
-      parts.push(`${pokemon1.name} + ${pokemon2.name}`);
-    }
-    else if (pokemon1) {
-      parts.push(pokemon1.name);
-    }
+  private buildEmbedTitle(pokemon1?: Pokemon, pokemon2?: Pokemon): string {
+    if (!pokemon1)
+      return 'Recent VGC Teams';
 
-    return parts.join(' - ');
+    return ((pokemon1 && pokemon2)
+      ? `${pokemon1.name} + ${pokemon2.name} Teams`
+      : `${pokemon1.name} Teams`);  
   }
 
   private buildTeamDetailsDescription(resolvedTeam: VgcResolvedTeam): string {
@@ -280,8 +281,9 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     return `No VGC teams available for ${FormatHelper.getMetaDisplayName(format.meta)}.`;
   }
 
-  private buildTeamMembersCodeBlock(team: VgcTeam): string {
-    return `\`\`\`\n${team.members.map(member => member.name).join('\n')}\n\`\`\``;
+  private buildTeamMembersList(team: VgcTeam): string {
+    const displayNames = team.members.map(member => this.formatPokemonDisplay(member.name));
+    return displayNames.join('\n');
   }
 
   private isTeamMemberUsage(usage: PokemonUsage, teamMemberNames: Set<string>): boolean {

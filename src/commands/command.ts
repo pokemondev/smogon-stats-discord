@@ -28,7 +28,7 @@ const pokemonInfoCategoryChoices = [
   { name: 'Abilities', value: 'abilities' },
   { name: 'Items', value: 'items' },
   { name: 'Spreads', value: 'spreads' },
-  { name: 'Checks', value: 'checks' },
+  { name: 'Checks & Counters', value: 'checks' },
   { name: 'Teammates', value: 'teammates' },
 ] as const;
 
@@ -90,10 +90,10 @@ export function withFormatOptions(subcommand: SlashCommandSubcommandBuilder): Sl
 export class CommandBase {
   constructor(protected readonly dataSource: AppDataSource) {
   }
-
+  
   protected getRequestedPokemonName(interaction: ChatInputCommandInteraction): string {
     return interaction.options.getString('name', true).trim();
-  }
+  }  
 
   protected getFormat(interaction: ChatInputCommandInteraction): SmogonFormat {
     const generation = interaction.options.getString('generation');
@@ -123,7 +123,7 @@ export class CommandBase {
       moveSet: moveSet ? moveSet : {} as MoveSetUsage,
       pokemon: query.pokemon,
     };
-  }
+  }  
 
   protected createPokemonEmbed(
     pokemon: Pokemon,
@@ -146,19 +146,28 @@ export class CommandBase {
     return embed;
   }
 
-  protected addUsageFields(
+  protected async addUsageFields(
     embed: EmbedBuilder,
     usageData: UsageData[] | ChecksAndCountersUsageData[] | undefined,
-    formatter?: (data: UsageData | ChecksAndCountersUsageData) => string    
-  ): void {
+    formatter?: (data: UsageData | ChecksAndCountersUsageData) => string,
+    options: { formatPokemonNames?: boolean; formatItemNames?: boolean; formatMoveNames?: boolean } = {}
+  ): Promise<void> {
     const safeUsageData = usageData ? usageData.slice(0, 24) : [];
     if (!safeUsageData.length) {
       embed.setDescription('No data available for this query.');
       return;
     }
 
+    const titles = options.formatPokemonNames
+      ? safeUsageData.map(usage => this.formatPokemonDisplay(usage.name))
+      : options.formatItemNames
+        ? safeUsageData.map(usage => this.formatItemDisplay(usage.name))
+        : options.formatMoveNames
+          ? safeUsageData.map(usage => this.formatMoveDisplay(usage.name))
+          : safeUsageData.map(usage => usage.name);
+
     safeUsageData.forEach((usage, index) => {
-      const name = this.formatRankedTitle(index + 1, usage.name);
+      const name = this.formatRankedTitle(index + 1, titles[index]);
       const value = formatter
         ? formatter(usage)
         : `Usage: \`${usage.percentage.toFixed(2)}%\``;
@@ -166,8 +175,57 @@ export class CommandBase {
       embed.addFields({ name, value, inline: true });
     });
   }
+  
   protected formatRankedTitle(position: number, title: string): string {
-    return `${position}º) ${title}`;
+    //return `${position}º) ${title}`;
+    return `#${position} ${title}`;
+  }
+
+  protected findFirstPokemon(names: string[]): Pokemon | undefined {
+    return names
+      .map(name => this.dataSource.pokemonDb.getPokemon(name))
+      .find((pokemon): pokemon is Pokemon => !!pokemon);
+  }
+
+  protected formatPokemonDisplay(name: string): string {
+    const emojiService = this.dataSource.emojiService;
+    if (!emojiService) {
+      return name;
+    }
+
+    const emoji = emojiService.getPokemonEmoji(name);
+    return emoji ? `${emoji} ${name}` : name;
+  }
+
+  protected formatItemDisplay(name: string): string {
+    const emojiService = this.dataSource.emojiService;
+    if (!emojiService) {
+      return name;
+    }
+
+    const emoji = emojiService.getItemEmoji(name);
+    return emoji ? `${emoji} ${name}` : name;
+  }
+
+  protected formatTypeDisplay(name: string): string {
+    const emojiService = this.dataSource.emojiService;
+    if (!emojiService) {
+      return name;
+    }
+
+    const emoji = emojiService.getTypeEmoji(name);
+    return emoji ? `${emoji} ${name}` : name;
+  }
+
+  protected formatMoveDisplay(name: string): string {
+    const emojiService = this.dataSource.emojiService;
+    const move = this.dataSource.movedex.getMove(name);
+    if (!emojiService || !move) {
+      return name;
+    }
+
+    const typeEmoji = emojiService.getTypeEmoji(move.type);
+    return typeEmoji ? `${typeEmoji} ${name}` : name;
   }
 
   protected async replyNoData(interaction: ChatInputCommandInteraction, message: string): Promise<void> {
@@ -195,7 +253,7 @@ export class CommandBase {
     return args.join(' ');
   }
 
-  private isCheckAndCounters(usage: UsageData | ChecksAndCountersUsageData): usage is ChecksAndCountersUsageData {
+  protected isCheckAndCounters(usage: UsageData | ChecksAndCountersUsageData): usage is ChecksAndCountersUsageData {
     return (usage as ChecksAndCountersUsageData).kOed !== undefined;
   }
 }

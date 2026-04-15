@@ -121,7 +121,7 @@ const tests: TestCase[] = [
     },
   },
   {
-    name: 'teams renders code-block members, ID labels, two-column separators, and footer links',
+    name: 'teams renders member lists, ID labels, two-column separators, and footer links',
     run: async () => {
       const command = new VgcCommand({
         pokemonDb,
@@ -146,10 +146,37 @@ const tests: TestCase[] = [
       const embed = payload.embeds[0].toJSON ? payload.embeds[0].toJSON() : payload.embeds[0];
 
       assert.strictEqual(embed.footer?.text, 'Check more details at x.com/VGCPastes and limitlessvgc.com');
-      assert.strictEqual(embed.fields[0].name, '#1 Sample Team 1 (ID I1280)');
-      assert.strictEqual(embed.fields[0].value, '```\nCharizard\nIncineroar\nAmoonguss\nDragonite\nWhimsicott\nZamazenta\n```');
+      assert.strictEqual(embed.fields[0].name, '#1 place at Event (ID I1280)');
+      assert.strictEqual(embed.fields[0].value, 'Charizard\nIncineroar\nAmoonguss\nDragonite\nWhimsicott\nZamazenta');
       assert.strictEqual(embed.fields[2].name, '\u200b');
       assert.strictEqual(embed.fields[2].inline, false);
+    },
+  },
+  {
+    name: 'teams render application emojis when available',
+    run: async () => {
+      const command = new VgcCommand({
+        pokemonDb,
+        emojiService: {
+          getPokemonEmoji: (name: string) => name === 'Charizard' ? '<:charizard:123>' : undefined,
+        },
+        vgcTeams: {
+          getTeams: () => [
+            createSampleTeam('I1280', 'Sample Team 1'),
+          ],
+          getTeamsByPokemon: () => [],
+          getTeamById: () => undefined,
+        },
+      } as never);
+      const interaction = new FakeChatInputCommandInteraction({});
+
+      await command.execute(interaction as never);
+
+      const editReplyCall = interaction.calls.find(call => call.name === 'editReply');
+      const payload = editReplyCall?.payload as { embeds: Array<{ toJSON?: () => any }> };
+      const embed = payload.embeds[0].toJSON ? payload.embeds[0].toJSON() : payload.embeds[0];
+
+      assert.strictEqual(embed.fields[0].value, '<:charizard:123> Charizard\nIncineroar\nAmoonguss\nDragonite\nWhimsicott\nZamazenta');
     },
   },
   {
@@ -262,7 +289,7 @@ const tests: TestCase[] = [
       assert.ok(incineroar, 'Expected Incineroar in the pokemon database.');
 
       assert.strictEqual(payload.content, '**__VGC Team Details:__** I1280');
-      assert.strictEqual(embed.title, 'VGC 2026 Reg. I - Sample Team');
+      assert.strictEqual(embed.title, 'Sample Team');
       assert.strictEqual(embed.color, getNumericColor(ColorService.getColorForType(incineroar.type1)));
       assert.ok((embed.thumbnail?.url ?? '').toLowerCase().includes('incineroar'));
       assert.strictEqual(embed.fields[0].name, 'Charizard');

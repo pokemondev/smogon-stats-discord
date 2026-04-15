@@ -128,19 +128,18 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
       return;
     }
 
-    const firstMon = usageData
-      .map((usage) => this.dataSource.pokemonDb.getPokemon(usage.name))
-      .find((pokemon): pokemon is Pokemon => !!pokemon);
+    const firstMon = this.findFirstPokemon(usageData.map(usage => usage.name));
     if (!firstMon) {
       await this.replyNoData(interaction, `No usage data available for ${FormatHelper.toUserString(format)}.`);
       return;
     }
 
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
+    const displayNames = usageData.map(pokemon => this.formatPokemonDisplay(pokemon.name));
 
     usageData.forEach((pokemon, index) => {
       embed.addFields({
-        name: this.formatRankedTitle(index + 1, pokemon.name),
+        name: this.formatRankedTitle(index + 1, displayNames[index]),
         value: `Usage: \`${pokemon.usageRaw.toFixed(2)}%\``,
         inline: true,
       });
@@ -162,19 +161,18 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
       return;
     }
 
-    const firstMon = leads
-      .map((usage) => this.dataSource.pokemonDb.getPokemon(usage.name))
-      .find((pokemon): pokemon is Pokemon => !!pokemon);
+    const firstMon = this.findFirstPokemon(leads.map(usage => usage.name));
     if (!firstMon) {
       await this.replyNoData(interaction, `No leads data available for ${FormatHelper.toUserString(format)}.`);
       return;
     }
 
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
+    const displayNames = leads.map(pokemon => this.formatPokemonDisplay(pokemon.name));
 
     leads.forEach((pokemon, index) => {
       embed.addFields({
-        name: this.formatRankedTitle(index + 1, pokemon.name),
+        name: this.formatRankedTitle(index + 1, displayNames[index]),
         value: `Usage: \`${pokemon.usageRaw.toFixed(2)}%\``,
         inline: true,
       });
@@ -262,10 +260,11 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     const firstMon = options.entries[0].pokemon;
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
+    const displayNames = options.entries.map(entry => this.formatPokemonDisplay(entry.pokemon.name));
 
     options.entries.forEach((entry, index) => {
       embed.addFields({
-        name: this.formatRankedTitle(index + 1, entry.pokemon.name),
+        name: this.formatRankedTitle(index + 1, displayNames[index]),
         value: `Base ${entry.statsName}: \`${entry.stats}\`\nUsage: \`#${entry.usage.rank}\` (${entry.usage.usageRaw.toFixed(2)}%)`,
         inline: true,
       });
@@ -289,19 +288,18 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
       return;
     }
 
-    const firstMon = moveSets
-      .map((moveSet) => this.dataSource.pokemonDb.getPokemon(moveSet.name))
-      .find((pokemon): pokemon is Pokemon => !!pokemon);
+    const firstMon = this.findFirstPokemon(moveSets.map(moveSet => moveSet.name));
     if (!firstMon) {
       await this.replyNoData(interaction, `No Mega usage data available for ${FormatHelper.toUserString(format)}.`);
       return;
     }
 
     const embed = this.createPokemonEmbed(firstMon, { thumbnail: true });
+    const displayNames = moveSets.map(moveSet => this.formatPokemonDisplay(moveSet.name));
 
     moveSets.forEach((moveSet, index) => {
       embed.addFields({
-        name: this.formatRankedTitle(index + 1, moveSet.name),
+        name: this.formatRankedTitle(index + 1, displayNames[index]),
         value: `Usage: \`${(moveSet.usage ?? 0).toFixed(2)}%\``,
         inline: true,
       });

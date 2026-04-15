@@ -50,7 +50,20 @@ npm run register:commands
 
 If `DEV_GUILD_ID` is set, commands are registered to that guild for instant updates. Otherwise, commands are registered globally.
 
-4. Start the bot:
+4. Register application emojis:
+
+```bash
+npm run register:emojis
+```
+
+This uses the same `TOKEN` and `CLIENT_ID` values as command registration. The workflow uploads missing emojis in two categories:
+
+- **Pokemon emojis** (`pkm_` prefix) — sourced from Smogon XY mini sprites at `https://www.smogon.com/dex/media/sprites/xyicons/`. These appear next to Pokemon names in command outputs.
+- **Item emojis** (`item_` prefix) — sourced from Smogon forum mini sprites at `https://www.smogon.com/forums/media/minisprites/`. These appear next to item names in usage outputs such as `/pokemon info items`.
+
+Both categories are uploaded in sequential batches of 8 concurrent uploads. Existing matching emojis are kept, stale emojis within each prefix group are left untouched, and Discord's 256 KiB emoji upload limit still applies.
+
+5. Start the bot:
 
 ```bash
 npm start
@@ -74,6 +87,7 @@ npm run dev
 - `Guilds`
 
 This bot does not require `Message Content` or any privileged intent for the implemented slash-command flow.
+Application-owned emojis also do not require `USE_EXTERNAL_EMOJIS` to render.
 
 ### Minimum bot permissions
 
@@ -148,6 +162,7 @@ Subcommands:
 
 Notes:
 
+- `usage` shows application Pokemon emojis beside names when the matching `pkm_` emoji exists
 - `speed-tier` filters the pool to the top 100 most used Pokemon in the selected format before sorting by base Speed
 - `attackers` and `defenders` also filter the pool to the top 100 most used Pokemon in the selected format before sorting by the requested base stat mode
 - `attackers` and `defenders` use `both` mode by default, selecting the stronger relevant base stat for each Pokemon and showing which stat was used

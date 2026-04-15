@@ -6,32 +6,32 @@ import { FormatHelper } from '../smogon/formatHelper';
 import { FormatCatalog } from '../smogon/formatCatalog';
 import { TypeService } from '../pokemon/typeService';
 import { EffectivenessType } from '../models/pokemon';
-import { UsageData } from '../models/smogonUsage';
+import { MoveSetUsage, UsageData } from '../models/smogonUsage';
 
 const pokemonInfoHandlers = {
   moves: {
     title: 'Moves',
-    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.moves,
+    selector: (moveSet: MoveSetUsage) => moveSet.moves,
   },
   abilities: {
     title: 'Abilities',
-    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.abilities,
+    selector: (moveSet: MoveSetUsage) => moveSet.abilities,
   },
   items: {
     title: 'Items',
-    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.items,
+    selector: (moveSet: MoveSetUsage) => moveSet.items,
   },
   spreads: {
     title: 'Spreads',
-    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.spreads,
+    selector: (moveSet: MoveSetUsage) => moveSet.spreads,
   },
   checks: {
     title: 'Checks',
-    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.checksAndCounters,
+    selector: (moveSet: MoveSetUsage) => moveSet.checksAndCounters,
   },
   teammates: {
     title: 'Teammates',
-    selector: (moveSet: MovesetCommandData['moveSet']) => moveSet.teamMates,
+    selector: (moveSet: MoveSetUsage) => moveSet.teamMates,
   },
 } as const;
 
@@ -109,7 +109,16 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
       return;
     }
 
-    await this.handleMovesetBreakdown(interaction, handler.title, handler.selector);
+    await this.handleMoveset(
+      interaction,
+      handler.title,
+      handler.selector,
+      {
+        formatPokemonNames: category === 'checks' || category === 'teammates',
+        formatItemNames: category === 'items',
+        formatMoveNames: category === 'moves',
+      }
+    );
   }
 
   private async handleSummary(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -136,8 +145,8 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     
     const info = await this.getGeneralInfoData(cmd);
     const abilities = this.getData(cmd.moveSet.abilities);
-    const moves = this.getData(cmd.moveSet.moves);
-    const items = this.getData(cmd.moveSet.items);
+    const moves = this.getMoveUsageData(cmd.moveSet.moves);
+    const items = this.getItemUsageData(cmd.moveSet.items);
     const defensiveProfile = this.getWeakResistData(cmd);
     const teraTypes = this.getTeraTypesData(cmd);
     const typeFieldName = isGen9 ? 'Tera Types' : 'Weak/Resist';
@@ -145,8 +154,8 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const spreads = this.getData(cmd.moveSet.spreads, 4, true);
     const matchupFieldName = isVgc ? 'Team Mates' : 'Counters & Checks';
     const matchupFieldData = isVgc
-      ? this.getData(cmd.moveSet.teamMates, 4)
-      : this.getCountersChecksData(cmd);
+      ? await this.getPokemonUsageData(cmd.moveSet.teamMates, 4)
+      : await this.getCountersChecksData(cmd);
 
     embed.addFields(
       { name: `Base Stats Total: ${stats.tot}`, value: baseStatsData, inline: true },
@@ -172,10 +181,11 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     });
   }
 
-  private async handleMovesetBreakdown(
+  private async handleMoveset(
     interaction: ChatInputCommandInteraction,
     title: string,
-    selector: (moveSet: MovesetCommandData['moveSet']) => UsageData[] | ReturnType<typeof this.getChecksData>
+    selector: (moveSet: MoveSetUsage) => UsageData[] | ReturnType<typeof this.getChecksData>,
+    options: { formatPokemonNames?: boolean; formatItemNames?: boolean; formatMoveNames?: boolean } = {}
   ): Promise<void> {
     const query = this.resolvePokemonQuery(interaction);
     if (!query) {
@@ -190,13 +200,12 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const embed = this.createPokemonEmbed(cmd.pokemon, { thumbnail: true });
     const usageData = selector(cmd.moveSet);
 
-    this.addUsageFields(embed, usageData, usage => {
-      if ('kOed' in usage) {
-        return `KO-ed: \`${usage.kOed.toFixed(2)}%\`\nSW. out: \`${usage.switchedOut.toFixed(2)}%\``;
-      }
-
-      return `Usage: \`${usage.percentage.toFixed(2)}%\``;
-    });
+    await this.addUsageFields(embed, usageData, usage => {
+      return this.isCheckAndCounters(usage)
+        ? `KO-ed: \`${usage.kOed.toFixed(2)}%\`\nSW. out: \`${usage.switchedOut.toFixed(2)}%\``
+        : `Usage: \`${usage.percentage.toFixed(2)}%\``;
+    }, options
+    );
 
     await interaction.editReply({
       content: `**__${cmd.pokemon.name} ${title}:__** ${FormatHelper.toUserString(cmd.format)}`,
@@ -259,7 +268,10 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     
     const info1 = `Meta: \`${cmd.format.meta.toUpperCase()}\``;
     const info2 = `Generation: \`Gen ${cmd.format.generation.replace(/^gen/i, '')}\``;
-    const info3 = `Type: \`${cmd.pokemon.type1} ${(cmd.pokemon.type2 ? '/ ' + cmd.pokemon.type2 : '')}\``;
+    const typeDisplay = cmd.pokemon.type2
+      ? `${this.formatTypeDisplay(cmd.pokemon.type1)} / ${this.formatTypeDisplay(cmd.pokemon.type2)}`
+      : this.formatTypeDisplay(cmd.pokemon.type1);
+    const info3 = `Type: ${typeDisplay}`;
     const info4 = `Usage: \`${usageInfo}\``;
     const infoX = `${info1}\n${info2}\n${info3}\n${info4}`;
     return infoX;
@@ -269,21 +281,26 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const effectiveness = TypeService.getFullEffectiveness(cmd.pokemon);
     const weakss = effectiveness.filter(e => e.effect == EffectivenessType.SuperEffective
                                             || e.effect == EffectivenessType.SuperEffective2x)
-                                .map((w, i) => ((i + 1) % 4 === 0 ? '\n' : '') + (w.effect == EffectivenessType.SuperEffective2x ? `**${w.type}**` : w.type))
+                                .map((w, i) => ((i + 1) % 4 === 0 ? '\n' : '') + (w.effect == EffectivenessType.SuperEffective2x ? `**${this.formatTypeDisplay(w.type)}**` : this.formatTypeDisplay(w.type)))
                                 .join(', ');
     const resist = effectiveness.filter(e => e.effect == EffectivenessType.NotVeryEffective
                                           || e.effect == EffectivenessType.NotVeryEffective2x)
-                                .map((w, i) => ((i + 1) % 4 === 0 ? '\n' : '') + (w.effect == EffectivenessType.NotVeryEffective2x ? `**${w.type}**` : w.type))
+                                .map((w, i) => ((i + 1) % 4 === 0 ? '\n' : '') + (w.effect == EffectivenessType.NotVeryEffective2x ? `**${this.formatTypeDisplay(w.type)}**` : this.formatTypeDisplay(w.type)))
                                 .join(', ');
     const immune = effectiveness.filter(e => e.effect == EffectivenessType.None)
-                                .map(w => w.type)
+                                .map(w => this.formatTypeDisplay(w.type))
                                 .join(', ');
     const weakResist = `__Weak to:__ \n${weakss}\n__Resist to:__ \n${resist  || 'None'}\n__Immune to:__\n${immune || 'None'}`;
     return weakResist;
   }
 
-  private getTeraTypesData(cmd: MovesetCommandData) {
-    return this.getData(cmd.moveSet.teraTypes);
+  private getTeraTypesData(cmd: MovesetCommandData): string {
+    const safeData = (cmd.moveSet.teraTypes ?? []).slice(0, 6);
+    if (!safeData.length) {
+      return '-';
+    }
+
+    return safeData.map(entry => `${this.formatTypeDisplay(entry.name)}: \`${entry.percentage.toFixed(2)}%\``).join('\n');
   }
 
   private getChecksData(moveSet: MovesetCommandData['moveSet']) {
@@ -296,10 +313,39 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const data = (usageData ? usageData : []).slice(0, limit).map(iv => `${hl1}${iv.name}: ${hl2}${iv.percentage.toFixed(2)}%\``).join('\n');
     return data ? data : "-";
   }
+  private getMoveUsageData(usageData: UsageData[] | undefined, limit: number = 6): string {
+    const safeData = (usageData ?? []).slice(0, limit);
+    if (!safeData.length) {
+      return '-';
+    }
 
-  private getCountersChecksData(cmd: MovesetCommandData, limit: number = 4): string {
+    return safeData.map(move => `${this.formatMoveDisplay(move.name)}: \`${move.percentage.toFixed(2)}%\``).join('\n');
+  }
+  private getItemUsageData(usageData: UsageData[] | undefined, limit: number = 6): string {
+    const safeData = (usageData ?? []).slice(0, limit);
+    if (!safeData.length) {
+      return '-';
+    }
+
+    return safeData.map(item => `${this.formatItemDisplay(item.name)}: \`${item.percentage.toFixed(2)}%\``).join('\n');
+  }
+  private async getPokemonUsageData(usageData: UsageData[] | undefined, limit: number = 6): Promise<string> {
+    const safeUsageData = (usageData ?? []).slice(0, limit);
+    if (!safeUsageData.length)
+      return '-';
+
+    const displayNames = safeUsageData.map(entry => this.formatPokemonDisplay(entry.name));
+    return safeUsageData.map((entry, index) => `${displayNames[index]}: \`${entry.percentage.toFixed(2)}%\``).join('\n');
+  }
+
+  private async getCountersChecksData(cmd: MovesetCommandData, limit: number = 4): Promise<string> {
     const cc = (cmd.moveSet.checksAndCounters ? cmd.moveSet.checksAndCounters : []);
-    let countersChecks = cc.slice(0, limit).map(iv => `\`${iv.name}: KO ${iv.kOed.toFixed(1)}% / SW ${iv.switchedOut.toFixed(1)}%\``).join('\n');
+    const safeChecks = cc.slice(0, limit);
+    if (!safeChecks.length)
+      return '-';    
+
+    const displayNames = safeChecks.map(entry => this.formatPokemonDisplay(entry.name));
+    let countersChecks = safeChecks.map((entry, index) => `${displayNames[index]}: \`KO ${entry.kOed.toFixed(1)}% / SW ${entry.switchedOut.toFixed(1)}%\``).join('\n');
     countersChecks = countersChecks ? countersChecks : "-";
     return countersChecks;
   }

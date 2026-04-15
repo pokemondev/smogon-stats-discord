@@ -15,9 +15,17 @@ const commands = new Map<string, SlashCommandHandler>(
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-client.once(Events.ClientReady, readyClient => {
+client.once(Events.ClientReady, async readyClient => {
   console.log(`Logged in as ${readyClient.user.tag}!`);
   console.log(`Loaded ${commands.size} slash commands.`);
+
+  try {
+    await dataSource.emojiService.initialize(readyClient);
+    console.log(`Loaded ${dataSource.emojiService.getLoadedEmojiCount()} application emoji(s).`);
+  }
+  catch (error) {
+    console.error('Failed to initialize application emoji cache.', error);
+  }
 });
 
 client.on(Events.InteractionCreate, async interaction => {

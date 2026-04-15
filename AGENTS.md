@@ -183,6 +183,8 @@ The code expects these snapshots to exist locally. This bot does not fetch live 
 - `src/smogon/smogonStats.ts`: local stats loading and caching
 - `src/smogon/smogonSets.ts`: local Smogon set loading
 - `src/pokemon/pokemonDb.ts`: Pokemon lookup and fuzzy name resolution
+- `src/pokemon/movedex.ts`: move lookup and fuzzy name resolution, backed by `data/movedex.json`
+- `src/models/moves.ts`: `MoveInfo` interface and `MoveCategory` enum
 
 ## Adding A New Format
 

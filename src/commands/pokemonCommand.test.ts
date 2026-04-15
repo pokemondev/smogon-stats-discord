@@ -2,6 +2,7 @@ import assert = require('assert');
 import { AppDataSource } from '../appDataSource';
 import { ConfigHelper } from '../config/configHelper';
 import { MoveSetUsage } from '../models/smogonUsage';
+import { PokemonType } from '../models/pokemon';
 
 process.env.BOT_NAME = process.env.BOT_NAME || 'Smogon Stats';
 process.env.TOKEN = process.env.TOKEN || 'test-token';
@@ -98,6 +99,73 @@ function getEditReplyEmbed(interaction: FakeChatInputCommandInteraction): any {
 
 function getFieldNames(interaction: FakeChatInputCommandInteraction): string[] {
   return getEditReplyEmbed(interaction).fields.map((field: { name: string }) => field.name);
+}
+
+async function withStubbedPokemonEmojiDisplayNames(
+  emojiDisplayByPokemonName: Record<string, string>,
+  runTest: () => void
+): Promise<void> {
+  const originalGetPokemonEmoji = dataSource.emojiService.getPokemonEmoji.bind(dataSource.emojiService);
+  dataSource.emojiService.getPokemonEmoji = (name: string) => emojiDisplayByPokemonName[name];
+
+  try {
+    await runTest();
+  }
+  finally {
+    dataSource.emojiService.getPokemonEmoji = originalGetPokemonEmoji;
+  }
+}
+
+async function withStubbedItemEmojiDisplayNames(
+  emojiDisplayByItemName: Record<string, string>,
+  runTest: () => void
+): Promise<void> {
+  const originalGetItemEmoji = dataSource.emojiService.getItemEmoji.bind(dataSource.emojiService);
+  dataSource.emojiService.getItemEmoji = (name: string) => emojiDisplayByItemName[name];
+
+  try {
+    await runTest();
+  }
+  finally {
+    dataSource.emojiService.getItemEmoji = originalGetItemEmoji;
+  }
+}
+
+async function withStubbedTypeEmojiDisplayNames(
+  emojiDisplayByTypeName: Record<string, string>,
+  runTest: () => void
+): Promise<void> {
+  const originalGetTypeEmoji = dataSource.emojiService.getTypeEmoji.bind(dataSource.emojiService);
+  dataSource.emojiService.getTypeEmoji = (name: string) => emojiDisplayByTypeName[name];
+
+  try {
+    await runTest();
+  }
+  finally {
+    dataSource.emojiService.getTypeEmoji = originalGetTypeEmoji;
+  }
+}
+
+async function withStubbedMoveLookup(
+  moveTypeByName: Record<string, PokemonType>,
+  runTest: () => void
+): Promise<void> {
+  const originalGetMove = dataSource.movedex.getMove.bind(dataSource.movedex);
+  dataSource.movedex.getMove = (name: string) => {
+    const type = moveTypeByName[name];
+    if (!type) {
+      return undefined;
+    }
+
+    return { name, type } as never;
+  };
+
+  try {
+    await runTest();
+  }
+  finally {
+    dataSource.movedex.getMove = originalGetMove;
+  }
 }
 
 const tests: TestCase[] = [
@@ -202,9 +270,9 @@ const tests: TestCase[] = [
       await command.execute(interaction as never);
 
       const embed = getEditReplyEmbed(interaction);
-      assert.deepStrictEqual(getFieldNames(interaction), ['1º) Safety Goggles', '2º) Sitrus Berry']);
-      assert.strictEqual(embed.fields[0].value, 'Usage: 42.35%');
-      assert.strictEqual(embed.fields[1].value, 'Usage: 18.50%');
+      assert.deepStrictEqual(getFieldNames(interaction), ['#1 Safety Goggles', '#2 Sitrus Berry']);
+      assert.strictEqual(embed.fields[0].value, 'Usage: `42.35%`');
+      assert.strictEqual(embed.fields[1].value, 'Usage: `18.50%`');
     }
   },
   {
@@ -232,8 +300,44 @@ const tests: TestCase[] = [
       await command.execute(interaction as never);
 
       const embed = getEditReplyEmbed(interaction);
-      assert.deepStrictEqual(getFieldNames(interaction), ['1º) Great Tusk']);
-      assert.strictEqual(embed.fields[0].value, 'Knocked out: 51.20%\nSwitched out: 33.40%');
+      assert.deepStrictEqual(getFieldNames(interaction), ['#1 Great Tusk']);
+      assert.strictEqual(embed.fields[0].value, 'KO-ed: `51.20%`\nSW. out: `33.40%`');
+    }
+  },
+  {
+    name: 'info renders application emojis for pokemon-name categories',
+    run: async () => {
+      await withStubbedPokemonEmojiDisplayNames(
+        {
+          'Great Tusk': '<:great_tusk:123> Great Tusk',
+        },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('info', {
+            name: 'incineroar',
+            category: 'checks',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: {
+              ...createEmptyMoveSet(query.pokemon.name),
+              checksAndCounters: [
+                { name: 'Great Tusk', percentage: 0, kOed: 51.2, switchedOut: 33.4 },
+              ],
+            },
+          });
+
+          await command.execute(interaction as never);
+
+          const fieldNames = getFieldNames(interaction);
+          assert.strictEqual(fieldNames[0].includes('#1'), true);
+          assert.strictEqual(fieldNames[0].includes('Great Tusk'), true);
+        }
+      );
     }
   },
   {
@@ -284,6 +388,43 @@ const tests: TestCase[] = [
     }
   },
   {
+    name: 'summary renders application emojis in VGC Team Mates field',
+    run: async () => {
+      await withStubbedPokemonEmojiDisplayNames(
+        {
+          Miraidon: '<:miraidon:123>',
+        },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('summary', {
+            name: 'incineroar',
+            generation: '9',
+            meta: 'vgc2026regi',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: {
+              ...createEmptyMoveSet(query.pokemon.name),
+              teamMates: [
+                { name: 'Miraidon', percentage: 42.345 },
+              ],
+            },
+          });
+          (command as any).getGeneralInfoData = async () => 'Meta: `VGC 2026 Reg. I`';
+
+          await command.execute(interaction as never);
+
+          const embed = getEditReplyEmbed(interaction);
+          const teamMatesField = embed.fields.find((field: { name: string; value: string }) => field.name === 'Team Mates');
+
+          assert.strictEqual(teamMatesField?.value, '<:miraidon:123> Miraidon: `42.34%`');
+        }
+      );
+    }
+  },
+  {
     name: 'summary keeps Counters & Checks for non-VGC formats',
     run: async () => {
       const command = new PokemonCommand(dataSource);
@@ -315,7 +456,368 @@ const tests: TestCase[] = [
 
       assert.ok(countersField, 'Expected Counters & Checks field for non-VGC summary.');
       assert.strictEqual(embed.fields.some((field: { name: string }) => field.name === 'Team Mates'), false);
-      assert.strictEqual(countersField.value, '`Great Tusk: KO 51.2% / SW 33.4%`');
+      assert.strictEqual(countersField.value, 'Great Tusk: `KO 51.2% / SW 33.4%`');
+    }
+  },
+  {
+    name: 'summary renders application emojis in Counters & Checks field',
+    run: async () => {
+      await withStubbedPokemonEmojiDisplayNames(
+        {
+          'Great Tusk': '<:great_tusk:123>',
+        },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('summary', {
+            name: 'incineroar',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: {
+              ...createEmptyMoveSet(query.pokemon.name),
+              checksAndCounters: [
+                { name: 'Great Tusk', percentage: 0, kOed: 51.2, switchedOut: 33.4 },
+              ],
+            },
+          });
+          (command as any).getGeneralInfoData = async () => 'Meta: `OU`';
+
+          await command.execute(interaction as never);
+
+          const embed = getEditReplyEmbed(interaction);
+          const countersField = embed.fields.find((field: { name: string; value: string }) => field.name === 'Counters & Checks');
+
+          assert.strictEqual(countersField?.value, '<:great_tusk:123> Great Tusk: `KO 51.2% / SW 33.4%`');
+        }
+      );
+    }
+  },
+  {
+    name: 'info renders application emojis for item categories when registered',
+    run: async () => {
+      await withStubbedItemEmojiDisplayNames(
+        {
+          'Safety Goggles': '<:item_safety_goggles:123>',
+        },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('info', {
+            name: 'incineroar',
+            category: 'items',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: {
+              ...createEmptyMoveSet(query.pokemon.name),
+              items: [
+                { name: 'Safety Goggles', percentage: 42.35 },
+                { name: 'Sitrus Berry', percentage: 18.5 },
+              ],
+            },
+          });
+
+          await command.execute(interaction as never);
+
+          const fieldNames = getFieldNames(interaction);
+          assert.strictEqual(fieldNames[0].includes('#1'), true);
+          assert.strictEqual(fieldNames[0].includes('<:item_safety_goggles:123>'), true);
+          assert.strictEqual(fieldNames[0].includes('Safety Goggles'), true);
+          assert.strictEqual(fieldNames[1], '#2 Sitrus Berry');
+        }
+      );
+    }
+  },
+  {
+    name: 'summary renders application emojis in items summary field',
+    run: async () => {
+      await withStubbedItemEmojiDisplayNames(
+        {
+          'Choice Band': '<:item_choice_band:456>',
+        },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('summary', {
+            name: 'incineroar',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: { name: string }; format: { generation: string; meta: string } }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: {
+              ...createEmptyMoveSet(query.pokemon.name),
+              items: [
+                { name: 'Choice Band', percentage: 55.0 },
+                { name: 'Life Orb', percentage: 22.5 },
+              ],
+              moves: [{ name: 'Knock Off', percentage: 90.0 }],
+            },
+          });
+          (command as any).getGeneralInfoData = async () => 'Meta: `OU`';
+
+          await command.execute(interaction as never);
+
+          const embed = getEditReplyEmbed(interaction);
+          const itemsField = embed.fields.find((field: { name: string; value: string }) => field.name === 'Items');
+
+          assert.ok(itemsField, 'Expected an Items field in the summary embed.');
+          assert.strictEqual(itemsField.value, '<:item_choice_band:456> Choice Band: `55.00%`\nLife Orb: `22.50%`');
+        }
+      );
+    }
+  },
+  {
+    name: 'summary renders type emojis in General Info type field',
+    run: async () => {
+      await withStubbedTypeEmojiDisplayNames(
+        {
+          Fire: '<:type_fire:1>',
+          Dark: '<:type_dark:2>',
+        },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('summary', {
+            name: 'incineroar',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: any; format: any }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: createEmptyMoveSet(query.pokemon.name),
+          });
+
+          await command.execute(interaction as never);
+
+          const embed = getEditReplyEmbed(interaction);
+          const generalInfoField = embed.fields.find((field: { name: string }) => field.name === 'General Info');
+          assert.ok(generalInfoField, 'Expected a General Info field.');
+          assert.ok(generalInfoField.value.includes('<:type_fire:1>'), 'Expected Fire type emoji in General Info.');
+          assert.ok(generalInfoField.value.includes('<:type_dark:2>'), 'Expected Dark type emoji in General Info.');
+        }
+      );
+    }
+  },
+  {
+    name: 'summary renders type emojis in Weak/Resist field for non-gen9 formats',
+    run: async () => {
+      await withStubbedTypeEmojiDisplayNames(
+        {
+          Rock: '<:type_rock:3>',
+          Water: '<:type_water:4>',
+          Ground: '<:type_ground:5>',
+          Fighting: '<:type_fighting:6>',
+          Fire: '<:type_fire:7>',
+          Ice: '<:type_ice:8>',
+          Dark: '<:type_dark:9>',
+          Ghost: '<:type_ghost:10>',
+          Grass: '<:type_grass:11>',
+          Steel: '<:type_steel:12>',
+          Normal: '<:type_normal:13>',
+          Psychic: '<:type_psychic:14>',
+        },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('summary', {
+            name: 'incineroar',
+            generation: '8',
+            meta: 'ou',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: any; format: any }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: createEmptyMoveSet(query.pokemon.name),
+          });
+          (command as any).getGeneralInfoData = async () => 'Meta: `OU`';
+
+          await command.execute(interaction as never);
+
+          const embed = getEditReplyEmbed(interaction);
+          const weakResistField = embed.fields.find((field: { name: string }) => field.name === 'Weak/Resist');
+          assert.ok(weakResistField, 'Expected a Weak/Resist field for non-gen9 summary.');
+          assert.ok(weakResistField.value.includes('<:type_'), 'Expected type emojis in Weak/Resist field.');
+        }
+      );
+    }
+  },
+  {
+    name: 'summary renders type emojis in Tera Types field for gen9 formats',
+    run: async () => {
+      await withStubbedTypeEmojiDisplayNames(
+        {
+          Fire: '<:type_fire:1>',
+          Water: '<:type_water:2>',
+        },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('summary', {
+            name: 'incineroar',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: any; format: any }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: {
+              ...createEmptyMoveSet(query.pokemon.name),
+              teraTypes: [
+                { name: 'Fire', percentage: 45.5 },
+                { name: 'Water', percentage: 30.0 },
+              ],
+              moves: [{ name: 'Knock Off', percentage: 90.0 }],
+              items: [{ name: 'Safety Goggles', percentage: 60.0 }],
+            },
+          });
+          (command as any).getGeneralInfoData = async () => 'Meta: `OU`';
+
+          await command.execute(interaction as never);
+
+          const embed = getEditReplyEmbed(interaction);
+          const teraField = embed.fields.find((field: { name: string }) => field.name === 'Tera Types');
+          assert.ok(teraField, 'Expected a Tera Types field for gen9 summary.');
+          assert.strictEqual(teraField.value, '<:type_fire:1> Fire: `45.50%`\n<:type_water:2> Water: `30.00%`');
+        }
+      );
+    }
+  },
+  {
+    name: 'summary renders type emojis in Moves compact field',
+    run: async () => {
+      await withStubbedMoveLookup(
+        {
+          'Knock Off': PokemonType.Dark,
+          'Fake Out': PokemonType.Normal,
+        },
+        async () => {
+          await withStubbedTypeEmojiDisplayNames(
+            {
+              Dark: '<:type_dark:10>',
+              Normal: '<:type_normal:11>',
+            },
+            async () => {
+              const command = new PokemonCommand(dataSource);
+              const interaction = createInteraction('summary', {
+                name: 'incineroar',
+                generation: '9',
+                meta: 'ou',
+              });
+
+              (command as any).getMoveSetCommandData = async (query: { pokemon: any; format: any }) => ({
+                format: query.format,
+                pokemon: query.pokemon,
+                moveSet: {
+                  ...createEmptyMoveSet(query.pokemon.name),
+                  moves: [
+                    { name: 'Knock Off', percentage: 80.0 },
+                    { name: 'Fake Out', percentage: 65.5 },
+                  ],
+                  items: [{ name: 'Safety Goggles', percentage: 60.0 }],
+                },
+              });
+              (command as any).getGeneralInfoData = async () => 'Meta: `OU`';
+
+              await command.execute(interaction as never);
+
+              const embed = getEditReplyEmbed(interaction);
+              const movesField = embed.fields.find((field: { name: string }) => field.name === 'Moves');
+              assert.ok(movesField, 'Expected a Moves field in summary embed.');
+              assert.strictEqual(movesField.value, '<:type_dark:10> Knock Off: `80.00%`\n<:type_normal:11> Fake Out: `65.50%`');
+            }
+          );
+        }
+      );
+    }
+  },
+  {
+    name: 'info/moves renders type emojis in field titles',
+    run: async () => {
+      await withStubbedMoveLookup(
+        {
+          'Knock Off': PokemonType.Dark,
+          'Flare Blitz': PokemonType.Fire,
+        },
+        async () => {
+          await withStubbedTypeEmojiDisplayNames(
+            {
+              Dark: '<:type_dark:10>',
+              Fire: '<:type_fire:12>',
+            },
+            async () => {
+              const command = new PokemonCommand(dataSource);
+              const interaction = createInteraction('info', {
+                name: 'incineroar',
+                category: 'moves',
+                generation: '9',
+                meta: 'ou',
+              });
+
+              (command as any).getMoveSetCommandData = async (query: { pokemon: any; format: any }) => ({
+                format: query.format,
+                pokemon: query.pokemon,
+                moveSet: {
+                  ...createEmptyMoveSet(query.pokemon.name),
+                  moves: [
+                    { name: 'Knock Off', percentage: 80.0 },
+                    { name: 'Flare Blitz', percentage: 60.0 },
+                  ],
+                },
+              });
+
+              await command.execute(interaction as never);
+
+              const fieldNames = getFieldNames(interaction);
+              assert.strictEqual(fieldNames[0], '#1 <:type_dark:10> Knock Off');
+              assert.strictEqual(fieldNames[1], '#2 <:type_fire:12> Flare Blitz');
+            }
+          );
+        }
+      );
+    }
+  },
+  {
+    name: 'moves fall back to plain name when move is not in movedex',
+    run: async () => {
+      await withStubbedTypeEmojiDisplayNames(
+        { Dark: '<:type_dark:10>' },
+        async () => {
+          const command = new PokemonCommand(dataSource);
+          const interaction = createInteraction('summary', {
+            name: 'incineroar',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          (command as any).getMoveSetCommandData = async (query: { pokemon: any; format: any }) => ({
+            format: query.format,
+            pokemon: query.pokemon,
+            moveSet: {
+              ...createEmptyMoveSet(query.pokemon.name),
+              moves: [{ name: 'UnknownMove', percentage: 30.0 }],
+              items: [{ name: 'Safety Goggles', percentage: 60.0 }],
+            },
+          });
+          (command as any).getGeneralInfoData = async () => 'Meta: `OU`';
+
+          await command.execute(interaction as never);
+
+          const embed = getEditReplyEmbed(interaction);
+          const movesField = embed.fields.find((field: { name: string }) => field.name === 'Moves');
+          assert.ok(movesField, 'Expected a Moves field.');
+          assert.strictEqual(movesField.value, 'UnknownMove: `30.00%`');
+        }
+      );
     }
   }
 ];
