@@ -1,4 +1,4 @@
-import { PokemonDb } from './pokemonDb';
+import { PokemonDb } from '../pokemon/pokemonDb';
 import { SmogonStats } from '../smogon/smogonStats';
 import { FormatCatalog } from '../smogon/formatCatalog';
 import { SmogonFormat } from '../models/smogonUsage';
