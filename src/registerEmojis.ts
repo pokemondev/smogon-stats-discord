@@ -1,4 +1,5 @@
 import { once } from 'events';
+import * as path from 'path';
 import { ApplicationEmojiManager, Client, DiscordAPIError, Events, GatewayIntentBits } from 'discord.js';
 import { AppDataSource } from './appDataSource';
 import { ConfigHelper } from './config/configHelper';
@@ -27,6 +28,7 @@ async function registerEmojis(): Promise<void> {
     ...pokemonList.entries.map(e => ({ emojiName: e.emojiName, attachment: e.minispriteUrl })),
     ...itemList.entries.map(e => ({ emojiName: e.emojiName, attachment: e.minispriteUrl })),
     ...typeList.entries.map(e => ({ emojiName: e.emojiName, attachment: e.localFilePath })),
+    { emojiName: 'others_unknown', attachment: path.join(__dirname, '../res/other-imgs/question-mark.png') },
   ];
 
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });

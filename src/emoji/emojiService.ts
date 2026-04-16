@@ -3,11 +3,14 @@ import { PokemonEmoji } from './pokemonEmoji';
 import { ItemEmoji } from './itemEmoji';
 import { TypeEmoji } from './typeEmoji';
 
+const UnknownEmojiName = 'others_unknown';
+
 export class EmojiService {
   private client?: Client;
   private pokemonEmojiMap = new Map<string, string>();
   private itemEmojiMap = new Map<string, string>();
   private typeEmojiMap = new Map<string, string>();
+  private unknownEmoji?: string;
 
   public async initialize(client: Client): Promise<void> {
     this.client = client;
@@ -15,22 +18,22 @@ export class EmojiService {
   }
 
   public getLoadedEmojiCount(): number {
-    return this.pokemonEmojiMap.size + this.itemEmojiMap.size + this.typeEmojiMap.size;
+    return this.pokemonEmojiMap.size + this.itemEmojiMap.size + this.typeEmojiMap.size + (this.unknownEmoji ? 1 : 0);
   }
 
-  public getPokemonEmoji(pokemonName: string): string | undefined {
+  public getPokemonEmoji(pokemonName: string, fallbackToUnknown = true): string | undefined {
     const emojiKey = PokemonEmoji.toEmojiKey(pokemonName);
-    return this.pokemonEmojiMap.get(emojiKey);
+    return this.pokemonEmojiMap.get(emojiKey) ?? (fallbackToUnknown ? this.unknownEmoji : undefined);
   }
 
-  public getItemEmoji(itemName: string): string | undefined {
+  public getItemEmoji(itemName: string, fallbackToUnknown = true): string | undefined {
     const emojiKey = ItemEmoji.toEmojiKey(itemName);
-    return this.itemEmojiMap.get(emojiKey);
+    return this.itemEmojiMap.get(emojiKey) ?? (fallbackToUnknown ? this.unknownEmoji : undefined);
   }
 
-  public getTypeEmoji(typeName: string): string | undefined {
+  public getTypeEmoji(typeName: string, fallbackToUnknown = true): string | undefined {
     const emojiKey = TypeEmoji.toEmojiKey(typeName);
-    return this.typeEmojiMap.get(emojiKey);
+    return this.typeEmojiMap.get(emojiKey) ?? (fallbackToUnknown ? this.unknownEmoji : undefined);
   }
 
   private async loadEmojis(): Promise<void> {
@@ -53,6 +56,8 @@ export class EmojiService {
         itemMap.set(emoji.name.slice(itemPrefix.length), emoji.toString());
       } else if (emoji.name.startsWith(typePrefix)) {
         typeMap.set(emoji.name.slice(typePrefix.length), emoji.toString());
+      } else if (emoji.name === UnknownEmojiName) {
+        this.unknownEmoji = emoji.toString();
       }
     });
 
