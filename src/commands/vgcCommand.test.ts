@@ -1,7 +1,9 @@
 import assert = require('assert');
 import { ConfigHelper } from '../config/configHelper';
 import { ColorService } from '../pokemon/colorService';
+import { BattlingService } from '../pokemon/battlingService';
 import { PokemonDb } from '../pokemon/pokemonDb';
+import { MoveSetUsage, PokemonUsage } from '../models/smogonUsage';
 import { VgcResolvedTeam } from '../models/vgc';
 import { VgcCommand } from './vgcCommand';
 
@@ -50,6 +52,31 @@ function createResolvedTeam(teamId: string, meta: string = 'vgc2026regi'): VgcRe
   };
 }
 
+function createUsage(name: string, rank: number, usageRaw: number): PokemonUsage {
+  return {
+    name,
+    rank,
+    usagePercentage: usageRaw,
+    usageRaw,
+  };
+}
+
+function createMoveSetUsage(
+  name: string,
+  options: { moves?: string[]; abilities?: string[] } = {}
+): MoveSetUsage {
+  return {
+    name,
+    abilities: (options.abilities ?? []).map((ability, index) => ({ name: ability, percentage: 100 - index })),
+    items: [],
+    spreads: [],
+    moves: (options.moves ?? []).map((move, index) => ({ name: move, percentage: 100 - index })),
+    teraTypes: [],
+    teamMates: [],
+    checksAndCounters: [],
+  };
+}
+
 function getNumericColor(color: unknown): number {
   return Number.parseInt(String(color).replace('#', ''), 16);
 }
@@ -64,7 +91,7 @@ class FakeChatInputCommandInteraction {
 
   constructor(
     private readonly strings: Record<string, string | undefined>,
-    private readonly subcommand: 'teams' | 'team-details' = 'teams',
+    private readonly subcommand: 'meta-state' | 'teams' | 'team-details' = 'teams',
   ) {
   }
 
@@ -121,6 +148,103 @@ const tests: TestCase[] = [
     },
   },
   {
+    name: 'command data includes the meta-state subcommand with an optional regulation option',
+    run: async () => {
+      const command = new VgcCommand({ pokemonDb } as never);
+      const json = command.data.toJSON();
+      const subcommand = json.options?.find(option => option.name === 'meta-state') as {
+        options?: Array<{ name: string; required?: boolean; description?: string; type?: number }>;
+      } | undefined;
+      const regulationOption = subcommand?.options?.find(option => option.name === 'regulation');
+
+      assert.ok(subcommand, 'Expected meta-state subcommand to be registered.');
+      assert.ok(regulationOption, 'Expected a regulation option on meta-state.');
+      assert.strictEqual(regulationOption?.description, 'VGC regulation');
+      assert.strictEqual(regulationOption?.type, 3);
+      assert.strictEqual(regulationOption?.required, false);
+    },
+  },
+  {
+    name: 'meta-state uses Smogon role data for the selected regulation',
+    run: async () => {
+      const requestedFormats: Array<{ generation: string; meta: string }> = [];
+      const command = new VgcCommand({
+        pokemonDb,
+        battlingService: new BattlingService(),
+        emojiService: {
+          getPokemonEmoji: (name: string) => name === 'Pelipper' ? '<:pelipper:123>' : undefined,
+          getItemEmoji: () => undefined,
+        },
+        smogonStats: {
+          getUsages: async (format: { generation: string; meta: string }) => {
+            requestedFormats.push(format);
+            return [
+              createUsage('Dragonite', 1, 32.2),
+              createUsage('Whimsicott', 2, 29.4),
+              createUsage('Amoonguss', 3, 27.1),
+              createUsage('Pelipper', 4, 20.3),
+              createUsage('Hatterene', 5, 18.2),
+              createUsage('Talonflame', 6, 17.4),
+              createUsage('Farigiraf', 7, 15.1),
+            ];
+          },
+          getMoveSets: async (format: { generation: string; meta: string }) => {
+            requestedFormats.push(format);
+            return [
+              createMoveSetUsage('Dragonite', { moves: ['Extreme Speed', 'Dragon Dance'] }),
+              createMoveSetUsage('Whimsicott', { moves: ['Tailwind', 'Protect', 'Encore', 'Helping Hand', 'Taunt', 'Moonblast'] }),
+              createMoveSetUsage('Amoonguss', { abilities: ['Regenerator'], moves: ['Spore', 'Rage Powder', 'Pollen Puff', 'Protect'] }),
+              createMoveSetUsage('Pelipper', { abilities: ['Drizzle'] }),
+              createMoveSetUsage('Hatterene', { moves: ['Trick Room'] }),
+              createMoveSetUsage('Talonflame', { moves: ['Tailwind'] }),
+              createMoveSetUsage('Farigiraf', { moves: ['Trick Room'] }),
+            ];
+          },
+        },
+        vgcTeams: {
+          getTeams: () => [],
+          getTeamsByPokemon: () => [],
+          getTeamById: () => undefined,
+        },
+      } as never);
+      const interaction = new FakeChatInputCommandInteraction({ regulation: 'vgc2026regi' }, 'meta-state');
+
+      await command.execute(interaction as never);
+
+      assert.deepStrictEqual(interaction.calls.map(call => call.name), ['deferReply', 'editReply']);
+      assert.deepStrictEqual(requestedFormats, [
+        { generation: 'gen9', meta: 'vgc2026regi' },
+        { generation: 'gen9', meta: 'vgc2026regi' },
+      ]);
+
+      const editReplyCall = interaction.calls.find(call => call.name === 'editReply');
+      const payload = editReplyCall?.payload as { content: string; embeds: Array<{ toJSON?: () => any }> };
+      const embed = payload.embeds[0].toJSON ? payload.embeds[0].toJSON() : payload.embeds[0];
+      const supportersField = embed.fields.find((field: { name: string }) => field.name === 'Supporters');
+      const weatherField = embed.fields.find((field: { name: string }) => field.name === 'Weather setters');
+      const trickRoomField = embed.fields.find((field: { name: string }) => field.name === 'Trick Room');
+      const tailwindField = embed.fields.find((field: { name: string }) => field.name === 'Tailwind');
+
+      assert.strictEqual(payload.content, '**__Meta State:__** VGC 2026 Reg. I');
+      assert.strictEqual(embed.title, undefined);
+      assert.deepStrictEqual(embed.fields.map((field: { name: string }) => field.name), [
+        'Strong Attackers',
+        'Set-uppers',
+        'Priorities',
+        'Supporters',
+        'Weather setters',
+        'Strong Defenders',
+        'Speed Control',
+        'Trick Room',
+        'Tailwind',
+      ]);
+      assert.strictEqual(supportersField?.value, 'Whimsicott\nAmoonguss\nHatterene\nTalonflame\nFarigiraf');
+      assert.strictEqual(weatherField?.value, '<:pelipper:123> Pelipper');
+      assert.strictEqual(trickRoomField?.value, 'Hatterene\nFarigiraf');
+      assert.strictEqual(tailwindField?.value, 'Talonflame\nWhimsicott');
+    },
+  },
+  {
     name: 'teams renders member lists, ID labels, two-column separators, and footer links',
     run: async () => {
       const command = new VgcCommand({
@@ -159,6 +283,7 @@ const tests: TestCase[] = [
         pokemonDb,
         emojiService: {
           getPokemonEmoji: (name: string) => name === 'Charizard' ? '<:charizard:123>' : undefined,
+          getItemEmoji: () => undefined,
         },
         vgcTeams: {
           getTeams: () => [
@@ -260,7 +385,7 @@ const tests: TestCase[] = [
     },
   },
   {
-    name: 'team-details renders six Smogon-style sets in two columns and uses the most used team member for embed color and image',
+    name: 'team-details renders six Smogon-style sets in two columns and uses the highest-offense team member for embed color and image',
     run: async () => {
       const command = new VgcCommand({
         pokemonDb,
@@ -285,13 +410,13 @@ const tests: TestCase[] = [
       const editReplyCall = interaction.calls.find(call => call.name === 'editReply');
       const payload = editReplyCall?.payload as { content: string; embeds: Array<{ toJSON?: () => any }> };
       const embed = payload.embeds[0].toJSON ? payload.embeds[0].toJSON() : payload.embeds[0];
-      const incineroar = pokemonDb.getPokemon('Incineroar');
-      assert.ok(incineroar, 'Expected Incineroar in the pokemon database.');
+      const dragonite = pokemonDb.getPokemon('Dragonite');
+      assert.ok(dragonite, 'Expected Dragonite in the pokemon database.');
 
       assert.strictEqual(payload.content, '**__VGC Team Details:__** I1280');
       assert.strictEqual(embed.title, 'Sample Team');
-      assert.strictEqual(embed.color, getNumericColor(ColorService.getColorForType(incineroar.type1)));
-      assert.ok((embed.thumbnail?.url ?? '').toLowerCase().includes('incineroar'));
+      assert.strictEqual(embed.color, getNumericColor(ColorService.getColorForType(dragonite.type1)));
+      assert.ok((embed.thumbnail?.url ?? '').toLowerCase().includes('dragonite'));
       assert.strictEqual(embed.fields[0].name, 'Charizard');
       assert.strictEqual(embed.fields[0].inline, true);
       assert.ok(embed.fields[0].value.includes('```Charizard @ Choice Specs'));
@@ -305,7 +430,7 @@ const tests: TestCase[] = [
     },
   },
   {
-    name: 'team-details falls back to the first team member when usage data is unavailable',
+    name: 'team-details still uses the highest-offense team member when usage data is unavailable',
     run: async () => {
       const command = new VgcCommand({
         pokemonDb,
@@ -327,11 +452,11 @@ const tests: TestCase[] = [
       const editReplyCall = interaction.calls.find(call => call.name === 'editReply');
       const payload = editReplyCall?.payload as { embeds: Array<{ toJSON?: () => any }> };
       const embed = payload.embeds[0].toJSON ? payload.embeds[0].toJSON() : payload.embeds[0];
-      const charizard = pokemonDb.getPokemon('Charizard');
-      assert.ok(charizard, 'Expected Charizard in the pokemon database.');
+      const dragonite = pokemonDb.getPokemon('Dragonite');
+      assert.ok(dragonite, 'Expected Dragonite in the pokemon database.');
 
-      assert.strictEqual(embed.color, getNumericColor(ColorService.getColorForType(charizard.type1)));
-      assert.ok((embed.thumbnail?.url ?? '').toLowerCase().includes('charizard'));
+      assert.strictEqual(embed.color, getNumericColor(ColorService.getColorForType(dragonite.type1)));
+      assert.ok((embed.thumbnail?.url ?? '').toLowerCase().includes('dragonite'));
     },
   },
   {

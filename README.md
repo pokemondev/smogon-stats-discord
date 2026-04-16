@@ -9,9 +9,9 @@ The bot now runs on modern discord.js slash commands instead of prefix-based mes
 - Slash-command first command surface.
 - Fuzzy Pokemon name matching kept from the original bot.
 - Competitive summary command with moves, items, abilities, spreads, counters, and type profile.
-- Meta-wide rankings for usage, leads, speed tiers, attackers, defenders, and Mega Stone users.
+- Meta-wide rankings for usage, leads, battle-role state, speed tiers, attackers, defenders, and Mega Stone users.
 - Smogon sets lookup by Pokemon, generation, and metagame.
-- VGC team lookups by regulation with optional Pokemon member filters.
+- VGC team lookups and battle-role state by regulation, with optional Pokemon member filters.
 - Static local data files for predictable responses and simple hosting.
 
 ## Requirements
@@ -166,6 +166,7 @@ Subcommands:
 
 - `usage` — most used Pokemon
 - `leads` — most common leads
+- `meta-state` — top five most used Pokemon for each tracked battle role in the selected format
 - `speed-tier` — highest or lowest base Speed among the top 100 used Pokemon in the format
 - `attackers` — highest base Attack, Sp. Atk, or the stronger of both among the top 100 used Pokemon in the format
 - `defenders` — highest base Defense, Sp. Def, or the stronger of both among the top 100 used Pokemon in the format
@@ -174,6 +175,8 @@ Subcommands:
 Notes:
 
 - `usage` shows application Pokemon emojis beside names when the matching `pkm_` emoji exists
+- `meta-state` now combines signal-based roles with computed roles such as `Strong Attackers`, `Fast`, and `Strong Defenders`, while keeping each field value as a simple top-five emoji-plus-name list
+- Smogon `meta-state` fields currently use this order: `Strong Attackers`, `Set-uppers`, `Priorities`, `Fast`, `Pivot`, `Speed Control`, `Hazards Control`, `Strong Defenders`, `Stall`, `Weather setters`
 - `speed-tier` filters the pool to the top 100 most used Pokemon in the selected format before sorting by base Speed
 - `attackers` and `defenders` also filter the pool to the top 100 most used Pokemon in the selected format before sorting by the requested base stat mode
 - `attackers` and `defenders` use `both` mode by default, selecting the stronger relevant base stat for each Pokemon and showing which stat was used
@@ -183,6 +186,7 @@ Examples:
 
 ```text
 /stats usage
+/stats meta-state meta:OU generation:"Gen 9"
 /stats speed-tier
 /stats speed-tier meta:OU generation:"Gen 8" mode:slower
 /stats attackers meta:OU mode:special
@@ -197,16 +201,20 @@ VGC metagame related commands.
 
 Subcommands:
 
+- `meta-state` — top five most used Pokemon for each tracked battle role in a regulation
 - `teams` — featured teams for a VGC regulation
 - `team-details` — full team paste in Smogon notation for a VGC team id
 
 Arguments:
 
+- `meta-state`: `regulation` optional
 - `teams`: `regulation` optional, `pokemon1` optional, `pokemon2` optional
 - `team-details`: `team-id` required
 
 Notes:
 
+- `meta-state` uses Smogon moveset usage for the selected regulation and includes computed roles such as `Supporters`, `Trick Room`, and `Tailwind`, while keeping each field value as a simple top-five emoji-plus-name list
+- VGC `meta-state` fields currently use this order: `Strong Attackers`, `Set-uppers`, `Priorities`, `Supporters`, `Weather setters`, `Strong Defenders`, `Speed Control`, `Trick Room`, `Tailwind`
 - `regulation` uses VGC season choices such as `VGC 2026 Reg. I`
 - if only `pokemon2` is provided, it is treated as `pokemon1`
 - team list output is capped at the top 6 matching teams
@@ -216,6 +224,8 @@ Notes:
 Examples:
 
 ```text
+/vgc meta-state
+/vgc meta-state regulation:"VGC 2026 Reg. I"
 /vgc teams
 /vgc teams regulation:"VGC 2026 Reg. I"
 /vgc teams pokemon1:charizard

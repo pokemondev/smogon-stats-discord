@@ -138,6 +138,22 @@ If you change command names, subcommands, option names, or option choices, run `
 - `search`
 - `sets`
 
+`/stats` subcommands currently include:
+
+- `usage`
+- `leads`
+- `meta-state`
+- `speed-tier`
+- `attackers`
+- `defenders`
+- `megas`
+
+`/vgc` subcommands currently include:
+
+- `meta-state`
+- `teams`
+- `team-details`
+
 ## Data Folder
 
 All bot responses are backed by local data under `data/`.
@@ -190,6 +206,7 @@ The code expects these snapshots to exist locally. This bot does not fetch live 
 - `src/smogon/smogonStats.ts`: local stats loading and caching
 - `src/smogon/smogonSets.ts`: local Smogon set loading
 - `src/pokemon/pokemonDb.ts`: Pokemon lookup and fuzzy name resolution
+- `src/pokemon/battlingService.ts`: local battle-role loading and moveset role checks
 - `src/pokemon/movedex.ts`: move lookup and fuzzy name resolution, backed by `data/movedex.json`
 - `src/models/moves.ts`: `MoveInfo` interface and `MoveCategory` enum
 

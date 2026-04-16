@@ -1,10 +1,11 @@
-import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder, SlashCommandSubcommandBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, EmbedBuilder, MessageFlags, SlashCommandBuilder, SlashCommandSubcommandBuilder } from 'discord.js';
 import { AppDataSource } from '../appDataSource';
 import { DiscordHelper } from '../common/discordHelper';
 import { CommandBase, CommandHelpTopic, SlashCommandData, SlashCommandHandler, withFormatOptions } from './command';
 import { Pokemon, PokemonStatsEntry } from '../models/pokemon';
 import { PokemonUsage } from '../models/smogonUsage';
 import { FormatHelper } from '../smogon/formatHelper';
+import { SmogonMetaRoleOrder } from '../models/battling';
 
 type SpeedTierMode = 'faster' | 'slower';
 type PokemonStatsMode = 'physical' | 'special' | 'both';
@@ -26,7 +27,7 @@ const maxPokemonStatsResults = 15;
 
 export const statsHelpTopic: CommandHelpTopic = {
   command: 'stats',
-  description: 'Format-wide rankings such as usage, leads, speed tiers, attackers, defenders, and Mega Stone users.',
+  description: 'Format-wide rankings such as usage, leads, role state, speed tiers, attackers, defenders, and Mega Stone users.',
   arguments: [
     'meta: Optional competitive metagame / (VGC) regulation filter. Uses the configured default when omitted.',
     'generation: Optional generation filter. Uses the configured default when omitted. If only generation is provided, that generation uses its default VGC format.',
@@ -35,6 +36,7 @@ export const statsHelpTopic: CommandHelpTopic = {
   ],
   examples: [
     '/stats usage',
+    '/stats meta-state meta:OU generation:"Gen 9"',
     '/stats speed-tier',
     '/stats speed-tier meta:OU generation:"Gen 8" mode:slower',
     '/stats attackers meta:OU mode:special',
@@ -57,6 +59,11 @@ export function createStatsCommandData(): SlashCommandData {
       subcommand
         .setName('leads')
         .setDescription('Show the most common leads in a metagame')
+    ))
+    .addSubcommand(subcommand => withFormatOptions(
+      subcommand
+        .setName('meta-state')
+        .setDescription('Show the top battle-role picks in a metagame')
     ))
     .addSubcommand(subcommand => withFormatOptions(
       subcommand
@@ -100,6 +107,9 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
         return;
       case 'leads':
         await this.handleLeads(interaction);
+        return;
+      case 'meta-state':
+        await this.handleMetaState(interaction);
         return;
       case 'speed-tier':
         await this.handleSpeedTier(interaction);
@@ -181,6 +191,35 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
 
     await interaction.editReply({
       content: `**__Leads:__** Top ${leads.length} leads of ${FormatHelper.toUserString(format)}`,
+      embeds: [embed],
+    });
+  }
+
+  private async handleMetaState(interaction: ChatInputCommandInteraction): Promise<void> {
+    const format = this.getFormat(interaction);
+    await DiscordHelper.deferCommandReply(interaction);
+
+    const roleEntries = await this.getMetaStateRoleEntries(format, SmogonMetaRoleOrder);
+    if (!roleEntries.length) {
+      await this.replyNoData(interaction, `No meta-state data available for ${FormatHelper.toUserString(format)}.`);
+      return;
+    }
+
+    const previewPokemon = this.getMetaStatePreviewPokemon(roleEntries);
+    const embed = previewPokemon
+      ? this.createPokemonEmbed(previewPokemon, { thumbnail: true })
+      : new EmbedBuilder();
+
+    roleEntries.forEach(entry => {
+      embed.addFields({
+        name: entry.roleName,
+        value: this.formatRankedPokemonList(entry.pokemonNames),
+        inline: true,
+      });
+    });
+
+    await interaction.editReply({
+      content: `**__Meta State:__** ${FormatHelper.toUserString(format)}`,
       embeds: [embed],
     });
   }
