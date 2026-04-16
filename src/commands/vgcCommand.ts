@@ -7,6 +7,7 @@ import { FormatHelper } from '../smogon/formatHelper';
 import { PokemonUsage, SmogonFormat } from '../models/smogonUsage';
 import { VgcResolvedTeam, VgcTeam } from '../models/vgc';
 import { CommandBase, CommandHelpTopic, SlashCommandData, SlashCommandHandler } from './command';
+import { VgcMetaRoleOrder } from '../models/battling';
 
 const MaxDisplayedTeams = 6;
 const TeamLinksFooterText = 'Check more details at x.com/VGCPastes and limitlessvgc.com';
@@ -14,14 +15,17 @@ const TeamDetailsMissingMessage = 'Could not find a unique VGC team with the pro
 
 export const vgcHelpTopic: CommandHelpTopic = {
   command: 'vgc',
-  description: 'VGC teams, filters, and full rental-style team details.',
+  description: 'VGC teams, role state, filters, and full rental-style team details.',
   arguments: [
+    'meta-state regulation: Optional VGC regulation filter. Uses the configured default generation\'s default VGC season when omitted.',
     'teams regulation: Optional VGC regulation filter. Uses the configured default generation\'s default VGC season when omitted.',
     'teams pokemon1: Optional Pokemon that must appear on the team.',
     'teams pokemon2: Optional second Pokemon that must appear on the team. If pokemon1 is omitted, pokemon2 is treated as pokemon1.',
     'team-details team-id: Required VGC team id. The service resolves the regulation automatically.',
   ],
   examples: [
+    '/vgc meta-state',
+    '/vgc meta-state regulation:"VGC 2026 Reg. I"',
     '/vgc teams',
     '/vgc teams pokemon1:charizard',
     '/vgc teams regulation:"VGC 2026 Reg. I"',
@@ -34,6 +38,17 @@ export function createVgcCommandData(): SlashCommandData {
   return new SlashCommandBuilder()
     .setName('vgc')
     .setDescription('VGC teams and filters')
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('meta-state')
+        .setDescription('Show the top battle-role picks in a VGC regulation')
+        .addStringOption(option =>
+          option
+            .setName('regulation')
+            .setDescription('VGC regulation')
+            .addChoices(...getRegulationChoices())
+        )
+    )
     .addSubcommand(subcommand =>
       subcommand
         .setName('teams')
@@ -78,6 +93,9 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
 
   public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     switch (interaction.options.getSubcommand()) {
+      case 'meta-state':
+        await this.handleMetaState(interaction);
+        return;
       case 'teams':
         await this.handleTeams(interaction);
         return;
@@ -90,6 +108,35 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
   }
 
   // handlers for each subcommand
+  private async handleMetaState(interaction: ChatInputCommandInteraction): Promise<void> {
+    const format = this.getVgcFormat(interaction);
+    await DiscordHelper.deferCommandReply(interaction);
+
+    const roleEntries = await this.getMetaStateRoleEntries(format, VgcMetaRoleOrder);
+    if (!roleEntries.length) {
+      await this.replyNoData(interaction, `No meta-state data available for ${FormatHelper.toUserString(format)}.`);
+      return;
+    }
+
+    const previewPokemon = this.getMetaStatePreviewPokemon(roleEntries);
+    const embed = previewPokemon
+      ? this.createPokemonEmbed(previewPokemon, { thumbnail: true })
+      : new EmbedBuilder();
+
+    roleEntries.forEach(entry => {
+      embed.addFields({
+        name: entry.roleName,
+        value: this.formatRankedPokemonList(entry.pokemonNames),
+        inline: true,
+      });
+    });
+
+    await interaction.editReply({
+      content: `**__Meta State:__** ${FormatHelper.getMetaDisplayName(format.meta)}`,
+      embeds: [embed],
+    });
+  }
+
   private async handleTeams(interaction: ChatInputCommandInteraction): Promise<void> {
     const requestedFilters = this.getRequestedPokemonFilters(interaction);
     const primaryPokemon = requestedFilters.pokemon1

@@ -15,6 +15,7 @@ import { ImageService } from '../pokemon/imageService';
 import { FormatConfig } from '../config/formatConfig';
 import { FormatCatalog } from '../smogon/formatCatalog';
 import { EmojiService } from '../emoji/emojiService';
+import { BattleRoleKey, MetaStateRoleEntry } from '../models/battling';
 
 const generationChoices = [
   { name: 'Gen 9', value: '9' },
@@ -124,6 +125,23 @@ export class CommandBase {
       pokemon: query.pokemon,
     };
   }  
+
+  protected async getMetaStateRoleEntries(format: SmogonFormat, roleKeys: BattleRoleKey[], limit: number = 5): Promise<MetaStateRoleEntry[]> {
+    const [usages, moveSets] = await Promise.all([
+      this.dataSource.smogonStats.getUsages(format, false),
+      this.dataSource.smogonStats.getMoveSets(format),
+    ]);
+
+    if (!usages.length || !moveSets.length) {
+      return [];
+    }
+
+    return this.dataSource.battlingService.buildMetaStateRoleEntries(roleKeys, usages, moveSets, limit);
+  }
+
+  protected getMetaStatePreviewPokemon(entries: MetaStateRoleEntry[]): Pokemon | undefined {
+    return this.findFirstPokemon(entries.flatMap(entry => entry.pokemonNames));
+  }
 
   protected createPokemonEmbed(
     pokemon: Pokemon,
@@ -237,6 +255,16 @@ export class CommandBase {
 
   protected formatPokemonWithItemDisplay(pokemon: string, item: string): string {
     return this.formatWithEmoji(pokemon, svc => `${svc.getPokemonEmoji(pokemon) ?? ''}${svc.getItemEmoji(item) ?? ''}`);
+  }
+
+  protected formatRankedPokemonList(names: string[]): string {
+    if (!names.length) {
+      return 'No matching Pokemon.';
+    }
+
+    return names
+      .map((name, index) => this.formatPokemonDisplay(name))
+      .join('\n');
   }
 
   private formatWithEmoji(name: string, getEmoji: (svc: EmojiService) => string | undefined): string {

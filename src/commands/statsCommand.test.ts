@@ -108,13 +108,17 @@ function createUsage(name: string, rank: number, usageRaw: number): PokemonUsage
   };
 }
 
-function createMoveSetUsage(name: string, usage?: number): MoveSetUsage {
+function createMoveSetUsage(
+  name: string,
+  usage?: number,
+  options: { moves?: string[]; abilities?: string[] } = {}
+): MoveSetUsage {
   return {
     name,
-    abilities: [],
+    abilities: (options.abilities ?? []).map((ability, index) => ({ name: ability, percentage: 100 - index })),
     items: [],
     spreads: [],
-    moves: [],
+    moves: (options.moves ?? []).map((move, index) => ({ name: move, percentage: 100 - index })),
     teraTypes: [],
     teamMates: [],
     checksAndCounters: [],
@@ -206,6 +210,33 @@ function withStubbedMegasData(
   });
 }
 
+function withStubbedMetaStateData(
+  usages: PokemonUsage[],
+  moveSets: MoveSetUsage[],
+  pokemonByName: Record<string, Pokemon | undefined>,
+  runTest: (command: InstanceType<typeof StatsCommand>) => Promise<void>,
+  emojiDisplayByPokemonName: Record<string, string> = {}
+): Promise<void> {
+  const originalGetUsages = dataSource.smogonStats.getUsages.bind(dataSource.smogonStats);
+  const originalGetMoveSets = dataSource.smogonStats.getMoveSets.bind(dataSource.smogonStats);
+  const originalGetPokemon = dataSource.pokemonDb.getPokemon.bind(dataSource.pokemonDb);
+  const originalGetPokemonEmoji = dataSource.emojiService.getPokemonEmoji.bind(dataSource.emojiService);
+
+  dataSource.smogonStats.getUsages = async () => usages;
+  dataSource.smogonStats.getMoveSets = async () => moveSets;
+  dataSource.pokemonDb.getPokemon = (name: string) => pokemonByName[name];
+  dataSource.emojiService.getPokemonEmoji = (name: string) => emojiDisplayByPokemonName[name];
+
+  const command = new StatsCommand(dataSource);
+
+  return runTest(command).finally(() => {
+    dataSource.smogonStats.getUsages = originalGetUsages;
+    dataSource.smogonStats.getMoveSets = originalGetMoveSets;
+    dataSource.pokemonDb.getPokemon = originalGetPokemon;
+    dataSource.emojiService.getPokemonEmoji = originalGetPokemonEmoji;
+  });
+}
+
 const tests: TestCase[] = [
   {
     name: 'stats command data includes attackers and defenders mode choices',
@@ -219,6 +250,17 @@ const tests: TestCase[] = [
       assert.ok(defenders);
       assert.deepStrictEqual(attackers?.options?.find(option => option.name === 'mode')?.choices?.map(choice => choice.value), ['both', 'physical', 'special']);
       assert.deepStrictEqual(defenders?.options?.find(option => option.name === 'mode')?.choices?.map(choice => choice.value), ['both', 'physical', 'special']);
+    }
+  },
+  {
+    name: 'stats command data includes the meta-state subcommand with format filters',
+    run: async () => {
+      const commandData = createStatsCommandData().toJSON();
+      const options = (commandData.options ?? []) as Array<{ name: string; options?: Array<{ name: string }> }>;
+      const metaState = options.find(option => option.name === 'meta-state');
+
+      assert.ok(metaState);
+      assert.deepStrictEqual(metaState?.options?.map(option => option.name), ['meta', 'generation']);
     }
   },
   {
@@ -305,6 +347,111 @@ const tests: TestCase[] = [
         },
         {
           Azelf: '<:azelf:123>',
+        }
+      );
+    }
+  },
+  {
+    name: 'meta-state renders top battle-role fields with emoji-ranked Pokemon lists',
+    run: async () => {
+      await withStubbedMetaStateData(
+        [
+          createUsage('Dragonite', 1, 24.3),
+          createUsage('Dragapult', 2, 22.8),
+          createUsage('Pelipper', 3, 20.1),
+          createUsage('Landorus-Therian', 4, 18.4),
+          createUsage('Glimmora', 5, 17.7),
+          createUsage('Toxapex', 6, 16.2),
+          createUsage('Scizor', 7, 14.5),
+          createUsage('Whimsicott', 8, 13.1),
+          createUsage('Blissey', 9, 12.6),
+          createUsage('Rotom-Wash', 10, 11.4),
+          createUsage('Corviknight', 11, 10.8),
+          createUsage('Volcarona', 12, 9.2),
+        ],
+        [
+          createMoveSetUsage('Dragonite', undefined, { moves: ['Dragon Dance', 'Extreme Speed'] }),
+          createMoveSetUsage('Dragapult', undefined, { moves: ['Dragon Darts'] }),
+          createMoveSetUsage('Pelipper', undefined, { abilities: ['Drizzle'] }),
+          createMoveSetUsage('Landorus-Therian', undefined, { moves: ['U-turn'] }),
+          createMoveSetUsage('Glimmora', undefined, { abilities: ['Toxic Debris'], moves: ['Stealth Rock'] }),
+          createMoveSetUsage('Toxapex', undefined, { moves: ['Recover'] }),
+          createMoveSetUsage('Scizor', undefined, { moves: ['Bullet Punch'] }),
+          createMoveSetUsage('Whimsicott', undefined, { moves: ['Tailwind'] }),
+          createMoveSetUsage('Blissey', undefined, { moves: ['Soft-Boiled'] }),
+          createMoveSetUsage('Rotom-Wash', undefined, { moves: ['Volt Switch'] }),
+          createMoveSetUsage('Corviknight', undefined, { moves: ['U-turn'] }),
+          createMoveSetUsage('Volcarona', undefined, { moves: ['Quiver Dance'] }),
+        ],
+        {
+          Dragonite: createPokemon('Dragonite', { atk: 134, spe: 80 }),
+          Dragapult: createPokemon('Dragapult', { atk: 120, spA: 100, spe: 142 }),
+          Pelipper: createPokemon('Pelipper', { spA: 95, def: 100, spD: 70, spe: 65 }),
+          'Landorus-Therian': createPokemon('Landorus-Therian', { atk: 145, def: 90, spD: 80, spe: 91 }),
+          Glimmora: createPokemon('Glimmora', { def: 90, spD: 81, spe: 86 }),
+          Toxapex: createPokemon('Toxapex', { def: 152, spD: 142, spe: 35 }),
+          Scizor: createPokemon('Scizor', { atk: 130, spe: 65 }),
+          Whimsicott: createPokemon('Whimsicott', { spe: 116 }),
+          Blissey: createPokemon('Blissey', { def: 10, spD: 135, spe: 55 }),
+          'Rotom-Wash': createPokemon('Rotom-Wash', { def: 80, spD: 80, spe: 86 }),
+          Corviknight: createPokemon('Corviknight', { def: 105, spD: 85, spe: 67 }),
+          Volcarona: createPokemon('Volcarona', { atk: 60, spA: 130, spe: 100 }),
+        },
+        async (command) => {
+          const interaction = createInteraction('meta-state', { generation: '9', meta: 'ou' });
+
+          await command.execute(interaction as never);
+
+          const payload = getEditReplyPayload(interaction);
+          const fields = getEmbedFields(interaction);
+          const embed = payload.embeds?.[0].toJSON() as { title?: string } | undefined;
+          const strongAttackersField = fields.find(field => field.name === 'Strong Attackers');
+          const fastField = fields.find(field => field.name === 'Fast');
+          const weatherField = fields.find(field => field.name === 'Weather setters');
+          const strongDefendersField = fields.find(field => field.name === 'Strong Defenders');
+
+          assert.strictEqual(payload.content, '**__Meta State:__** OU (Gen 9)');
+          assert.strictEqual(embed?.title, undefined);
+          assert.deepStrictEqual(fields.map(field => field.name), [
+            'Strong Attackers',
+            'Set-uppers',
+            'Priorities',
+            'Fast',
+            'Pivot',
+            'Speed Control',
+            'Hazards Control',
+            'Strong Defenders',
+            'Stall',
+            'Weather setters',
+          ]);
+          assert.strictEqual(strongAttackersField?.value, '<:lando:123> Landorus-Therian\nDragonite\nScizor\nVolcarona\nDragapult');
+          assert.strictEqual(fastField?.value, 'Dragapult\nWhimsicott\nVolcarona\n<:lando:123> Landorus-Therian\nGlimmora');
+          assert.strictEqual(strongDefendersField?.value, 'Toxapex\nBlissey\nCorviknight\n<:pelipper:123> Pelipper\n<:lando:123> Landorus-Therian');
+          assert.strictEqual(weatherField?.value, '<:pelipper:123> Pelipper');
+        },
+        {
+          Pelipper: '<:pelipper:123>',
+          'Landorus-Therian': '<:lando:123>',
+        }
+      );
+    }
+  },
+  {
+    name: 'meta-state reports no data when moveset data is empty',
+    run: async () => {
+      await withStubbedMetaStateData(
+        [createUsage('Pelipper', 1, 24.3)],
+        [],
+        {
+          Pelipper: createPokemon('Pelipper'),
+        },
+        async (command) => {
+          const interaction = createInteraction('meta-state', { generation: '9', meta: 'ou' });
+
+          await command.execute(interaction as never);
+
+          assert.deepStrictEqual(interaction.calls.map(call => call.name), ['deferReply', 'editReply']);
+          assert.strictEqual(getEditReplyPayload(interaction).content, 'No meta-state data available for OU (Gen 9).');
         }
       );
     }
