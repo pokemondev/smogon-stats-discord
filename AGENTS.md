@@ -285,6 +285,9 @@ The second command is required if slash command option choices changed.
 ## Editing Guidance
 
 - Prefer updating shared helpers in `src/commands/command.ts` instead of duplicating logic across commands.
+- Keep code responibility boundaries in mind. Always check wether a change belongs in `battlingService` vs `formatHelper` vs `smogonStats` vs a command handler, etc.
+- Try to fit helper code in existing helpers when applicable.
+- Try to reuse existing logic, such as, helpers and services, before adding new code.
 - If you change slash-command structure or options, always re-register commands.
 - Keep the slash surface simple. Current UX intentionally favors a small number of top-level commands.
 - Preserve fuzzy Pokemon lookup behavior unless there is a strong reason to change it.

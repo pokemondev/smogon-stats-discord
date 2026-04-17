@@ -4,6 +4,7 @@ import { ConfigHelper } from '../config/configHelper';
 import { MoveSetUsage, PokemonMoveSetSearch, PokemonUsage, SmogonFormat } from '../models/smogonUsage';
 import { PokemonType } from '../models/pokemon';
 import { MessageFlags } from 'discord.js';
+import { BattleRoleFitStatus, BattleRoleKey } from '../models/battling';
 
 process.env.BOT_NAME = process.env.BOT_NAME || 'Smogon Stats';
 process.env.TOKEN = process.env.TOKEN || 'test-token';
@@ -199,6 +200,34 @@ async function withStubbedSearch(
   }
 }
 
+async function withStubbedBattleRoleData(
+  options: {
+    moveSet?: MoveSetUsage | undefined;
+    usages?: PokemonUsage[];
+    getRoleFitStatus?: (role: BattleRoleKey, pokemonName: string) => BattleRoleFitStatus;
+  },
+  runTest: (command: InstanceType<typeof PokemonCommand>) => Promise<void>
+): Promise<void> {
+  const originalGetMoveSet = dataSource.smogonStats.getMoveSet.bind(dataSource.smogonStats);
+  const originalGetUsages = dataSource.smogonStats.getUsages.bind(dataSource.smogonStats);
+  const originalGetRoleFitStatus = dataSource.battlingService.getRoleFitStatus.bind(dataSource.battlingService);
+
+  dataSource.smogonStats.getMoveSet = async () => options.moveSet;
+  dataSource.smogonStats.getUsages = async () => options.usages ?? [];
+  dataSource.battlingService.getRoleFitStatus = (role, pokemonName, _moveSet, _usages) => options.getRoleFitStatus
+    ? options.getRoleFitStatus(role, pokemonName)
+    : originalGetRoleFitStatus(role, pokemonName, _moveSet, _usages);
+
+  try {
+    await runTest(new PokemonCommand(dataSource));
+  }
+  finally {
+    dataSource.smogonStats.getMoveSet = originalGetMoveSet;
+    dataSource.smogonStats.getUsages = originalGetUsages;
+    dataSource.battlingService.getRoleFitStatus = originalGetRoleFitStatus;
+  }
+}
+
 async function withStubbedAbilityLookup(
   implementation: (name: string) => string | undefined,
   runTest: () => Promise<void>
@@ -224,6 +253,17 @@ const tests: TestCase[] = [
 
       assert.ok(search);
       assert.deepStrictEqual(search?.options?.map(option => option.name), ['move1', 'move2', 'ability', 'meta', 'generation']);
+    }
+  },
+  {
+    name: 'command data includes battle-roles subcommand with summary-style format args',
+    run: async () => {
+      const commandData = createPokemonCommandData().toJSON();
+      const options = (commandData.options ?? []) as Array<{ name: string; options?: Array<{ name: string }> }>;
+      const battleRoles = options.find(option => option.name === 'battle-roles');
+
+      assert.ok(battleRoles);
+      assert.deepStrictEqual(battleRoles?.options?.map(option => option.name), ['name', 'meta', 'generation']);
     }
   },
   {
@@ -299,6 +339,29 @@ const tests: TestCase[] = [
       await command.execute(interaction as never);
 
       assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'deferReply', 'editReply' ]);
+    }
+  },
+  {
+    name: 'battle-roles defers before editing successful responses',
+    run: async () => {
+      await withStubbedBattleRoleData(
+        {
+          moveSet: createEmptyMoveSet('Incineroar'),
+          usages: [createUsage('Incineroar', 1, 22.4)],
+          getRoleFitStatus: () => BattleRoleFitStatus.Yes,
+        },
+        async (command) => {
+          const interaction = createInteraction('battle-roles', {
+            name: 'incineroar',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          await command.execute(interaction as never);
+
+          assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'deferReply', 'editReply' ]);
+        }
+      );
     }
   },
   {
@@ -814,6 +877,87 @@ const tests: TestCase[] = [
 
           assert.ok(itemsField, 'Expected an Items field in the summary embed.');
           assert.strictEqual(itemsField.value, '<:item_choice_band:456> Choice Band: `55.00%`\nLife Orb: `22.50%`');
+        }
+      );
+    }
+  },
+  {
+    name: 'battle-roles renders smogon category fields with yes, maybe, and no markers',
+    run: async () => {
+      await withStubbedBattleRoleData(
+        {
+          moveSet: createEmptyMoveSet('Incineroar'),
+          usages: [createUsage('Incineroar', 1, 22.4)],
+          getRoleFitStatus: (role) => {
+            const statuses: Partial<Record<BattleRoleKey, BattleRoleFitStatus>> = {
+              StrongAttackers: BattleRoleFitStatus.Yes,
+              SetUpper: BattleRoleFitStatus.No,
+              Priority: BattleRoleFitStatus.No,
+              Fast: BattleRoleFitStatus.Eventually,
+              Pivot: BattleRoleFitStatus.Yes,
+              WeatherSetters: BattleRoleFitStatus.No,
+              HazardsControl: BattleRoleFitStatus.Eventually,
+              SpeedControl: BattleRoleFitStatus.No,
+              StrongDefenders: BattleRoleFitStatus.Yes,
+              Stall: BattleRoleFitStatus.No,
+            };
+
+            return statuses[role] ?? BattleRoleFitStatus.No;
+          },
+        },
+        async (command) => {
+          const interaction = createInteraction('battle-roles', {
+            name: 'incineroar',
+            generation: '9',
+            meta: 'ou',
+          });
+
+          await command.execute(interaction as never);
+
+          const payload = getEditReplyPayload(interaction);
+          const embed = getEditReplyEmbed(interaction);
+
+          assert.strictEqual(payload.content, '**__Incineroar Battle Roles:__** OU (Gen 9)');
+          assert.deepStrictEqual(getFieldNames(interaction), ['Offensive', 'Utility/Support', '\u200b', 'Speed/Modes', 'Defensive']);
+          assert.strictEqual(embed.fields[0].value, '✅ Strong Attacker\n❌ Set-uppers\n❌ Priority\n❔ Fast');
+          assert.strictEqual(embed.fields[1].value, '✅ Pivot\n❌ Weather setter\n❔ Hazards Control');
+          assert.strictEqual(embed.fields[2].value, '\u200b');
+          assert.strictEqual(embed.fields[3].value, '❌ Speed Control');
+          assert.strictEqual(embed.fields[4].value, '✅ Strong Defender\n❌ Stall');
+        }
+      );
+    }
+  },
+  {
+    name: 'battle-roles filters displayed roles for vgc formats',
+    run: async () => {
+      await withStubbedBattleRoleData(
+        {
+          moveSet: createEmptyMoveSet('Incineroar'),
+          usages: [createUsage('Incineroar', 1, 22.4)],
+          getRoleFitStatus: () => BattleRoleFitStatus.Yes,
+        },
+        async (command) => {
+          const interaction = createInteraction('battle-roles', {
+            name: 'incineroar',
+            generation: '9',
+            meta: 'vgc2026regi',
+          });
+
+          await command.execute(interaction as never);
+
+          const embed = getEditReplyEmbed(interaction);
+
+          assert.deepStrictEqual(getFieldNames(interaction), ['Offensive', 'Utility/Support', '\u200b', 'Speed/Modes', 'Defensive']);
+          assert.strictEqual(embed.fields[0].value, '✅ Strong Attacker\n✅ Set-uppers\n✅ Priority');
+          assert.strictEqual(embed.fields[1].value, '✅ Supporter\n✅ Weather setter');
+          assert.strictEqual(embed.fields[2].value, '\u200b');
+          assert.strictEqual(embed.fields[3].value, '✅ Speed Control\n✅ Trick Room\n✅ Tailwind');
+          assert.strictEqual(embed.fields[4].value, '✅ Strong Defender');
+          assert.strictEqual(embed.fields.some((field: { value: string }) => field.value.includes('Pivot')), false);
+          assert.strictEqual(embed.fields.some((field: { value: string }) => field.value.includes('Hazards Control')), false);
+          assert.strictEqual(embed.fields.some((field: { value: string }) => field.value.includes('Fast')), false);
+          assert.strictEqual(embed.fields.some((field: { value: string }) => field.value.includes('Stall')), false);
         }
       );
     }

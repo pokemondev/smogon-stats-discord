@@ -1,4 +1,4 @@
-import { Direction } from '../models/battling';
+import { Direction } from '../models/common';
 import { Pokemon } from '../models/pokemon';
 import { PokemonUsage } from '../models/smogonUsage';
 

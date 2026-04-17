@@ -7,7 +7,7 @@ import { FormatHelper } from '../smogon/formatHelper';
 import { PokemonUsage, SmogonFormat } from '../models/smogonUsage';
 import { VgcResolvedTeam, VgcTeam } from '../models/vgc';
 import { CommandBase, CommandHelpTopic, SlashCommandData, SlashCommandHandler } from './command';
-import { VgcMetaRoleOrder } from '../models/battling';
+import { BattleRolesHelper } from '../pokemon/battleRolesHelper';
 
 const MaxDisplayedTeams = 6;
 const TeamLinksFooterText = 'Check more details at x.com/VGCPastes and limitlessvgc.com';
@@ -112,7 +112,7 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     const format = this.getVgcFormat(interaction);
     await DiscordHelper.deferCommandReply(interaction);
 
-    const roleEntries = await this.getMetaStateRoleEntries(format, VgcMetaRoleOrder);
+    const roleEntries = await this.getMetaStateRoleEntries(format, BattleRolesHelper.getMetaRoleOrder(true));
     if (!roleEntries.length) {
       await this.replyNoData(interaction, `No meta-state data available for ${FormatHelper.toUserString(format)}.`);
       return;

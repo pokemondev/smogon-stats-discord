@@ -1,9 +1,11 @@
 import { FileHelper } from '../common/fileHelper';
 import { compareCandidatesByStat, compareCandidatesBySpeed, compareCandidatesByUsage, compareByUsage } from '../common/sortingHelper';
+import { BattleRoleDefinition, BattleRoleFitStatus, BattleRoleKey, MetaStateRoleEntry, PresetBattleRoleKey } from '../models/battling';
+import { Direction } from '../models/common';
 import { MoveCategory } from '../models/moves';
 import { Pokemon } from '../models/pokemon';
-import { BattleRoleDefinition, BattleRoleKey, Direction, MetaStateRoleEntry, PresetBattleRoleKey, RoleDefinitions } from '../models/battling';
 import { MoveSetUsage, PokemonUsage } from '../models/smogonUsage';
+import { BattleRolesHelper } from './battleRolesHelper';
 import { Movedex } from './movedex';
 import { PokemonDb } from './pokemonDb';
 
@@ -16,7 +18,9 @@ type MetaStateCandidate = {
 };
 
 const statRoleUsageLimit = 100;
-const topSupporterMoves = 10;
+const strongFitThreshold = 15;
+const partialFitThreshold = 30;
+const isSupporterMoveUsageThreshold = 85;
 
 export class BattlingService {
   private readonly rolePresets = {} as Record<PresetBattleRoleKey, Set<string>>; // set at runtime based on file data (loadFileData)
@@ -35,7 +39,7 @@ export class BattlingService {
   }
 
   public getMatchingRoles(moveSet: MoveSetUsage): BattleRoleDefinition[] {
-    return RoleDefinitions.filter(role => this.hasRole(role.key, moveSet));
+    return BattleRolesHelper.getRoleDefinitions().filter(role => this.hasRole(role.key, moveSet));
   }
 
   public buildMetaStateRoleEntries(
@@ -50,12 +54,34 @@ export class BattlingService {
     }
 
     return roleKeys
-      .map(key => RoleDefinitions.find(role => role.key === key))
+      .map(key => BattleRolesHelper.getRoleDefinition(key))
       .filter((role): role is BattleRoleDefinition => !!role)
       .map(role => ({
         roleName: role.displayName,
         pokemonNames: this.getPokemonForRole(role, candidates, limit),
       }));
+  }
+
+  public getRoleFitStatus(role: BattleRoleKey, pokemonName: string, moveSet: MoveSetUsage | undefined, usages: PokemonUsage[]): BattleRoleFitStatus {
+    const definition = BattleRolesHelper.getRoleDefinition(role);
+    if (!definition) {
+      return BattleRoleFitStatus.No;
+    }
+
+    switch (definition.rankingType) {
+      case 'strong-attackers':
+        return this.getTopStatFitStatus(usages, pokemonName, pokemon => Math.max(pokemon.baseStats.atk, pokemon.baseStats.spA));
+      case 'fast':
+        return this.getTopStatFitStatus(usages, pokemonName, pokemon => pokemon.baseStats.spe);
+      case 'strong-defenders':
+        return this.getTopStatFitStatus(usages, pokemonName, pokemon => Math.max(pokemon.baseStats.def, pokemon.baseStats.spD));
+      case 'preset':
+      case 'supporters':
+      case 'trick-room':
+      case 'tailwind':
+      default:
+        return this.getMoveSetFitStatus(role, moveSet);
+    }
   }
 
   public hasRole(role: BattleRoleKey, moveSet: MoveSetUsage): boolean {
@@ -100,16 +126,32 @@ export class BattlingService {
   }
 
   public isSupporter(moveSet: MoveSetUsage): boolean {
-    const allMoves = (moveSet.moves ?? []).map(move => move.name);
-    const nonSetUpMoves = allMoves.filter(move => !this.rolePresets.SetUpper.has(BattlingService.normalize(move)));
-    const consideredMoves = nonSetUpMoves.slice(0, topSupporterMoves);
+    let allMoves = (moveSet.moves ?? []).filter(m => m.name !== 'Other');
+    const hasBothProtection = allMoves.some(move => move.name === 'Protect') && allMoves.some(move => move.name === 'Detect');
+    if (hasBothProtection) {
+      const protectMove = moveSet.moves?.find(move => move.name === 'Protect')!;
+      const detectMove = moveSet.moves?.find(move => move.name === 'Detect')!;
+      const protectionMoveToRemove = protectMove.percentage < detectMove.percentage ? 'Protect' : 'Detect';      
+      allMoves = allMoves.filter(move => move.name !== protectionMoveToRemove);
+    }
 
+    const consideredMoves = allMoves.filter(move => !this.rolePresets.SetUpper.has(BattlingService.normalize(move.name)));
     if (!consideredMoves.length) {
       return false;
     }
+    
+    const statusMoves = consideredMoves.filter(move => move.name !== 'Protect' && move.name !== 'Detect' && this.movedex.getMove(move.name)?.category === MoveCategory.Status);
+    const anyStatusMoveOverStatusThreshold = statusMoves.some(move => move.percentage >= isSupporterMoveUsageThreshold);
+    if (anyStatusMoveOverStatusThreshold) {
+      console.log(`Supporter check for ${moveSet.name}: at least one status move over usage threshold (${isSupporterMoveUsageThreshold}%) among considered moves (${consideredMoves.length} moves)`);
+      return true;
+    }
 
-    const statusMoves = consideredMoves.filter(move => this.movedex.getMove(move)?.category === MoveCategory.Status);
-    return statusMoves.length > consideredMoves.length / 2;
+    const pivotMoves = consideredMoves.filter(move => this.rolePresets.Pivot.has(BattlingService.normalize(move.name)));
+    const supporterMoves = new Set([...statusMoves.map(m => m.name), ...pivotMoves.map(m => m.name)]);
+    console.log(`Supporter check for ${moveSet.name}: ${supporterMoves.size} status moves out of ${consideredMoves.length} considered moves (${allMoves.length} total moves)`);
+    console.log(supporterMoves);
+    return supporterMoves.size >= consideredMoves.length / 2;
   }
 
   private hasPresetRole(role: PresetBattleRoleKey, moveSet: MoveSetUsage): boolean {
@@ -119,6 +161,16 @@ export class BattlingService {
     }
 
     return this.getMoveAndAbilityKeys(moveSet).some(key => presets.has(key));
+  }
+
+  private getMoveSetFitStatus(role: BattleRoleKey, moveSet: MoveSetUsage | undefined): BattleRoleFitStatus {
+    if (!moveSet?.name) {
+      return BattleRoleFitStatus.Eventually;
+    }
+
+    return this.hasRole(role, moveSet)
+      ? BattleRoleFitStatus.Yes
+      : BattleRoleFitStatus.No;
   }
 
   private buildCandidates(usages: PokemonUsage[], moveSets: MoveSetUsage[]): MetaStateCandidate[] {
@@ -201,6 +253,43 @@ export class BattlingService {
       .map(candidate => candidate.usage.name);
   }
 
+  private getTopStatFitStatus(
+    usages: PokemonUsage[],
+    pokemonName: string,
+    getStat: (pokemon: Pokemon) => number,
+  ): BattleRoleFitStatus {
+    if (!usages.length) {
+      return BattleRoleFitStatus.Eventually;
+    }
+
+    const targetPokemon = this.pokemonDb.getPokemon(pokemonName);
+    if (!targetPokemon) {
+      return BattleRoleFitStatus.Eventually;
+    }
+
+    const statValues = this.buildCandidates(usages, [])
+      .filter((candidate): candidate is MetaStateCandidate & { pokemon: Pokemon } => !!candidate.pokemon)
+      .slice(0, statRoleUsageLimit)
+      .sort((left, right) => compareCandidatesByStat(left, right, getStat, Direction.Descending))
+      .map(candidate => getStat(candidate.pokemon));
+
+    if (!statValues.length) {
+      return BattleRoleFitStatus.Eventually;
+    }
+
+    const strongFitThresholdValue = statValues[Math.min(strongFitThreshold - 1, statValues.length - 1)];
+    const partialFitThresholdValue = statValues[Math.min(partialFitThreshold - 1, statValues.length - 1)];
+    const targetStat = getStat(targetPokemon);
+
+    if (targetStat >= strongFitThresholdValue) {
+      return BattleRoleFitStatus.Yes;
+    }
+
+    return targetStat >= partialFitThresholdValue
+      ? BattleRoleFitStatus.Eventually
+      : BattleRoleFitStatus.No;
+  }
+
   private usesMove(moveSet: MoveSetUsage, moveName: string): boolean {
     const targetMove = BattlingService.normalize(moveName);
     return (moveSet.moves ?? []).some(move => BattlingService.normalize(move.name) === targetMove);
@@ -218,9 +307,7 @@ export class BattlingService {
 
   private loadFileData(): void {
     const fileData = FileHelper.loadFileData<PresetFileData>('battle-roles.json');
-    const presetRoleKeys = RoleDefinitions
-      .filter((role): role is BattleRoleDefinition & { key: PresetBattleRoleKey } => role.rankingType === 'preset')
-      .map(role => role.key);
+    const presetRoleKeys = BattleRolesHelper.getPresetRoleKeys();
 
     for (const key of presetRoleKeys) {
       const filePresets = fileData[key] ?? [];

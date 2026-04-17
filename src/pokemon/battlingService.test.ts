@@ -1,7 +1,10 @@
 import assert = require('assert');
 import { MoveSetUsage, PokemonUsage } from '../models/smogonUsage';
 import { BattlingService } from './battlingService';
-import { SmogonMetaRoleOrder, VgcMetaRoleOrder, RoleDefinitions } from '../models/battling';
+import { BattleRoleFitStatus } from '../models/battling';
+import { MoveCategory } from '../models/moves';
+import { Pokemon, PokemonType } from '../models/pokemon';
+import { BattleRolesHelper } from './battleRolesHelper';
 
 interface TestCase {
   name: string;
@@ -30,13 +33,63 @@ function createUsage(name: string, rank: number, usageRaw: number): PokemonUsage
   };
 }
 
+function createPokemon(name: string, stat: number): Pokemon {
+  return {
+    name,
+    type1: PokemonType.Normal,
+    type2: PokemonType.Normal,
+    baseStats: {
+      hp: 50,
+      atk: stat,
+      def: stat,
+      spA: stat,
+      spD: stat,
+      spe: stat,
+      tot: 50 + (stat * 5),
+    },
+    tier: 'OU',
+    possiblesAbilities: [],
+    evolutions: [],
+    generation: 'gen9',
+    isAltForm: false,
+    weight: 100,
+    height: 1,
+  };
+}
+
+function createService(options: {
+  pokemonByName?: Record<string, Pokemon>;
+  moveCategoryByName?: Record<string, MoveCategory>;
+} = {}): BattlingService {
+  const pokemonMap = new Map(
+    Object.values(options.pokemonByName ?? {}).map(pokemon => [pokemon.name.toLowerCase(), pokemon])
+  );
+  const moveCategoryMap = new Map(
+    Object.entries(options.moveCategoryByName ?? {}).map(([name, category]) => [name.toLowerCase(), category])
+  );
+
+  return new BattlingService(
+    {
+      getPokemon: (name: string) => pokemonMap.get(name.toLowerCase()),
+    } as never,
+    {
+      getMove: (name: string) => {
+        const category = moveCategoryMap.get(name.toLowerCase());
+        return category
+          ? { name, category } as never
+          : undefined;
+      },
+    } as never,
+  );
+}
+
 const service = new BattlingService();
 
 const tests: TestCase[] = [
   {
     name: 'SmogonMetaRoleOrder defines stable display order for Smogon formats',
     run: () => {
-      const roleNames = SmogonMetaRoleOrder.map(key => RoleDefinitions.find(r => r.key === key)!.displayName);
+      const roleNames = BattleRolesHelper.getMetaRoleOrder(false).map(key => BattleRolesHelper.getRoleDefinition(key)!.displayName);
       assert.deepStrictEqual(roleNames, [
         'Strong Attackers',
         'Set-uppers',
@@ -54,7 +107,7 @@ const tests: TestCase[] = [
   {
     name: 'VgcMetaRoleOrder defines stable display order for VGC formats',
     run: () => {
-      const roleNames = VgcMetaRoleOrder.map(key => RoleDefinitions.find(r => r.key === key)!.displayName);
+      const roleNames = BattleRolesHelper.getMetaRoleOrder(true).map(key => BattleRolesHelper.getRoleDefinition(key)!.displayName);
       assert.deepStrictEqual(roleNames, [
         'Strong Attackers',
         'Set-uppers',
@@ -123,7 +176,7 @@ const tests: TestCase[] = [
     name: 'ranks strong attackers by strongest attacking stat before usage',
     run: () => {
       const entries = service.buildMetaStateRoleEntries(
-        SmogonMetaRoleOrder,
+        BattleRolesHelper.getMetaRoleOrder(false),
         [
           createUsage('Dragonite', 1, 21.1),
           createUsage('Chi-Yu', 2, 19.3),
@@ -144,7 +197,7 @@ const tests: TestCase[] = [
     name: 'ranks Trick Room users by slowest speed before usage',
     run: () => {
       const entries = service.buildMetaStateRoleEntries(
-        VgcMetaRoleOrder,
+        BattleRolesHelper.getMetaRoleOrder(true),
         [
           createUsage('Farigiraf', 1, 24.5),
           createUsage('Hatterene', 2, 20.8),
@@ -163,7 +216,7 @@ const tests: TestCase[] = [
     name: 'ranks Tailwind users by fastest speed before usage',
     run: () => {
       const entries = service.buildMetaStateRoleEntries(
-        VgcMetaRoleOrder,
+        BattleRolesHelper.getMetaRoleOrder(true),
         [
           createUsage('Whimsicott', 1, 28.1),
           createUsage('Talonflame', 4, 14.2),
@@ -176,6 +229,117 @@ const tests: TestCase[] = [
 
       const tailwind = entries.find(entry => entry.roleName === 'Tailwind');
       assert.deepStrictEqual(tailwind?.pokemonNames, ['Talonflame', 'Whimsicott']);
+    },
+  },
+  {
+    name: 'getRoleFitStatus uses top stat cutoff values for yes maybe and no',
+    run: () => {
+      const pokemonByName = Object.fromEntries([
+        ...Array.from({ length: 15 }, (_, index) => {
+          const name = `Mon${index + 1}`;
+          return [name, createPokemon(name, 300)];
+        }),
+        ...Array.from({ length: 15 }, (_, index) => {
+          const name = `Mon${index + 16}`;
+          return [name, createPokemon(name, 200)];
+        }),
+        ...Array.from({ length: 5 }, (_, index) => {
+          const name = `Mon${index + 31}`;
+          return [name, createPokemon(name, 100)];
+        }),
+      ]);
+      const usages = Array.from({ length: 35 }, (_, index) => createUsage(`Mon${index + 1}`, index + 1, 100 - index));
+      const rankingService = createService({ pokemonByName });
+
+      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon5', undefined, usages), BattleRoleFitStatus.Yes);
+      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon20', undefined, usages), BattleRoleFitStatus.Eventually);
+      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon33', undefined, usages), BattleRoleFitStatus.No);
+    },
+  },
+  {
+    name: 'getRoleFitStatus treats tied stats beyond rank 25 as maybe when they match the cutoff value',
+    run: () => {
+      const pokemonByName = Object.fromEntries([
+        ...Array.from({ length: 15 }, (_, index) => {
+          const name = `Mon${index + 1}`;
+          return [name, createPokemon(name, 300)];
+        }),
+        ...Array.from({ length: 20 }, (_, index) => {
+          const name = `Mon${index + 16}`;
+          return [name, createPokemon(name, 200)];
+        }),
+      ]);
+      const usages = Array.from({ length: 35 }, (_, index) => createUsage(`Mon${index + 1}`, index + 1, 100 - index));
+      const rankingService = createService({ pokemonByName });
+
+      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon35', undefined, usages), BattleRoleFitStatus.Eventually);
+      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon20', undefined, usages), BattleRoleFitStatus.Eventually);
+    },
+  },
+  {
+    name: 'getRoleFitStatus returns no when target stat is below the top25 cutoff value',
+    run: () => {
+      const pokemonByName = Object.fromEntries(
+        Array.from({ length: 35 }, (_, index) => {
+          const position = index + 1;
+          const name = `Mon${position}`;
+          const stat = position <= 15 ? 300 : position <= 30 ? 200 : 100;
+          return [name, createPokemon(name, stat)];
+        })
+      );
+      const usages = Array.from({ length: 35 }, (_, index) => createUsage(`Mon${index + 1}`, index + 1, 100 - index));
+      const rankingService = createService({ pokemonByName });
+
+      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon33', undefined, usages), BattleRoleFitStatus.No);
+    },
+  },
+  {
+    name: 'getRoleFitStatus returns maybe when ranked-role usage data is missing',
+    run: () => {
+      const rankingService = createService({
+        pokemonByName: {
+          Mon1: createPokemon('Mon1', 200),
+        },
+      });
+
+      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon1', undefined, []), BattleRoleFitStatus.Eventually);
+    },
+  },
+  {
+    name: 'getRoleFitStatus delegates preset role checks to existing move and ability matching',
+    run: () => {
+      assert.strictEqual(service.getRoleFitStatus('WeatherSetters', 'Pelipper', createMoveSetUsage('Pelipper', { abilities: ['Drizzle'] }), []), BattleRoleFitStatus.Yes);
+      assert.strictEqual(service.getRoleFitStatus('WeatherSetters', 'Pelipper', createMoveSetUsage('Pelipper', { moves: ['Hurricane'] }), []), BattleRoleFitStatus.No);
+      assert.strictEqual(service.getRoleFitStatus('WeatherSetters', 'Pelipper', undefined, []), BattleRoleFitStatus.Eventually);
+    },
+  },
+  {
+    name: 'getRoleFitStatus keeps supporter, trick room, and tailwind on move-based checks',
+    run: () => {
+      const rankingService = createService({
+        moveCategoryByName: {
+          'Helping Hand': MoveCategory.Status,
+          Protect: MoveCategory.Status,
+          Encore: MoveCategory.Status,
+          Tailwind: MoveCategory.Status,
+          Moonblast: MoveCategory.Special,
+          'Trick Room': MoveCategory.Status,
+        },
+      });
+
+      const supporterMoveSet = createMoveSetUsage('Whimsicott', {
+        moves: ['Helping Hand', 'Protect', 'Encore', 'Tailwind', 'Moonblast'],
+      });
+      const trickRoomMoveSet = createMoveSetUsage('Farigiraf', {
+        moves: ['Trick Room', 'Protect'],
+      });
+      const tailwindMoveSet = createMoveSetUsage('Talonflame', {
+        moves: ['Tailwind', 'Brave Bird'],
+      });
+
+      assert.strictEqual(rankingService.getRoleFitStatus('Supporters', 'Whimsicott', supporterMoveSet, []), BattleRoleFitStatus.Yes);
+      assert.strictEqual(rankingService.getRoleFitStatus('TrickRoom', 'Farigiraf', trickRoomMoveSet, []), BattleRoleFitStatus.Yes);
+      assert.strictEqual(rankingService.getRoleFitStatus('Tailwind', 'Talonflame', tailwindMoveSet, []), BattleRoleFitStatus.Yes);
     },
   },
   {
