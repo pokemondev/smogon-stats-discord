@@ -63,7 +63,7 @@ function createService(options: {
   moveCategoryByName?: Record<string, MoveCategory>;
   formatStats?: {
     getMinimumStatForBucket?: (bucket: FormatStatBucket) => number | undefined | Promise<number | undefined>;
-    isInBucket?: (target: BaseStatTarget, bucket: FormatStatBucket) => boolean | Promise<boolean>;
+    isInBucket?: (target: BaseStatTarget, bucket: FormatStatBucket, baseStats: unknown) => boolean | Promise<boolean>;
   };
 } = {}): BattlingService {
   const pokemonMap = new Map(
@@ -76,8 +76,8 @@ function createService(options: {
     getMinimumStatForBucket: async (_format: unknown, _target: BaseStatTarget, bucket: FormatStatBucket) => options.formatStats?.getMinimumStatForBucket
       ? options.formatStats.getMinimumStatForBucket(bucket)
       : 150,
-    isInBucket: async (_format: unknown, target: BaseStatTarget, _baseStats: unknown, bucket: FormatStatBucket) => options.formatStats?.isInBucket
-      ? options.formatStats.isInBucket(target, bucket)
+    isInBucket: async (_format: unknown, target: BaseStatTarget, baseStats: unknown, bucket: FormatStatBucket) => options.formatStats?.isInBucket
+      ? options.formatStats.isInBucket(target, bucket, baseStats)
       : false,
   };
 
@@ -110,13 +110,10 @@ const tests: TestCase[] = [
         'Priority Users',
         'Fast',
         'Pivot',
-        'Weather Setters',
-        'Redirection',
         'Hazards Control',
-        'Stats Reducing',
-        'Status Inflicting',
         'High Defs Stats',
         'Stall',
+        'Status Inflicting',
       ]);
     },
   },
@@ -131,58 +128,58 @@ const tests: TestCase[] = [
         'Supporters',
         'Weather Setters',
         'Redirection',
+        'Tailwind',
+        'Trick Room',
+        'Speed Control',
+        'High Defs Stats',
         'Stats Reducing',
         'Status Inflicting',
-        'High Defs Stats',
-        'Speed Control',
-        'Trick Room',
-        'Tailwind',
       ]);
     },
   },
   {
     name: 'matches move-based weather setters from the battle roles file',
     run: async () => {
-      assert.strictEqual(await service.isWeatherSetter({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Pelipper', { moves: ['Sunny Day'] })), true);
+      assert.strictEqual(await service.isWeatherSetter({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Pelipper', { moves: ['Sunny Day'] })), BattleRoleFitStatus.Yes);
     },
   },
   {
     name: 'matches ability-based weather setters from the battle roles file',
     run: async () => {
-      assert.strictEqual(await service.isWeatherSetter({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Pelipper', { abilities: ['Drizzle'] })), true);
+      assert.strictEqual(await service.isWeatherSetter({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Pelipper', { abilities: ['Drizzle'] })), BattleRoleFitStatus.Yes);
     },
   },
   {
     name: 'matches broader ability overrides for hazards control',
     run: async () => {
-      assert.strictEqual(await service.isHazardsControl({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Glimmora', { abilities: ['Toxic Debris'] })), true);
+      assert.strictEqual(await service.isHazardsControl({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Glimmora', { abilities: ['Toxic Debris'] })), BattleRoleFitStatus.Yes);
     },
   },
   {
     name: 'matches broader ability overrides for pivot roles',
     run: async () => {
-      assert.strictEqual(await service.isPivot({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Amoonguss', { abilities: ['Regenerator'] })), true);
+      assert.strictEqual(await service.isPivot({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Amoonguss', { abilities: ['Regenerator'] })), BattleRoleFitStatus.Yes);
     },
   },
   {
     name: 'matches stat-reducing presets while excluding speed-only effects',
     run: async () => {
-      assert.strictEqual(await service.hasRole({ generation: 'gen9', meta: 'ou' } as never, 'StatsReducing', createMoveSetUsage('Incineroar', { abilities: ['Intimidate'] })), true);
-      assert.strictEqual(await service.hasRole({ generation: 'gen9', meta: 'ou' } as never, 'StatsReducing', createMoveSetUsage('Amoonguss', { abilities: ['Gooey'] })), false);
+      assert.strictEqual(await service.hasRole({ generation: 'gen9', meta: 'ou' } as never, 'StatsReducing', createMoveSetUsage('Incineroar', { abilities: ['Intimidate'] })), BattleRoleFitStatus.Yes);
+      assert.strictEqual(await service.hasRole({ generation: 'gen9', meta: 'ou' } as never, 'StatsReducing', createMoveSetUsage('Amoonguss', { abilities: ['Gooey'] })), BattleRoleFitStatus.No);
     },
   },
   {
     name: 'matches status-inflicting presets from both moves and abilities',
     run: async () => {
-      assert.strictEqual(await service.hasRole({ generation: 'gen9', meta: 'ou' } as never, 'StatusInflicting', createMoveSetUsage('Amoonguss', { moves: ['Spore'] })), true);
-      assert.strictEqual(await service.hasRole({ generation: 'gen9', meta: 'ou' } as never, 'StatusInflicting', createMoveSetUsage('Pecharunt', { abilities: ['Poison Puppeteer'] })), true);
+      assert.strictEqual(await service.hasRole({ generation: 'gen9', meta: 'ou' } as never, 'StatusInflicting', createMoveSetUsage('Amoonguss', { moves: ['Spore'] })), BattleRoleFitStatus.Yes);
+      assert.strictEqual(await service.hasRole({ generation: 'gen9', meta: 'ou' } as never, 'StatusInflicting', createMoveSetUsage('Pecharunt', { abilities: ['Poison Puppeteer'] })), BattleRoleFitStatus.Yes);
     },
   },
   {
     name: 'returns all matching signal roles for overlapping movesets',
     run: async () => {
       const matches = await service.getMatchingRoles({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Slowking', { moves: ['Chilly Reception'] }));
-      assert.deepStrictEqual(matches.map(role => role.displayName), ['Pivot', 'Supporters', 'Weather Setters', 'Stall']);
+      assert.deepStrictEqual(matches.map(role => role.displayName), ['Pivot', 'Supporters', 'Weather Setters']);
     },
   },
   {
@@ -241,6 +238,18 @@ const tests: TestCase[] = [
         },
         formatStats: {
           getMinimumStatForBucket: async (bucket) => bucket === FormatStatBucket.Highest50p ? 160 : undefined,
+          isInBucket: async (target, bucket, baseStats) => {
+            if (target !== BaseStatTarget.Defender) {
+              return false;
+            }
+
+            const defender = Math.max((baseStats as Pokemon['baseStats']).def, (baseStats as Pokemon['baseStats']).spD);
+            if (bucket === FormatStatBucket.Highest25p) {
+              return defender >= 180;
+            }
+
+            return bucket === FormatStatBucket.Highest50p && defender >= 160;
+          },
         },
       });
 
@@ -256,9 +265,9 @@ const tests: TestCase[] = [
           createUsage('Mon6', 6, 5),
         ],
         [
-          createMoveSetUsage('Mon1'),
-          createMoveSetUsage('Mon2'),
-          createMoveSetUsage('Mon3'),
+          createMoveSetUsage('Mon1', { moves: ['Recover'] }),
+          createMoveSetUsage('Mon2', { abilities: ['Regenerator'] }),
+          createMoveSetUsage('Mon3', { moves: ['Soft-Boiled'] }),
           createMoveSetUsage('Mon4'),
           createMoveSetUsage('Mon5'),
           createMoveSetUsage('Mon6'),
@@ -312,6 +321,9 @@ const tests: TestCase[] = [
     name: 'getRoleFitStatus maps computed roles to format stat buckets',
     run: async () => {
       const format = { generation: 'gen9', meta: 'ou' } as never;
+      const attackerMoveSet = createMoveSetUsage('Attacker');
+      const speedsterMoveSet = createMoveSetUsage('Speedster');
+      const wallMoveSet = createMoveSetUsage('Wall');
       const serviceWithBuckets = createService({
         pokemonByName: {
           Attacker: createPokemon('Attacker', 200),
@@ -334,9 +346,9 @@ const tests: TestCase[] = [
         },
       });
 
-      assert.strictEqual(await serviceWithBuckets.getRoleFitStatus('StrongAttackers', format, 'Attacker', undefined), BattleRoleFitStatus.Yes);
-      assert.strictEqual(await serviceWithBuckets.getRoleFitStatus('Fast', format, 'Speedster', undefined), BattleRoleFitStatus.Eventually);
-      assert.strictEqual(await serviceWithBuckets.getRoleFitStatus('StrongDefenders', format, 'Wall', undefined), BattleRoleFitStatus.No);
+      assert.strictEqual(await serviceWithBuckets.getRoleFitStatus('StrongAttackers', format, 'Attacker', attackerMoveSet), BattleRoleFitStatus.Yes);
+      assert.strictEqual(await serviceWithBuckets.getRoleFitStatus('Fast', format, 'Speedster', speedsterMoveSet), BattleRoleFitStatus.Eventually);
+      assert.strictEqual(await serviceWithBuckets.getRoleFitStatus('StrongDefenders', format, 'Wall', wallMoveSet), BattleRoleFitStatus.No);
     },
   },
   {
@@ -351,7 +363,7 @@ const tests: TestCase[] = [
         },
       });
 
-      assert.strictEqual(await rankingService.getRoleFitStatus('StrongAttackers', { generation: 'gen9', meta: 'ou' } as never, 'Mon1', undefined), BattleRoleFitStatus.Eventually);
+      assert.strictEqual(await rankingService.getRoleFitStatus('StrongAttackers', { generation: 'gen9', meta: 'ou' } as never, 'Mon1', createMoveSetUsage('Mon1')), BattleRoleFitStatus.Eventually);
     },
   },
   {
@@ -367,7 +379,7 @@ const tests: TestCase[] = [
         },
       });
 
-      assert.strictEqual(await rankingService.getRoleFitStatus('Stall', { generation: 'gen9', meta: 'ou' } as never, 'Wall', createMoveSetUsage('Wall')), BattleRoleFitStatus.Eventually);
+      assert.strictEqual(await rankingService.getRoleFitStatus('Stall', { generation: 'gen9', meta: 'ou' } as never, 'Wall', createMoveSetUsage('Wall', { moves: ['Recover'] })), BattleRoleFitStatus.Eventually);
     },
   },
   {
@@ -377,7 +389,7 @@ const tests: TestCase[] = [
         pokemonByName: {},
       });
 
-      assert.strictEqual(await rankingService.getRoleFitStatus('StrongAttackers', { generation: 'gen9', meta: 'ou' } as never, 'Mon1', undefined), BattleRoleFitStatus.Eventually);
+      assert.strictEqual(await rankingService.getRoleFitStatus('StrongAttackers', { generation: 'gen9', meta: 'ou' } as never, 'Mon1', createMoveSetUsage('Mon1')), BattleRoleFitStatus.Eventually);
     },
   },
   {
@@ -386,7 +398,7 @@ const tests: TestCase[] = [
       const format = { generation: 'gen9', meta: 'ou' } as never;
       assert.strictEqual(await service.getRoleFitStatus('WeatherSetters', format, 'Pelipper', createMoveSetUsage('Pelipper', { abilities: ['Drizzle'] })), BattleRoleFitStatus.Yes);
       assert.strictEqual(await service.getRoleFitStatus('WeatherSetters', format, 'Pelipper', createMoveSetUsage('Pelipper', { moves: ['Hurricane'] })), BattleRoleFitStatus.No);
-      assert.strictEqual(await service.getRoleFitStatus('WeatherSetters', format, 'Pelipper', undefined), BattleRoleFitStatus.Eventually);
+      assert.strictEqual(await service.getRoleFitStatus('WeatherSetters', format, 'Pelipper', undefined), BattleRoleFitStatus.No);
     },
   },
   {
@@ -420,17 +432,45 @@ const tests: TestCase[] = [
     },
   },
   {
+    name: 'isStall maps defender buckets to fit statuses',
+    run: async () => {
+      const highest25pService = createService({
+        pokemonByName: {
+          Wall: createPokemon('Wall', 200),
+        },
+        formatStats: {
+          getMinimumStatForBucket: async () => 150,
+          isInBucket: async (target, bucket) => target === BaseStatTarget.Defender && (bucket === FormatStatBucket.Highest25p || bucket === FormatStatBucket.Highest50p),
+        },
+      });
+      const highest50pService = createService({
+        pokemonByName: {
+          Wall: createPokemon('Wall', 180),
+        },
+        formatStats: {
+          getMinimumStatForBucket: async () => 150,
+          isInBucket: async (target, bucket) => target === BaseStatTarget.Defender && bucket === FormatStatBucket.Highest50p,
+        },
+      });
+
+      const format = { generation: 'gen9', meta: 'ou' } as never;
+      assert.strictEqual(await highest25pService.isStall(format, createMoveSetUsage('Wall', { moves: ['Recover'] })), BattleRoleFitStatus.Yes);
+      assert.strictEqual(await highest50pService.isStall(format, createMoveSetUsage('Wall', { moves: ['Recover'] })), BattleRoleFitStatus.Eventually);
+      assert.strictEqual(await highest25pService.isStall(format, createMoveSetUsage('Wall')), BattleRoleFitStatus.No);
+    },
+  },
+  {
     name: 'returns false for unmatched movesets',
     run: async () => {
       const format = { generation: 'gen9', meta: 'ou' } as never;
-      const moveSet = createMoveSetUsage('Testmon', { moves: ['Moonblast'], abilities: ['Pressure'] });
-      assert.strictEqual(await service.isSpeedControl(format, moveSet), false);
-      assert.strictEqual(await service.isWeatherSetter(format, moveSet), false);
-      assert.strictEqual(await service.isHazardsControl(format, moveSet), false);
-      assert.strictEqual(await service.isPivot(format, moveSet), false);
-      assert.strictEqual(await service.isSetUpper(format, moveSet), false);
-      assert.strictEqual(await service.isPriority(format, moveSet), false);
-      assert.strictEqual(await service.isStall(format, moveSet), false);
+      const moveSet = createMoveSetUsage('DefinitelyMissingMon', { moves: ['Moonblast'], abilities: ['Pressure'] });
+      assert.strictEqual(await service.isSpeedControl(format, moveSet), BattleRoleFitStatus.No);
+      assert.strictEqual(await service.isWeatherSetter(format, moveSet), BattleRoleFitStatus.No);
+      assert.strictEqual(await service.isHazardsControl(format, moveSet), BattleRoleFitStatus.No);
+      assert.strictEqual(await service.isPivot(format, moveSet), BattleRoleFitStatus.No);
+      assert.strictEqual(await service.isSetUpper(format, moveSet), BattleRoleFitStatus.No);
+      assert.strictEqual(await service.isPriority(format, moveSet), BattleRoleFitStatus.No);
+      assert.strictEqual(await service.isStall(format, moveSet), BattleRoleFitStatus.No);
       assert.strictEqual(service.isSupporter(moveSet), false);
     },
   },

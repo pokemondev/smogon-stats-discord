@@ -920,9 +920,9 @@ const tests: TestCase[] = [
           assert.strictEqual(payload.content, '**__Incineroar Battle Roles:__** OU (Gen 9)');
           assert.deepStrictEqual(getFieldNames(interaction), ['Offensive', 'Utility/Support', '\u200b', 'Defensive']);
           assert.strictEqual(embed.fields[0].value, '🟢 High Atk Stats\n🔴 Set-uppers\n🔴 Priority Users\n🟡 Fast');
-          assert.strictEqual(embed.fields[1].value, '🟢 Pivot\n🔴 Weather Setters\n🔴 Redirection\n🟡 Hazards Control\n🔴 Stats Reducing\n🔴 Status Inflicting');
+          assert.strictEqual(embed.fields[1].value, '🟢 Pivot\n🟡 Hazards Control');
           assert.strictEqual(embed.fields[2].value, '\u200b');
-          assert.strictEqual(embed.fields[3].value, '🟢 High Defs Stats\n🔴 Stall');
+          assert.strictEqual(embed.fields[3].value, '🟢 High Defs Stats\n🔴 Status Inflicting\n🔴 Stall');
         }
       );
     }
@@ -949,10 +949,10 @@ const tests: TestCase[] = [
 
           assert.deepStrictEqual(getFieldNames(interaction), ['Offensive', 'Utility/Support', '\u200b', 'Speed/Modes', 'Defensive']);
           assert.strictEqual(embed.fields[0].value, '🟢 High Atk Stats\n🟢 Set-uppers\n🟢 Priority Users');
-          assert.strictEqual(embed.fields[1].value, '🟢 Supporter\n🟢 Weather Setters\n🟢 Redirection\n🟢 Stats Reducing\n🟢 Status Inflicting');
+          assert.strictEqual(embed.fields[1].value, '🟢 Supporter\n🟢 Weather Setters\n🟢 Redirection');
           assert.strictEqual(embed.fields[2].value, '\u200b');
           assert.strictEqual(embed.fields[3].value, '🟢 Speed Control\n🟢 Trick Room\n🟢 Tailwind');
-          assert.strictEqual(embed.fields[4].value, '🟢 High Defs Stats');
+          assert.strictEqual(embed.fields[4].value, '🟢 High Defs Stats\n🟢 Stats Reducing\n🟢 Status Inflicting');
           assert.strictEqual(embed.fields.some((field: { value: string }) => field.value.includes('Pivot')), false);
           assert.strictEqual(embed.fields.some((field: { value: string }) => field.value.includes('Hazards Control')), false);
           assert.strictEqual(embed.fields.some((field: { value: string }) => field.value.includes('Fast')), false);

@@ -407,7 +407,6 @@ const tests: TestCase[] = [
           const embed = payload.embeds?.[0].toJSON() as { title?: string } | undefined;
           const strongAttackersField = fields.find(field => field.name === 'High Atk Stats');
           const fastField = fields.find(field => field.name === 'Fast');
-          const weatherField = fields.find(field => field.name === 'Weather Setters');
           const strongDefendersField = fields.find(field => field.name === 'High Defs Stats');
           const stallField = fields.find(field => field.name === 'Stall');
 
@@ -419,19 +418,15 @@ const tests: TestCase[] = [
             'Priority Users',
             'Fast',
             'Pivot',
-            'Weather Setters',
-            'Redirection',
             'Hazards Control',
-            'Stats Reducing',
-            'Status Inflicting',
             'High Defs Stats',
             'Stall',
+            'Status Inflicting',
           ]);
           assert.strictEqual(strongAttackersField?.value, '<:lando:123> Landorus-Therian\nDragonite\nScizor\nVolcarona\nDragapult');
           assert.strictEqual(fastField?.value, 'Dragapult\nWhimsicott\nVolcarona\n<:lando:123> Landorus-Therian\nGlimmora');
           assert.strictEqual(strongDefendersField?.value, 'Toxapex\nBlissey\nCorviknight\n<:pelipper:123> Pelipper\n<:lando:123> Landorus-Therian');
-          assert.strictEqual(weatherField?.value, '<:pelipper:123> Pelipper');
-          assert.strictEqual(stallField?.value, '<:pelipper:123> Pelipper\n<:lando:123> Landorus-Therian\nGlimmora\nToxapex\nBlissey');
+          assert.strictEqual(stallField?.value, 'Toxapex\nBlissey');
         },
         {
           Pelipper: '<:pelipper:123>',
@@ -484,12 +479,12 @@ const tests: TestCase[] = [
             'Supporters',
             'Weather Setters',
             'Redirection',
+            'Tailwind',
+            'Trick Room',
+            'Speed Control',
+            'High Defs Stats',
             'Stats Reducing',
             'Status Inflicting',
-            'High Defs Stats',
-            'Speed Control',
-            'Trick Room',
-            'Tailwind',
           ]);
         },
       );

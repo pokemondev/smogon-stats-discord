@@ -234,12 +234,12 @@ const tests: TestCase[] = [
         'Supporters',
         'Weather Setters',
         'Redirection',
+        'Tailwind',
+        'Trick Room',
+        'Speed Control',
+        'High Defs Stats',
         'Stats Reducing',
         'Status Inflicting',
-        'High Defs Stats',
-        'Speed Control',
-        'Trick Room',
-        'Tailwind',
       ]);
       assert.strictEqual(supportersField?.value, 'Whimsicott\nAmoonguss\nHatterene\nTalonflame\nFarigiraf');
       assert.strictEqual(weatherField?.value, '<:pelipper:123> Pelipper');

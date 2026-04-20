@@ -292,3 +292,8 @@ The second command is required if slash command option choices changed.
 - Keep the slash surface simple. Current UX intentionally favors a small number of top-level commands.
 - Preserve fuzzy Pokemon lookup behavior unless there is a strong reason to change it.
 - This repo currently uses local JSON snapshots as the source of truth, so data changes often matter as much as code changes.
+- For if conditions that will result in returning early, do not use brackets. For example:
+```typescript 
+if (!moveSet?.name)
+  return BattleRoleFitStatus.No;
+```
