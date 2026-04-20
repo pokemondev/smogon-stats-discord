@@ -5,7 +5,10 @@ export type PresetBattleRoleKey =
   | 'Pivot'
   | 'SetUpper'
   | 'Priority'
-  | 'Stall';
+  | 'Stall'
+  | 'StatsReducing'
+  | 'StatusInflicting'
+  | 'Redirection';
 
 export type ComputedBattleRoleKey =
   | 'StrongAttackers'
@@ -30,6 +33,7 @@ export type BattleRoleRankingType =
   | 'strong-defenders'
   | 'supporters'
   | 'trick-room'
+  | 'stall'
   | 'tailwind';
 
 export interface BattleRoleDefinition {
