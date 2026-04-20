@@ -28,23 +28,31 @@ const tests: TestCase[] = [
     name: 'known pokemon emoji is returned directly',
     run: async () => {
       const service = new EmojiService();
-      await service.initialize(createFakeClient(['pkm_pikachu', 'others_unknown']) as never);
+      await service.initialize(createFakeClient(['pkm_pikachu', 'pkm_missingno', 'others_unknown']) as never);
       assert.strictEqual(service.getPokemonEmoji('Pikachu'), '<:pkm_pikachu:123>');
     },
   },
   {
-    name: 'missing pokemon emoji falls back to unknown emoji by default',
+    name: 'missingno pokemon emoji is returned directly',
     run: async () => {
       const service = new EmojiService();
-      await service.initialize(createFakeClient(['pkm_pikachu', 'others_unknown']) as never);
-      assert.strictEqual(service.getPokemonEmoji('MissingNo'), '<:others_unknown:123>');
+      await service.initialize(createFakeClient(['pkm_pikachu', 'pkm_missingno', 'others_unknown']) as never);
+      assert.strictEqual(service.getPokemonEmoji('MissingNo'), '<:pkm_missingno:123>');
+    },
+  },
+  {
+    name: 'missing pokemon emoji falls back to missingno emoji by default',
+    run: async () => {
+      const service = new EmojiService();
+      await service.initialize(createFakeClient(['pkm_pikachu', 'pkm_missingno', 'others_unknown']) as never);
+      assert.strictEqual(service.getPokemonEmoji('Missing Pokemon'), '<:pkm_missingno:123>');
     },
   },
   {
     name: 'missing item emoji falls back to unknown emoji by default',
     run: async () => {
       const service = new EmojiService();
-      await service.initialize(createFakeClient(['item_sitrus_berry', 'others_unknown']) as never);
+      await service.initialize(createFakeClient(['pkm_missingno', 'item_sitrus_berry', 'others_unknown']) as never);
       assert.strictEqual(service.getItemEmoji('Missing Item'), '<:others_unknown:123>');
     },
   },
@@ -52,7 +60,7 @@ const tests: TestCase[] = [
     name: 'missing type emoji falls back to unknown emoji by default',
     run: async () => {
       const service = new EmojiService();
-      await service.initialize(createFakeClient(['type_fire', 'others_unknown']) as never);
+      await service.initialize(createFakeClient(['pkm_missingno', 'type_fire', 'others_unknown']) as never);
       assert.strictEqual(service.getTypeEmoji('MissingType'), '<:others_unknown:123>');
     },
   },
@@ -60,26 +68,26 @@ const tests: TestCase[] = [
     name: 'fallback is skipped when fallbackToUnknown is false',
     run: async () => {
       const service = new EmojiService();
-      await service.initialize(createFakeClient(['pkm_pikachu', 'item_sitrus_berry', 'type_fire', 'others_unknown']) as never);
-      assert.strictEqual(service.getPokemonEmoji('MissingNo', false), undefined);
+      await service.initialize(createFakeClient(['pkm_pikachu', 'pkm_missingno', 'item_sitrus_berry', 'type_fire', 'others_unknown']) as never);
+      assert.strictEqual(service.getPokemonEmoji('Missing Pokemon', false), undefined);
       assert.strictEqual(service.getItemEmoji('Missing Item', false), undefined);
       assert.strictEqual(service.getTypeEmoji('MissingType', false), undefined);
     },
   },
   {
-    name: 'fallback is skipped when others_unknown is not loaded',
+    name: 'pokemon fallback is skipped when pkm_missingno is not loaded',
     run: async () => {
       const service = new EmojiService();
-      await service.initialize(createFakeClient(['pkm_pikachu']) as never);
-      assert.strictEqual(service.getPokemonEmoji('MissingNo'), undefined);
+      await service.initialize(createFakeClient(['pkm_pikachu', 'others_unknown']) as never);
+      assert.strictEqual(service.getPokemonEmoji('Missing Pokemon'), undefined);
     },
   },
   {
     name: 'getLoadedEmojiCount includes the unknown emoji when loaded',
     run: async () => {
       const service = new EmojiService();
-      await service.initialize(createFakeClient(['pkm_pikachu', 'item_sitrus_berry', 'type_fire', 'others_unknown']) as never);
-      assert.strictEqual(service.getLoadedEmojiCount(), 4);
+      await service.initialize(createFakeClient(['pkm_pikachu', 'pkm_missingno', 'item_sitrus_berry', 'type_fire', 'others_unknown']) as never);
+      assert.strictEqual(service.getLoadedEmojiCount(), 5);
     },
   },
 ];
