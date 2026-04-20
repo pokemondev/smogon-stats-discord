@@ -28,6 +28,7 @@ async function registerEmojis(): Promise<void> {
     ...pokemonList.entries.map(e => ({ emojiName: e.emojiName, attachment: e.minispriteUrl })),
     ...itemList.entries.map(e => ({ emojiName: e.emojiName, attachment: e.minispriteUrl })),
     ...typeList.entries.map(e => ({ emojiName: e.emojiName, attachment: e.localFilePath })),
+    { emojiName: PokemonEmoji.toEmojiName('MissingNo'), attachment: path.join(__dirname, '../res/other-imgs/missingno.png') },
     { emojiName: 'others_unknown', attachment: path.join(__dirname, '../res/other-imgs/question-mark.png') },
   ];
 

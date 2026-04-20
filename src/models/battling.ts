@@ -5,7 +5,10 @@ export type PresetBattleRoleKey =
   | 'Pivot'
   | 'SetUpper'
   | 'Priority'
-  | 'Stall';
+  | 'Stall'
+  | 'StatsReducing'
+  | 'StatusInflicting'
+  | 'Redirection';
 
 export type ComputedBattleRoleKey =
   | 'StrongAttackers'
@@ -17,6 +20,12 @@ export type ComputedBattleRoleKey =
 
 export type BattleRoleKey = PresetBattleRoleKey | ComputedBattleRoleKey;
 
+export enum BattleRoleFitStatus {
+  Yes = 'Yes',
+  No = 'No',
+  Eventually = 'Eventually',
+}
+
 export type BattleRoleRankingType =
   | 'preset'
   | 'strong-attackers'
@@ -24,6 +33,7 @@ export type BattleRoleRankingType =
   | 'strong-defenders'
   | 'supporters'
   | 'trick-room'
+  | 'stall'
   | 'tailwind';
 
 export interface BattleRoleDefinition {
@@ -32,50 +42,14 @@ export interface BattleRoleDefinition {
   rankingType: BattleRoleRankingType;
 }
 
-export const RoleDefinitions: BattleRoleDefinition[] = [
-  { key: 'StrongAttackers', displayName: 'Strong Attackers', rankingType: 'strong-attackers' },
-  { key: 'SetUpper', displayName: 'Set-uppers', rankingType: 'preset' },
-  { key: 'Priority', displayName: 'Priorities', rankingType: 'preset' },
-  { key: 'Fast', displayName: 'Fast', rankingType: 'fast' },
-  { key: 'Pivot', displayName: 'Pivot', rankingType: 'preset' },
-  { key: 'Supporters', displayName: 'Supporters', rankingType: 'supporters' },
-  { key: 'WeatherSetters', displayName: 'Weather setters', rankingType: 'preset' },
-  { key: 'StrongDefenders', displayName: 'Strong Defenders', rankingType: 'strong-defenders' },
-  { key: 'SpeedControl', displayName: 'Speed Control', rankingType: 'preset' },
-  { key: 'TrickRoom', displayName: 'Trick Room', rankingType: 'trick-room' },
-  { key: 'Tailwind', displayName: 'Tailwind', rankingType: 'tailwind' },
-  { key: 'HazardsControl', displayName: 'Hazards Control', rankingType: 'preset' },
-  { key: 'Stall', displayName: 'Stall', rankingType: 'preset' },
-];
+export interface BattleRoleCategoryEntry {
+  key: BattleRoleKey;
+  displayName: string;
+}
 
-export const SmogonMetaRoleOrder: BattleRoleKey[] = [
-  'StrongAttackers',
-  'SetUpper',
-  'Priority',
-  'Fast',
-  'Pivot',
-  'SpeedControl',
-  'HazardsControl',
-  'StrongDefenders',
-  'Stall',
-  'WeatherSetters',
-];
-
-export const VgcMetaRoleOrder: BattleRoleKey[] = [
-  'StrongAttackers',
-  'SetUpper',
-  'Priority',
-  'Supporters',
-  'WeatherSetters',
-  'StrongDefenders',
-  'SpeedControl',
-  'TrickRoom',
-  'Tailwind',
-];
-
-export enum Direction {
-  Ascending = 'ascending',
-  Descending = 'descending',
+export interface BattleRoleCategory {
+  title: string;
+  roles: BattleRoleCategoryEntry[];
 }
 
 export interface MetaStateRoleEntry {

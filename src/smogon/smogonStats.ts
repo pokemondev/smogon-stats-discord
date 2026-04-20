@@ -5,14 +5,9 @@ import { FileHelper } from "../common/fileHelper";
 import { SmogonStatsError } from "../models/errors";
 
 export class SmogonStats {
-
-  private static readonly DefaultCacheTtlInSeconds = 60 * 2;
-  private static readonly Gen8PriorityCacheTtlInSeconds = 60 * 5;
-  private static readonly Gen9PriorityCacheTtlInSeconds = 60 * 10;
-
   private cachedDb: cacheManager.Cache = cacheManager.caching({
     store: 'memory',
-    ttl: SmogonStats.DefaultCacheTtlInSeconds
+    ttl: FormatHelper.DefaultCacheTtlInSeconds
   });
 
   public async getLeads(format: SmogonFormat): Promise<PokemonUsage[]> {
@@ -103,7 +98,7 @@ export class SmogonStats {
   private async getStatsData<T>(statsType: string, format: SmogonFormat, callback: ((stats: any) => any) | undefined = undefined): Promise<T> {
     const fmt = FormatHelper.getKeyFrom(format);
     const cacheKey = `${statsType}_${fmt}`;
-    const ttl = this.getCacheTtlInSeconds(format);
+    const ttl = FormatHelper.getCacheTtlInSeconds(format);
     let statsData: any;
 
     try {
@@ -140,20 +135,6 @@ export class SmogonStats {
     }
 
     return true;
-  }
-
-  private getCacheTtlInSeconds(format: SmogonFormat): number {
-    const isPriorityMeta = format.meta === 'ou' || format.meta.startsWith('vgc');
-
-    if (isPriorityMeta) {
-      if (format.generation === 'gen9')
-        return SmogonStats.Gen9PriorityCacheTtlInSeconds;
-
-      if (format.generation === 'gen8')
-        return SmogonStats.Gen8PriorityCacheTtlInSeconds;
-    }
-
-    return SmogonStats.DefaultCacheTtlInSeconds;
   }
 
   private static loadFileData(statsType: string, format: SmogonFormat): any {

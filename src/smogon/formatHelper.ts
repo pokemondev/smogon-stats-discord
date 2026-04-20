@@ -6,6 +6,9 @@ import { FormatCatalog } from './formatCatalog';
 
 export class FormatHelper {
   private static readonly StatOrder = ['hp', 'at', 'df', 'sa', 'sd', 'sp'] as const;
+  public static readonly DefaultCacheTtlInSeconds = 60 * 2;
+  public static readonly Gen8PriorityCacheTtlInSeconds = 60 * 5;
+  public static readonly Gen9PriorityCacheTtlInSeconds = 60 * 10;
 
   public static Generations = FormatCatalog.Generations;
   public static VgcSeasons = FormatCatalog.VgcSeasons;
@@ -62,6 +65,20 @@ export class FormatHelper {
 
   public static getKeyFrom(format: SmogonFormat): string {
     return format.generation + format.meta;
+  }
+
+  public static getCacheTtlInSeconds(format: SmogonFormat): number {
+    const isPriorityMeta = format.meta === 'ou' || format.meta.startsWith('vgc');
+
+    if (isPriorityMeta) {
+      if (format.generation === 'gen9')
+        return FormatHelper.Gen9PriorityCacheTtlInSeconds;
+
+      if (format.generation === 'gen8')
+        return FormatHelper.Gen8PriorityCacheTtlInSeconds;
+    }
+
+    return FormatHelper.DefaultCacheTtlInSeconds;
   }
 
   public static getMetaDisplayName(meta: string): string {

@@ -5,7 +5,8 @@ import { CommandBase, CommandHelpTopic, SlashCommandData, SlashCommandHandler, w
 import { Pokemon, PokemonStatsEntry } from '../models/pokemon';
 import { PokemonUsage } from '../models/smogonUsage';
 import { FormatHelper } from '../smogon/formatHelper';
-import { SmogonMetaRoleOrder } from '../models/battling';
+import { FormatCatalog } from '../smogon/formatCatalog';
+import { BattleRolesHelper } from '../pokemon/battleRolesHelper';
 
 type SpeedTierMode = 'faster' | 'slower';
 type PokemonStatsMode = 'physical' | 'special' | 'both';
@@ -199,7 +200,7 @@ export class StatsCommand extends CommandBase implements SlashCommandHandler {
     const format = this.getFormat(interaction);
     await DiscordHelper.deferCommandReply(interaction);
 
-    const roleEntries = await this.getMetaStateRoleEntries(format, SmogonMetaRoleOrder);
+    const roleEntries = await this.getMetaStateRoleEntries(format, BattleRolesHelper.getMetaRoleOrder(FormatCatalog.isVgcMeta(format.meta)));
     if (!roleEntries.length) {
       await this.replyNoData(interaction, `No meta-state data available for ${FormatHelper.toUserString(format)}.`);
       return;
