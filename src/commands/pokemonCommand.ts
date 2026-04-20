@@ -6,7 +6,7 @@ import { FormatHelper } from '../smogon/formatHelper';
 import { FormatCatalog } from '../smogon/formatCatalog';
 import { TypeService } from '../pokemon/typeService';
 import { EffectivenessType } from '../models/pokemon';
-import { ChecksAndCountersUsageData, MoveSetUsage, PokemonMoveSetSearch, PokemonUsage, UsageData } from '../models/smogonUsage';
+import { ChecksAndCountersUsageData, MoveSetUsage, PokemonMoveSetSearch, PokemonUsage, SmogonFormat, UsageData } from '../models/smogonUsage';
 import { BattleRoleCategory, BattleRoleFitStatus } from '../models/battling';
 import { BattleRolesHelper } from '../pokemon/battleRolesHelper';
 
@@ -274,25 +274,22 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
 
     await DiscordHelper.deferCommandReply(interaction);
 
-    const [moveSet, usages] = await Promise.all([
-      this.dataSource.smogonStats.getMoveSet(query.pokemon.name, query.format),
-      this.dataSource.smogonStats.getUsages(query.format, false),
-    ]);
+    const moveSet = await this.dataSource.smogonStats.getMoveSet(query.pokemon.name, query.format);
     const isVgc = FormatCatalog.isVgcMeta(query.format.meta);
     const categories = BattleRolesHelper.getBattleRoleCategories(isVgc);
     const embed = this.createPokemonEmbed(query.pokemon, { thumbnail: true });
 
-    categories.forEach((category, index) => {
+    for (const [index, category] of categories.entries()) {
       embed.addFields({
         name: category.title,
-        value: this.formatBattleRoleCategory(category, query.pokemon.name, moveSet, usages),
+        value: await this.formatBattleRoleCategory(category, query.format, query.pokemon.name, moveSet),
         inline: true,
       });
 
       if ((index + 1) % 2 === 0 && index !== categories.length - 1) {
         embed.addFields({ name: '\u200b', value: '\u200b', inline: false });
       }
-    });
+    }
 
     await interaction.editReply({
       content: `**__${query.pokemon.name} Battle Roles:__** ${FormatHelper.toUserString(query.format)}`,
@@ -504,26 +501,29 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     return `Pokemon using ${this.getSearchDescription(search)}`;
   }
 
-  private formatBattleRoleCategory(
+  private async formatBattleRoleCategory(
     category: BattleRoleCategory,
+    format: SmogonFormat,
     pokemonName: string,
     moveSet: MoveSetUsage | undefined,
-    usages: PokemonUsage[],
-  ): string {
-    return category.roles
-      .map(role => `${this.getBattleRoleStatusSymbol(this.dataSource.battlingService.getRoleFitStatus(role.key, pokemonName, moveSet, usages))} ${role.displayName}`)
-      .join('\n');
+  ): Promise<string> {
+    const lines = await Promise.all(category.roles.map(async role => {
+      const status = await this.dataSource.battlingService.getRoleFitStatus(role.key, format, pokemonName, moveSet);
+      return `${this.getBattleRoleStatusSymbol(status)} ${role.displayName}`;
+    }));
+
+    return lines.join('\n');
   }
 
   private getBattleRoleStatusSymbol(status: BattleRoleFitStatus): string {
     switch (status) {
       case BattleRoleFitStatus.Yes:
-        return '✅';
+        return '🟢';
       case BattleRoleFitStatus.Eventually:
-        return '❔';
+        return '🟡';
       case BattleRoleFitStatus.No:
       default:
-        return '❌';
+        return '🔴';
     }
   }
 

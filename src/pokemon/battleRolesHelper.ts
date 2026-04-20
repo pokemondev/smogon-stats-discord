@@ -2,19 +2,22 @@ import { BattleRoleCategory, BattleRoleDefinition, BattleRoleKey, PresetBattleRo
 
 export class BattleRolesHelper {
   private static readonly roleDefinitions: BattleRoleDefinition[] = [
-    { key: 'StrongAttackers', displayName: 'Strong Attackers', rankingType: 'strong-attackers' },
+    { key: 'StrongAttackers', displayName: 'High Atk Stats', rankingType: 'strong-attackers' },
     { key: 'SetUpper', displayName: 'Set-uppers', rankingType: 'preset' },
-    { key: 'Priority', displayName: 'Priorities', rankingType: 'preset' },
+    { key: 'Priority', displayName: 'Priority Users', rankingType: 'preset' },
     { key: 'Fast', displayName: 'Fast', rankingType: 'fast' },
     { key: 'Pivot', displayName: 'Pivot', rankingType: 'preset' },
     { key: 'Supporters', displayName: 'Supporters', rankingType: 'supporters' },
-    { key: 'WeatherSetters', displayName: 'Weather setters', rankingType: 'preset' },
-    { key: 'StrongDefenders', displayName: 'Strong Defenders', rankingType: 'strong-defenders' },
+    { key: 'WeatherSetters', displayName: 'Weather Setters', rankingType: 'preset' },
+    { key: 'Redirection', displayName: 'Redirection', rankingType: 'preset' },
+    { key: 'StatsReducing', displayName: 'Stats Reducing', rankingType: 'preset' },
+    { key: 'StatusInflicting', displayName: 'Status Inflicting', rankingType: 'preset' },
+    { key: 'StrongDefenders', displayName: 'High Defs Stats', rankingType: 'strong-defenders' },
     { key: 'SpeedControl', displayName: 'Speed Control', rankingType: 'preset' },
     { key: 'TrickRoom', displayName: 'Trick Room', rankingType: 'trick-room' },
     { key: 'Tailwind', displayName: 'Tailwind', rankingType: 'tailwind' },
     { key: 'HazardsControl', displayName: 'Hazards Control', rankingType: 'preset' },
-    { key: 'Stall', displayName: 'Stall', rankingType: 'preset' },
+    { key: 'Stall', displayName: 'Stall', rankingType: 'stall' },
   ];
 
   private static readonly smogonMetaRoleOrder: BattleRoleKey[] = [
@@ -23,11 +26,10 @@ export class BattleRolesHelper {
     'Priority',
     'Fast',
     'Pivot',
-    'SpeedControl',
     'HazardsControl',
     'StrongDefenders',
     'Stall',
-    'WeatherSetters',
+    'StatusInflicting',
   ];
 
   private static readonly vgcMetaRoleOrder: BattleRoleKey[] = [
@@ -36,19 +38,22 @@ export class BattleRolesHelper {
     'Priority',
     'Supporters',
     'WeatherSetters',
-    'StrongDefenders',
-    'SpeedControl',
-    'TrickRoom',
+    'Redirection',
     'Tailwind',
+    'TrickRoom',
+    'SpeedControl',
+    'StrongDefenders',
+    'StatsReducing',
+    'StatusInflicting',
   ];
 
   private static readonly allBattleRoleCategories: BattleRoleCategory[] = [
     {
       title: 'Offensive',
       roles: [
-        { key: 'StrongAttackers', displayName: 'Strong Attacker' },
+        { key: 'StrongAttackers', displayName: 'High Atk Stats' },
         { key: 'SetUpper', displayName: 'Set-uppers' },
-        { key: 'Priority', displayName: 'Priority' },
+        { key: 'Priority', displayName: 'Priority Users' },
         { key: 'Fast', displayName: 'Fast' },
       ],
     },
@@ -57,8 +62,9 @@ export class BattleRolesHelper {
       roles: [
         { key: 'Supporters', displayName: 'Supporter' },
         { key: 'Pivot', displayName: 'Pivot' },
-        { key: 'WeatherSetters', displayName: 'Weather setter' },
-        { key: 'HazardsControl', displayName: 'Hazards Control' },
+        { key: 'WeatherSetters', displayName: 'Weather Setters' },
+        { key: 'Redirection', displayName: 'Redirection' },
+        { key: 'HazardsControl', displayName: 'Hazards Control' },        
       ],
     },
     {
@@ -72,7 +78,9 @@ export class BattleRolesHelper {
     {
       title: 'Defensive',
       roles: [
-        { key: 'StrongDefenders', displayName: 'Strong Defender' },
+        { key: 'StrongDefenders', displayName: 'High Defs Stats' },
+        { key: 'StatsReducing', displayName: 'Stats Reducing' },
+        { key: 'StatusInflicting', displayName: 'Status Inflicting' },
         { key: 'Stall', displayName: 'Stall' },
       ],
     },
@@ -104,7 +112,7 @@ export class BattleRolesHelper {
 
   public static getPresetRoleKeys(): PresetBattleRoleKey[] {
     return BattleRolesHelper.roleDefinitions
-      .filter((role): role is BattleRoleDefinition & { key: PresetBattleRoleKey } => role.rankingType === 'preset')
+      .filter((role): role is BattleRoleDefinition & { key: PresetBattleRoleKey } => role.rankingType === 'preset' || role.rankingType === 'stall')
       .map(role => role.key);
   }
 }

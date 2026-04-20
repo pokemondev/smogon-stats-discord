@@ -2,13 +2,14 @@ import assert = require('assert');
 import { MoveSetUsage, PokemonUsage } from '../models/smogonUsage';
 import { BattlingService } from './battlingService';
 import { BattleRoleFitStatus } from '../models/battling';
+import { BaseStatTarget, FormatStatBucket } from '../models/statsRanking';
 import { MoveCategory } from '../models/moves';
 import { Pokemon, PokemonType } from '../models/pokemon';
 import { BattleRolesHelper } from './battleRolesHelper';
 
 interface TestCase {
   name: string;
-  run: () => void;
+  run: () => Promise<void>;
 }
 
 function createMoveSetUsage(name: string, options: { moves?: string[]; abilities?: string[] } = {}): MoveSetUsage {
@@ -60,6 +61,10 @@ function createPokemon(name: string, stat: number): Pokemon {
 function createService(options: {
   pokemonByName?: Record<string, Pokemon>;
   moveCategoryByName?: Record<string, MoveCategory>;
+  formatStats?: {
+    getMinimumStatForBucket?: (bucket: FormatStatBucket) => number | undefined | Promise<number | undefined>;
+    isInBucket?: (target: BaseStatTarget, bucket: FormatStatBucket) => boolean | Promise<boolean>;
+  };
 } = {}): BattlingService {
   const pokemonMap = new Map(
     Object.values(options.pokemonByName ?? {}).map(pokemon => [pokemon.name.toLowerCase(), pokemon])
@@ -67,6 +72,14 @@ function createService(options: {
   const moveCategoryMap = new Map(
     Object.entries(options.moveCategoryByName ?? {}).map(([name, category]) => [name.toLowerCase(), category])
   );
+  const formatStats = {
+    getMinimumStatForBucket: async (_format: unknown, _target: BaseStatTarget, bucket: FormatStatBucket) => options.formatStats?.getMinimumStatForBucket
+      ? options.formatStats.getMinimumStatForBucket(bucket)
+      : 150,
+    isInBucket: async (_format: unknown, target: BaseStatTarget, _baseStats: unknown, bucket: FormatStatBucket) => options.formatStats?.isInBucket
+      ? options.formatStats.isInBucket(target, bucket)
+      : false,
+  };
 
   return new BattlingService(
     {
@@ -80,6 +93,7 @@ function createService(options: {
           : undefined;
       },
     } as never,
+    formatStats as never,
   );
 }
 
@@ -88,33 +102,38 @@ const service = new BattlingService();
 const tests: TestCase[] = [
   {
     name: 'SmogonMetaRoleOrder defines stable display order for Smogon formats',
-    run: () => {
+    run: async () => {
       const roleNames = BattleRolesHelper.getMetaRoleOrder(false).map(key => BattleRolesHelper.getRoleDefinition(key)!.displayName);
       assert.deepStrictEqual(roleNames, [
-        'Strong Attackers',
+        'High Atk Stats',
         'Set-uppers',
-        'Priorities',
+        'Priority Users',
         'Fast',
         'Pivot',
-        'Speed Control',
+        'Weather Setters',
+        'Redirection',
         'Hazards Control',
-        'Strong Defenders',
+        'Stats Reducing',
+        'Status Inflicting',
+        'High Defs Stats',
         'Stall',
-        'Weather setters',
       ]);
     },
   },
   {
     name: 'VgcMetaRoleOrder defines stable display order for VGC formats',
-    run: () => {
+    run: async () => {
       const roleNames = BattleRolesHelper.getMetaRoleOrder(true).map(key => BattleRolesHelper.getRoleDefinition(key)!.displayName);
       assert.deepStrictEqual(roleNames, [
-        'Strong Attackers',
+        'High Atk Stats',
         'Set-uppers',
-        'Priorities',
+        'Priority Users',
         'Supporters',
-        'Weather setters',
-        'Strong Defenders',
+        'Weather Setters',
+        'Redirection',
+        'Stats Reducing',
+        'Status Inflicting',
+        'High Defs Stats',
         'Speed Control',
         'Trick Room',
         'Tailwind',
@@ -123,38 +142,52 @@ const tests: TestCase[] = [
   },
   {
     name: 'matches move-based weather setters from the battle roles file',
-    run: () => {
-      assert.strictEqual(service.isWeatherSetter(createMoveSetUsage('Pelipper', { moves: ['Sunny Day'] })), true);
+    run: async () => {
+      assert.strictEqual(await service.isWeatherSetter({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Pelipper', { moves: ['Sunny Day'] })), true);
     },
   },
   {
     name: 'matches ability-based weather setters from the battle roles file',
-    run: () => {
-      assert.strictEqual(service.isWeatherSetter(createMoveSetUsage('Pelipper', { abilities: ['Drizzle'] })), true);
+    run: async () => {
+      assert.strictEqual(await service.isWeatherSetter({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Pelipper', { abilities: ['Drizzle'] })), true);
     },
   },
   {
     name: 'matches broader ability overrides for hazards control',
-    run: () => {
-      assert.strictEqual(service.isHazardsControl(createMoveSetUsage('Glimmora', { abilities: ['Toxic Debris'] })), true);
+    run: async () => {
+      assert.strictEqual(await service.isHazardsControl({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Glimmora', { abilities: ['Toxic Debris'] })), true);
     },
   },
   {
     name: 'matches broader ability overrides for pivot roles',
-    run: () => {
-      assert.strictEqual(service.isPivot(createMoveSetUsage('Amoonguss', { abilities: ['Regenerator'] })), true);
+    run: async () => {
+      assert.strictEqual(await service.isPivot({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Amoonguss', { abilities: ['Regenerator'] })), true);
+    },
+  },
+  {
+    name: 'matches stat-reducing presets while excluding speed-only effects',
+    run: async () => {
+      assert.strictEqual(await service.hasRole({ generation: 'gen9', meta: 'ou' } as never, 'StatsReducing', createMoveSetUsage('Incineroar', { abilities: ['Intimidate'] })), true);
+      assert.strictEqual(await service.hasRole({ generation: 'gen9', meta: 'ou' } as never, 'StatsReducing', createMoveSetUsage('Amoonguss', { abilities: ['Gooey'] })), false);
+    },
+  },
+  {
+    name: 'matches status-inflicting presets from both moves and abilities',
+    run: async () => {
+      assert.strictEqual(await service.hasRole({ generation: 'gen9', meta: 'ou' } as never, 'StatusInflicting', createMoveSetUsage('Amoonguss', { moves: ['Spore'] })), true);
+      assert.strictEqual(await service.hasRole({ generation: 'gen9', meta: 'ou' } as never, 'StatusInflicting', createMoveSetUsage('Pecharunt', { abilities: ['Poison Puppeteer'] })), true);
     },
   },
   {
     name: 'returns all matching signal roles for overlapping movesets',
-    run: () => {
-      const matches = service.getMatchingRoles(createMoveSetUsage('Slowking', { moves: ['Chilly Reception'] }));
-      assert.deepStrictEqual(matches.map(role => role.displayName), ['Pivot', 'Supporters', 'Weather setters']);
+    run: async () => {
+      const matches = await service.getMatchingRoles({ generation: 'gen9', meta: 'ou' } as never, createMoveSetUsage('Slowking', { moves: ['Chilly Reception'] }));
+      assert.deepStrictEqual(matches.map(role => role.displayName), ['Pivot', 'Supporters', 'Weather Setters', 'Stall']);
     },
   },
   {
     name: 'classifies supporters from top moves after removing set-uppers',
-    run: () => {
+    run: async () => {
       const moveSet = createMoveSetUsage('Whimsicott', {
         moves: ['Swords Dance', 'Tailwind', 'Protect', 'Encore', 'Helping Hand', 'Charm', 'Sunny Day', 'Taunt', 'Moonblast', 'U-turn'],
       });
@@ -164,7 +197,7 @@ const tests: TestCase[] = [
   },
   {
     name: 'does not classify supporters without a strict status-move majority',
-    run: () => {
+    run: async () => {
       const moveSet = createMoveSetUsage('Dragonite', {
         moves: ['Swords Dance', 'Bulk Up', 'Moonblast', 'U-turn', 'Heat Wave', 'Play Rough'],
       });
@@ -174,8 +207,9 @@ const tests: TestCase[] = [
   },
   {
     name: 'ranks strong attackers by strongest attacking stat before usage',
-    run: () => {
-      const entries = service.buildMetaStateRoleEntries(
+    run: async () => {
+      const entries = await service.buildMetaStateRoleEntries(
+        { generation: 'gen9', meta: 'ou' } as never,
         BattleRolesHelper.getMetaRoleOrder(false),
         [
           createUsage('Dragonite', 1, 21.1),
@@ -189,14 +223,56 @@ const tests: TestCase[] = [
         ],
       );
 
-      const attackers = entries.find(entry => entry.roleName === 'Strong Attackers');
+      const attackers = entries.find(entry => entry.roleName === 'High Atk Stats');
       assert.deepStrictEqual(attackers?.pokemonNames, ['Chi-Yu', 'Dragonite', 'Scizor']);
     },
   },
   {
+    name: 'includes top-half defenders in stall role rankings',
+    run: async () => {
+      const rankingService = createService({
+        pokemonByName: {
+          Mon1: createPokemon('Mon1', 200),
+          Mon2: createPokemon('Mon2', 180),
+          Mon3: createPokemon('Mon3', 160),
+          Mon4: createPokemon('Mon4', 100),
+          Mon5: createPokemon('Mon5', 90),
+          Mon6: createPokemon('Mon6', 80),
+        },
+        formatStats: {
+          getMinimumStatForBucket: async (bucket) => bucket === FormatStatBucket.Highest50p ? 160 : undefined,
+        },
+      });
+
+      const entries = await rankingService.buildMetaStateRoleEntries(
+        { generation: 'gen9', meta: 'ou' } as never,
+        ['Stall'],
+        [
+          createUsage('Mon1', 1, 30),
+          createUsage('Mon2', 2, 25),
+          createUsage('Mon3', 3, 20),
+          createUsage('Mon4', 4, 15),
+          createUsage('Mon5', 5, 10),
+          createUsage('Mon6', 6, 5),
+        ],
+        [
+          createMoveSetUsage('Mon1'),
+          createMoveSetUsage('Mon2'),
+          createMoveSetUsage('Mon3'),
+          createMoveSetUsage('Mon4'),
+          createMoveSetUsage('Mon5'),
+          createMoveSetUsage('Mon6'),
+        ],
+      );
+
+      assert.deepStrictEqual(entries[0]?.pokemonNames, ['Mon1', 'Mon2', 'Mon3']);
+    },
+  },
+  {
     name: 'ranks Trick Room users by slowest speed before usage',
-    run: () => {
-      const entries = service.buildMetaStateRoleEntries(
+    run: async () => {
+      const entries = await service.buildMetaStateRoleEntries(
+        { generation: 'gen9', meta: 'vgc2026regi' } as never,
         BattleRolesHelper.getMetaRoleOrder(true),
         [
           createUsage('Farigiraf', 1, 24.5),
@@ -214,8 +290,9 @@ const tests: TestCase[] = [
   },
   {
     name: 'ranks Tailwind users by fastest speed before usage',
-    run: () => {
-      const entries = service.buildMetaStateRoleEntries(
+    run: async () => {
+      const entries = await service.buildMetaStateRoleEntries(
+        { generation: 'gen9', meta: 'vgc2026regi' } as never,
         BattleRolesHelper.getMetaRoleOrder(true),
         [
           createUsage('Whimsicott', 1, 28.1),
@@ -232,90 +309,89 @@ const tests: TestCase[] = [
     },
   },
   {
-    name: 'getRoleFitStatus uses top stat cutoff values for yes maybe and no',
-    run: () => {
-      const pokemonByName = Object.fromEntries([
-        ...Array.from({ length: 15 }, (_, index) => {
-          const name = `Mon${index + 1}`;
-          return [name, createPokemon(name, 300)];
-        }),
-        ...Array.from({ length: 15 }, (_, index) => {
-          const name = `Mon${index + 16}`;
-          return [name, createPokemon(name, 200)];
-        }),
-        ...Array.from({ length: 5 }, (_, index) => {
-          const name = `Mon${index + 31}`;
-          return [name, createPokemon(name, 100)];
-        }),
-      ]);
-      const usages = Array.from({ length: 35 }, (_, index) => createUsage(`Mon${index + 1}`, index + 1, 100 - index));
-      const rankingService = createService({ pokemonByName });
+    name: 'getRoleFitStatus maps computed roles to format stat buckets',
+    run: async () => {
+      const format = { generation: 'gen9', meta: 'ou' } as never;
+      const serviceWithBuckets = createService({
+        pokemonByName: {
+          Attacker: createPokemon('Attacker', 200),
+          Speedster: createPokemon('Speedster', 180),
+          Wall: createPokemon('Wall', 160),
+        },
+        formatStats: {
+          getMinimumStatForBucket: async () => 120,
+          isInBucket: async (target, bucket) => {
+            if (target === BaseStatTarget.Attacker) {
+              return bucket === FormatStatBucket.Highest25p;
+            }
 
-      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon5', undefined, usages), BattleRoleFitStatus.Yes);
-      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon20', undefined, usages), BattleRoleFitStatus.Eventually);
-      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon33', undefined, usages), BattleRoleFitStatus.No);
+            if (target === BaseStatTarget.Spe) {
+              return bucket === FormatStatBucket.Highest50p;
+            }
+
+            return false;
+          },
+        },
+      });
+
+      assert.strictEqual(await serviceWithBuckets.getRoleFitStatus('StrongAttackers', format, 'Attacker', undefined), BattleRoleFitStatus.Yes);
+      assert.strictEqual(await serviceWithBuckets.getRoleFitStatus('Fast', format, 'Speedster', undefined), BattleRoleFitStatus.Eventually);
+      assert.strictEqual(await serviceWithBuckets.getRoleFitStatus('StrongDefenders', format, 'Wall', undefined), BattleRoleFitStatus.No);
     },
   },
   {
-    name: 'getRoleFitStatus treats tied stats beyond rank 25 as maybe when they match the cutoff value',
-    run: () => {
-      const pokemonByName = Object.fromEntries([
-        ...Array.from({ length: 15 }, (_, index) => {
-          const name = `Mon${index + 1}`;
-          return [name, createPokemon(name, 300)];
-        }),
-        ...Array.from({ length: 20 }, (_, index) => {
-          const name = `Mon${index + 16}`;
-          return [name, createPokemon(name, 200)];
-        }),
-      ]);
-      const usages = Array.from({ length: 35 }, (_, index) => createUsage(`Mon${index + 1}`, index + 1, 100 - index));
-      const rankingService = createService({ pokemonByName });
-
-      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon35', undefined, usages), BattleRoleFitStatus.Eventually);
-      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon20', undefined, usages), BattleRoleFitStatus.Eventually);
-    },
-  },
-  {
-    name: 'getRoleFitStatus returns no when target stat is below the top25 cutoff value',
-    run: () => {
-      const pokemonByName = Object.fromEntries(
-        Array.from({ length: 35 }, (_, index) => {
-          const position = index + 1;
-          const name = `Mon${position}`;
-          const stat = position <= 15 ? 300 : position <= 30 ? 200 : 100;
-          return [name, createPokemon(name, stat)];
-        })
-      );
-      const usages = Array.from({ length: 35 }, (_, index) => createUsage(`Mon${index + 1}`, index + 1, 100 - index));
-      const rankingService = createService({ pokemonByName });
-
-      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon33', undefined, usages), BattleRoleFitStatus.No);
-    },
-  },
-  {
-    name: 'getRoleFitStatus returns maybe when ranked-role usage data is missing',
-    run: () => {
+    name: 'getRoleFitStatus returns maybe when computed-role format stats are missing',
+    run: async () => {
       const rankingService = createService({
         pokemonByName: {
           Mon1: createPokemon('Mon1', 200),
         },
+        formatStats: {
+          getMinimumStatForBucket: async () => undefined,
+        },
       });
 
-      assert.strictEqual(rankingService.getRoleFitStatus('StrongAttackers', 'Mon1', undefined, []), BattleRoleFitStatus.Eventually);
+      assert.strictEqual(await rankingService.getRoleFitStatus('StrongAttackers', { generation: 'gen9', meta: 'ou' } as never, 'Mon1', undefined), BattleRoleFitStatus.Eventually);
+    },
+  },
+  {
+    name: 'getRoleFitStatus treats top-half defenders as eventual stall fits',
+    run: async () => {
+      const rankingService = createService({
+        pokemonByName: {
+          Wall: createPokemon('Wall', 200),
+        },
+        formatStats: {
+          getMinimumStatForBucket: async () => 150,
+          isInBucket: async (target, bucket) => target === BaseStatTarget.Defender && bucket === FormatStatBucket.Highest50p,
+        },
+      });
+
+      assert.strictEqual(await rankingService.getRoleFitStatus('Stall', { generation: 'gen9', meta: 'ou' } as never, 'Wall', createMoveSetUsage('Wall')), BattleRoleFitStatus.Eventually);
+    },
+  },
+  {
+    name: 'getRoleFitStatus returns maybe when the target pokemon is missing',
+    run: async () => {
+      const rankingService = createService({
+        pokemonByName: {},
+      });
+
+      assert.strictEqual(await rankingService.getRoleFitStatus('StrongAttackers', { generation: 'gen9', meta: 'ou' } as never, 'Mon1', undefined), BattleRoleFitStatus.Eventually);
     },
   },
   {
     name: 'getRoleFitStatus delegates preset role checks to existing move and ability matching',
-    run: () => {
-      assert.strictEqual(service.getRoleFitStatus('WeatherSetters', 'Pelipper', createMoveSetUsage('Pelipper', { abilities: ['Drizzle'] }), []), BattleRoleFitStatus.Yes);
-      assert.strictEqual(service.getRoleFitStatus('WeatherSetters', 'Pelipper', createMoveSetUsage('Pelipper', { moves: ['Hurricane'] }), []), BattleRoleFitStatus.No);
-      assert.strictEqual(service.getRoleFitStatus('WeatherSetters', 'Pelipper', undefined, []), BattleRoleFitStatus.Eventually);
+    run: async () => {
+      const format = { generation: 'gen9', meta: 'ou' } as never;
+      assert.strictEqual(await service.getRoleFitStatus('WeatherSetters', format, 'Pelipper', createMoveSetUsage('Pelipper', { abilities: ['Drizzle'] })), BattleRoleFitStatus.Yes);
+      assert.strictEqual(await service.getRoleFitStatus('WeatherSetters', format, 'Pelipper', createMoveSetUsage('Pelipper', { moves: ['Hurricane'] })), BattleRoleFitStatus.No);
+      assert.strictEqual(await service.getRoleFitStatus('WeatherSetters', format, 'Pelipper', undefined), BattleRoleFitStatus.Eventually);
     },
   },
   {
     name: 'getRoleFitStatus keeps supporter, trick room, and tailwind on move-based checks',
-    run: () => {
+    run: async () => {
       const rankingService = createService({
         moveCategoryByName: {
           'Helping Hand': MoveCategory.Status,
@@ -337,32 +413,34 @@ const tests: TestCase[] = [
         moves: ['Tailwind', 'Brave Bird'],
       });
 
-      assert.strictEqual(rankingService.getRoleFitStatus('Supporters', 'Whimsicott', supporterMoveSet, []), BattleRoleFitStatus.Yes);
-      assert.strictEqual(rankingService.getRoleFitStatus('TrickRoom', 'Farigiraf', trickRoomMoveSet, []), BattleRoleFitStatus.Yes);
-      assert.strictEqual(rankingService.getRoleFitStatus('Tailwind', 'Talonflame', tailwindMoveSet, []), BattleRoleFitStatus.Yes);
+      const format = { generation: 'gen9', meta: 'ou' } as never;
+      assert.strictEqual(await rankingService.getRoleFitStatus('Supporters', format, 'Whimsicott', supporterMoveSet), BattleRoleFitStatus.Yes);
+      assert.strictEqual(await rankingService.getRoleFitStatus('TrickRoom', format, 'Farigiraf', trickRoomMoveSet), BattleRoleFitStatus.Yes);
+      assert.strictEqual(await rankingService.getRoleFitStatus('Tailwind', format, 'Talonflame', tailwindMoveSet), BattleRoleFitStatus.Yes);
     },
   },
   {
     name: 'returns false for unmatched movesets',
-    run: () => {
+    run: async () => {
+      const format = { generation: 'gen9', meta: 'ou' } as never;
       const moveSet = createMoveSetUsage('Testmon', { moves: ['Moonblast'], abilities: ['Pressure'] });
-      assert.strictEqual(service.isSpeedControl(moveSet), false);
-      assert.strictEqual(service.isWeatherSetter(moveSet), false);
-      assert.strictEqual(service.isHazardsControl(moveSet), false);
-      assert.strictEqual(service.isPivot(moveSet), false);
-      assert.strictEqual(service.isSetUpper(moveSet), false);
-      assert.strictEqual(service.isPriority(moveSet), false);
-      assert.strictEqual(service.isStall(moveSet), false);
+      assert.strictEqual(await service.isSpeedControl(format, moveSet), false);
+      assert.strictEqual(await service.isWeatherSetter(format, moveSet), false);
+      assert.strictEqual(await service.isHazardsControl(format, moveSet), false);
+      assert.strictEqual(await service.isPivot(format, moveSet), false);
+      assert.strictEqual(await service.isSetUpper(format, moveSet), false);
+      assert.strictEqual(await service.isPriority(format, moveSet), false);
+      assert.strictEqual(await service.isStall(format, moveSet), false);
       assert.strictEqual(service.isSupporter(moveSet), false);
     },
   },
 ];
 
-function run(): void {
+async function run(): Promise<void> {
   for (const test of tests) {
-    test.run();
+    await test.run();
     console.log(`PASS ${test.name}`);
   }
 }
 
-run();
+void run();

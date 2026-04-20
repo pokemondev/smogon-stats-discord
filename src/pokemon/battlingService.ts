@@ -2,9 +2,11 @@ import { FileHelper } from '../common/fileHelper';
 import { compareCandidatesByStat, compareCandidatesBySpeed, compareCandidatesByUsage, compareByUsage } from '../common/sortingHelper';
 import { BattleRoleDefinition, BattleRoleFitStatus, BattleRoleKey, MetaStateRoleEntry, PresetBattleRoleKey } from '../models/battling';
 import { Direction } from '../models/common';
+import { BaseStatTarget, FormatStatBucket } from '../models/statsRanking';
 import { MoveCategory } from '../models/moves';
 import { Pokemon } from '../models/pokemon';
-import { MoveSetUsage, PokemonUsage } from '../models/smogonUsage';
+import { MoveSetUsage, PokemonUsage, SmogonFormat } from '../models/smogonUsage';
+import { FormatStats } from '../smogon/formatStats';
 import { BattleRolesHelper } from './battleRolesHelper';
 import { Movedex } from './movedex';
 import { PokemonDb } from './pokemonDb';
@@ -18,51 +20,65 @@ type MetaStateCandidate = {
 };
 
 const statRoleUsageLimit = 100;
-const strongFitThreshold = 15;
-const partialFitThreshold = 30;
 const isSupporterMoveUsageThreshold = 85;
 
 export class BattlingService {
   private readonly rolePresets = {} as Record<PresetBattleRoleKey, Set<string>>; // set at runtime based on file data (loadFileData)
 
-  private readonly roleCheckers: Partial<Record<BattleRoleKey, (moveSet: MoveSetUsage) => boolean>> = {
-    Supporters: (moveSet) => this.isSupporter(moveSet),
-    TrickRoom: (moveSet) => this.usesMove(moveSet, 'Trick Room'),
-    Tailwind: (moveSet) => this.usesMove(moveSet, 'Tailwind'),
+  private readonly roleCheckers: Partial<Record<BattleRoleKey, (format: SmogonFormat, moveSet: MoveSetUsage) => Promise<boolean>>> = {
+    Supporters: (_format, moveSet) => Promise.resolve(this.isSupporter(moveSet)),
+    TrickRoom: (_format, moveSet) => Promise.resolve(this.usesMove(moveSet, 'Trick Room')),
+    Tailwind: (_format, moveSet) => Promise.resolve(this.usesMove(moveSet, 'Tailwind')),
+    Stall: (format, moveSet) => this.isStall(format, moveSet),
   };
 
   constructor(
     private readonly pokemonDb: PokemonDb = new PokemonDb(),
     private readonly movedex: Movedex = new Movedex(),
+    private readonly formatStats: FormatStats = new FormatStats(),
   ) {
     this.loadFileData();
   }
 
-  public getMatchingRoles(moveSet: MoveSetUsage): BattleRoleDefinition[] {
-    return BattleRolesHelper.getRoleDefinitions().filter(role => this.hasRole(role.key, moveSet));
+  public async getMatchingRoles(format: SmogonFormat, moveSet: MoveSetUsage): Promise<BattleRoleDefinition[]> {
+    const results = await Promise.all(
+      BattleRolesHelper.getRoleDefinitions().map(async role => ({
+        role,
+        matches: await this.hasRole(format, role.key, moveSet),
+      }))
+    );
+    return results.filter(r => r.matches).map(r => r.role);
   }
 
   public buildMetaStateRoleEntries(
+    format: SmogonFormat,
     roleKeys: BattleRoleKey[],
     usages: PokemonUsage[],
     moveSets: MoveSetUsage[],
     limit: number = 5,
-  ): MetaStateRoleEntry[] {
+  ): Promise<MetaStateRoleEntry[]> {
     const candidates = this.buildCandidates(usages, moveSets);
     if (!candidates.length) {
-      return [];
+      return Promise.resolve([]);
     }
 
-    return roleKeys
-      .map(key => BattleRolesHelper.getRoleDefinition(key))
-      .filter((role): role is BattleRoleDefinition => !!role)
-      .map(role => ({
-        roleName: role.displayName,
-        pokemonNames: this.getPokemonForRole(role, candidates, limit),
-      }));
+    return Promise.all(
+      roleKeys
+        .map(key => BattleRolesHelper.getRoleDefinition(key))
+        .filter((role): role is BattleRoleDefinition => !!role)
+        .map(async role => ({
+          roleName: role.displayName,
+          pokemonNames: await this.getPokemonForRole(format, role, candidates, limit),
+        }))
+    );
   }
 
-  public getRoleFitStatus(role: BattleRoleKey, pokemonName: string, moveSet: MoveSetUsage | undefined, usages: PokemonUsage[]): BattleRoleFitStatus {
+  public async getRoleFitStatus(
+    role: BattleRoleKey,
+    format: SmogonFormat,
+    pokemonName: string,
+    moveSet: MoveSetUsage | undefined,
+  ): Promise<BattleRoleFitStatus> {
     const definition = BattleRolesHelper.getRoleDefinition(role);
     if (!definition) {
       return BattleRoleFitStatus.No;
@@ -70,24 +86,30 @@ export class BattlingService {
 
     switch (definition.rankingType) {
       case 'strong-attackers':
-        return this.getTopStatFitStatus(usages, pokemonName, pokemon => Math.max(pokemon.baseStats.atk, pokemon.baseStats.spA));
+        return this.getFormatStatFitStatus(format, pokemonName, BaseStatTarget.Attacker);
       case 'fast':
-        return this.getTopStatFitStatus(usages, pokemonName, pokemon => pokemon.baseStats.spe);
+        return this.getFormatStatFitStatus(format, pokemonName, BaseStatTarget.Spe);
       case 'strong-defenders':
-        return this.getTopStatFitStatus(usages, pokemonName, pokemon => Math.max(pokemon.baseStats.def, pokemon.baseStats.spD));
+        return this.getFormatStatFitStatus(format, pokemonName, BaseStatTarget.Defender);
+      case 'stall': {
+        if (moveSet && this.hasPresetRole('Stall', moveSet)) {
+          return BattleRoleFitStatus.Yes;
+        }
+        return this.getFormatStatFitStatus(format, pokemonName, BaseStatTarget.Defender);
+      }
       case 'preset':
       case 'supporters':
       case 'trick-room':
       case 'tailwind':
       default:
-        return this.getMoveSetFitStatus(role, moveSet);
+        return this.getMoveSetFitStatus(format, role, moveSet);
     }
   }
 
-  public hasRole(role: BattleRoleKey, moveSet: MoveSetUsage): boolean {
+  public async hasRole(format: SmogonFormat, role: BattleRoleKey, moveSet: MoveSetUsage): Promise<boolean> {
     const checker = this.roleCheckers[role];
     if (checker !== undefined) {
-      return checker(moveSet);
+      return checker(format, moveSet);
     }
 
     if (role in this.rolePresets) {
@@ -97,32 +119,44 @@ export class BattlingService {
     return false;
   }
 
-  public isSpeedControl(moveSet: MoveSetUsage): boolean {
-    return this.hasRole('SpeedControl', moveSet);
+  public async isSpeedControl(format: SmogonFormat, moveSet: MoveSetUsage): Promise<boolean> {
+    return this.hasRole(format, 'SpeedControl', moveSet);
   }
 
-  public isWeatherSetter(moveSet: MoveSetUsage): boolean {
-    return this.hasRole('WeatherSetters', moveSet);
+  public async isWeatherSetter(format: SmogonFormat, moveSet: MoveSetUsage): Promise<boolean> {
+    return this.hasRole(format, 'WeatherSetters', moveSet);
   }
 
-  public isHazardsControl(moveSet: MoveSetUsage): boolean {
-    return this.hasRole('HazardsControl', moveSet);
+  public async isHazardsControl(format: SmogonFormat, moveSet: MoveSetUsage): Promise<boolean> {
+    return this.hasRole(format, 'HazardsControl', moveSet);
   }
 
-  public isPivot(moveSet: MoveSetUsage): boolean {
-    return this.hasRole('Pivot', moveSet);
+  public async isPivot(format: SmogonFormat, moveSet: MoveSetUsage): Promise<boolean> {
+    return this.hasRole(format, 'Pivot', moveSet);
   }
 
-  public isSetUpper(moveSet: MoveSetUsage): boolean {
-    return this.hasRole('SetUpper', moveSet);
+  public async isSetUpper(format: SmogonFormat, moveSet: MoveSetUsage): Promise<boolean> {
+    return this.hasRole(format, 'SetUpper', moveSet);
   }
 
-  public isPriority(moveSet: MoveSetUsage): boolean {
-    return this.hasRole('Priority', moveSet);
+  public async isPriority(format: SmogonFormat, moveSet: MoveSetUsage): Promise<boolean> {
+    return this.hasRole(format, 'Priority', moveSet);
   }
 
-  public isStall(moveSet: MoveSetUsage): boolean {
-    return this.hasRole('Stall', moveSet);
+  public async isStall(format: SmogonFormat, moveSet: MoveSetUsage): Promise<boolean> {
+    const hasPresetStallRole = this.hasPresetRole('Stall', moveSet);
+    if (!hasPresetStallRole)
+      return false;
+
+    const defenderThreshold = await this.formatStats.getMinimumStatForBucket(format, BaseStatTarget.Defender, FormatStatBucket.Highest50p);
+    if (defenderThreshold === undefined || !moveSet.name)
+      return false;
+    
+    const pokemon = this.pokemonDb.getPokemon(moveSet.name);
+    if (!pokemon)
+      return false;
+    
+    return Math.max(pokemon.baseStats.def, pokemon.baseStats.spD) >= defenderThreshold;    
   }
 
   public isSupporter(moveSet: MoveSetUsage): boolean {
@@ -154,6 +188,7 @@ export class BattlingService {
     return supporterMoves.size >= consideredMoves.length / 2;
   }
 
+  // helpers
   private hasPresetRole(role: PresetBattleRoleKey, moveSet: MoveSetUsage): boolean {
     const presets = this.rolePresets[role];
     if (!presets || !presets.size) {
@@ -163,12 +198,12 @@ export class BattlingService {
     return this.getMoveAndAbilityKeys(moveSet).some(key => presets.has(key));
   }
 
-  private getMoveSetFitStatus(role: BattleRoleKey, moveSet: MoveSetUsage | undefined): BattleRoleFitStatus {
+  private async getMoveSetFitStatus(format: SmogonFormat, role: BattleRoleKey, moveSet: MoveSetUsage | undefined): Promise<BattleRoleFitStatus> {
     if (!moveSet?.name) {
       return BattleRoleFitStatus.Eventually;
     }
 
-    return this.hasRole(role, moveSet)
+    return await this.hasRole(format, role, moveSet)
       ? BattleRoleFitStatus.Yes
       : BattleRoleFitStatus.No;
   }
@@ -184,7 +219,12 @@ export class BattlingService {
       }));
   }
 
-  private getPokemonForRole(role: BattleRoleDefinition, candidates: MetaStateCandidate[], limit: number): string[] {
+  private async getPokemonForRole(
+    format: SmogonFormat,
+    role: BattleRoleDefinition,
+    candidates: MetaStateCandidate[],
+    limit: number,
+  ): Promise<string[]> {
     switch (role.rankingType) {
       case 'strong-attackers':
         return this.getTopStatPokemonNames(
@@ -207,6 +247,19 @@ export class BattlingService {
           Direction.Descending,
           limit,
         );
+      case 'stall': {
+        const matchResults = await Promise.all(
+          candidates.map(async candidate => ({
+            candidate,
+            matches: !!candidate.moveSet && await this.hasRole(format, role.key, candidate.moveSet),
+          }))
+        );
+        return matchResults
+          .filter(r => r.matches)
+          .sort((left, right) => compareCandidatesByUsage(left.candidate, right.candidate))
+          .slice(0, limit)
+          .map(r => r.candidate.usage.name);
+      }
       case 'supporters':
         return candidates
           .filter(candidate => candidate.moveSet && this.isSupporter(candidate.moveSet))
@@ -230,12 +283,19 @@ export class BattlingService {
           .slice(0, limit)
           .map(candidate => candidate.usage.name);
       case 'preset':
-      default:
-        return candidates
-          .filter(candidate => candidate.moveSet && this.hasRole(role.key, candidate.moveSet))
-          .sort((left, right) => compareCandidatesByUsage(left, right))
+      default: {
+        const matchResults = await Promise.all(
+          candidates.map(async candidate => ({
+            candidate,
+            matches: !!candidate.moveSet && await this.hasRole(format, role.key, candidate.moveSet),
+          }))
+        );
+        return matchResults
+          .filter(r => r.matches)
+          .sort((left, right) => compareCandidatesByUsage(left.candidate, right.candidate))
           .slice(0, limit)
-          .map(candidate => candidate.usage.name);
+          .map(r => r.candidate.usage.name);
+      }
     }
   }
 
@@ -253,39 +313,26 @@ export class BattlingService {
       .map(candidate => candidate.usage.name);
   }
 
-  private getTopStatFitStatus(
-    usages: PokemonUsage[],
+  private async getFormatStatFitStatus(
+    format: SmogonFormat,
     pokemonName: string,
-    getStat: (pokemon: Pokemon) => number,
-  ): BattleRoleFitStatus {
-    if (!usages.length) {
-      return BattleRoleFitStatus.Eventually;
-    }
-
+    statTarget: BaseStatTarget,
+  ): Promise<BattleRoleFitStatus> {
     const targetPokemon = this.pokemonDb.getPokemon(pokemonName);
     if (!targetPokemon) {
       return BattleRoleFitStatus.Eventually;
     }
 
-    const statValues = this.buildCandidates(usages, [])
-      .filter((candidate): candidate is MetaStateCandidate & { pokemon: Pokemon } => !!candidate.pokemon)
-      .slice(0, statRoleUsageLimit)
-      .sort((left, right) => compareCandidatesByStat(left, right, getStat, Direction.Descending))
-      .map(candidate => getStat(candidate.pokemon));
-
-    if (!statValues.length) {
+    const lowestTrackedThreshold = await this.formatStats.getMinimumStatForBucket(format, statTarget, FormatStatBucket.Highest50p);
+    if (lowestTrackedThreshold === undefined) {
       return BattleRoleFitStatus.Eventually;
     }
 
-    const strongFitThresholdValue = statValues[Math.min(strongFitThreshold - 1, statValues.length - 1)];
-    const partialFitThresholdValue = statValues[Math.min(partialFitThreshold - 1, statValues.length - 1)];
-    const targetStat = getStat(targetPokemon);
-
-    if (targetStat >= strongFitThresholdValue) {
+    if (await this.formatStats.isInBucket(format, statTarget, targetPokemon.baseStats, FormatStatBucket.Highest25p)) {
       return BattleRoleFitStatus.Yes;
     }
 
-    return targetStat >= partialFitThresholdValue
+    return await this.formatStats.isInBucket(format, statTarget, targetPokemon.baseStats, FormatStatBucket.Highest50p)
       ? BattleRoleFitStatus.Eventually
       : BattleRoleFitStatus.No;
   }

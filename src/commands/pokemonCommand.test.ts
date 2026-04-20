@@ -204,7 +204,7 @@ async function withStubbedBattleRoleData(
   options: {
     moveSet?: MoveSetUsage | undefined;
     usages?: PokemonUsage[];
-    getRoleFitStatus?: (role: BattleRoleKey, pokemonName: string) => BattleRoleFitStatus;
+    getRoleFitStatus?: (role: BattleRoleKey, pokemonName: string) => BattleRoleFitStatus | Promise<BattleRoleFitStatus>;
   },
   runTest: (command: InstanceType<typeof PokemonCommand>) => Promise<void>
 ): Promise<void> {
@@ -214,9 +214,9 @@ async function withStubbedBattleRoleData(
 
   dataSource.smogonStats.getMoveSet = async () => options.moveSet;
   dataSource.smogonStats.getUsages = async () => options.usages ?? [];
-  dataSource.battlingService.getRoleFitStatus = (role, pokemonName, _moveSet, _usages) => options.getRoleFitStatus
+  dataSource.battlingService.getRoleFitStatus = async (role, format, pokemonName, _moveSet) => options.getRoleFitStatus
     ? options.getRoleFitStatus(role, pokemonName)
-    : originalGetRoleFitStatus(role, pokemonName, _moveSet, _usages);
+    : originalGetRoleFitStatus(role, format, pokemonName, _moveSet);
 
   try {
     await runTest(new PokemonCommand(dataSource));
@@ -918,12 +918,11 @@ const tests: TestCase[] = [
           const embed = getEditReplyEmbed(interaction);
 
           assert.strictEqual(payload.content, '**__Incineroar Battle Roles:__** OU (Gen 9)');
-          assert.deepStrictEqual(getFieldNames(interaction), ['Offensive', 'Utility/Support', '\u200b', 'Speed/Modes', 'Defensive']);
-          assert.strictEqual(embed.fields[0].value, '✅ Strong Attacker\n❌ Set-uppers\n❌ Priority\n❔ Fast');
-          assert.strictEqual(embed.fields[1].value, '✅ Pivot\n❌ Weather setter\n❔ Hazards Control');
+          assert.deepStrictEqual(getFieldNames(interaction), ['Offensive', 'Utility/Support', '\u200b', 'Defensive']);
+          assert.strictEqual(embed.fields[0].value, '🟢 High Atk Stats\n🔴 Set-uppers\n🔴 Priority Users\n🟡 Fast');
+          assert.strictEqual(embed.fields[1].value, '🟢 Pivot\n🔴 Weather Setters\n🔴 Redirection\n🟡 Hazards Control\n🔴 Stats Reducing\n🔴 Status Inflicting');
           assert.strictEqual(embed.fields[2].value, '\u200b');
-          assert.strictEqual(embed.fields[3].value, '❌ Speed Control');
-          assert.strictEqual(embed.fields[4].value, '✅ Strong Defender\n❌ Stall');
+          assert.strictEqual(embed.fields[3].value, '🟢 High Defs Stats\n🔴 Stall');
         }
       );
     }
@@ -949,11 +948,11 @@ const tests: TestCase[] = [
           const embed = getEditReplyEmbed(interaction);
 
           assert.deepStrictEqual(getFieldNames(interaction), ['Offensive', 'Utility/Support', '\u200b', 'Speed/Modes', 'Defensive']);
-          assert.strictEqual(embed.fields[0].value, '✅ Strong Attacker\n✅ Set-uppers\n✅ Priority');
-          assert.strictEqual(embed.fields[1].value, '✅ Supporter\n✅ Weather setter');
+          assert.strictEqual(embed.fields[0].value, '🟢 High Atk Stats\n🟢 Set-uppers\n🟢 Priority Users');
+          assert.strictEqual(embed.fields[1].value, '🟢 Supporter\n🟢 Weather Setters\n🟢 Redirection\n🟢 Stats Reducing\n🟢 Status Inflicting');
           assert.strictEqual(embed.fields[2].value, '\u200b');
-          assert.strictEqual(embed.fields[3].value, '✅ Speed Control\n✅ Trick Room\n✅ Tailwind');
-          assert.strictEqual(embed.fields[4].value, '✅ Strong Defender');
+          assert.strictEqual(embed.fields[3].value, '🟢 Speed Control\n🟢 Trick Room\n🟢 Tailwind');
+          assert.strictEqual(embed.fields[4].value, '🟢 High Defs Stats');
           assert.strictEqual(embed.fields.some((field: { value: string }) => field.value.includes('Pivot')), false);
           assert.strictEqual(embed.fields.some((field: { value: string }) => field.value.includes('Hazards Control')), false);
           assert.strictEqual(embed.fields.some((field: { value: string }) => field.value.includes('Fast')), false);

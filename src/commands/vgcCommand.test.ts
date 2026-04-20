@@ -221,19 +221,22 @@ const tests: TestCase[] = [
       const payload = editReplyCall?.payload as { content: string; embeds: Array<{ toJSON?: () => any }> };
       const embed = payload.embeds[0].toJSON ? payload.embeds[0].toJSON() : payload.embeds[0];
       const supportersField = embed.fields.find((field: { name: string }) => field.name === 'Supporters');
-      const weatherField = embed.fields.find((field: { name: string }) => field.name === 'Weather setters');
+      const weatherField = embed.fields.find((field: { name: string }) => field.name === 'Weather Setters');
       const trickRoomField = embed.fields.find((field: { name: string }) => field.name === 'Trick Room');
       const tailwindField = embed.fields.find((field: { name: string }) => field.name === 'Tailwind');
 
       assert.strictEqual(payload.content, '**__Meta State:__** VGC 2026 Reg. I');
       assert.strictEqual(embed.title, undefined);
       assert.deepStrictEqual(embed.fields.map((field: { name: string }) => field.name), [
-        'Strong Attackers',
+        'High Atk Stats',
         'Set-uppers',
-        'Priorities',
+        'Priority Users',
         'Supporters',
-        'Weather setters',
-        'Strong Defenders',
+        'Weather Setters',
+        'Redirection',
+        'Stats Reducing',
+        'Status Inflicting',
+        'High Defs Stats',
         'Speed Control',
         'Trick Room',
         'Tailwind',

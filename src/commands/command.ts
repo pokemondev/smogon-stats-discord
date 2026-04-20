@@ -136,7 +136,7 @@ export class CommandBase {
       return [];
     }
 
-    return this.dataSource.battlingService.buildMetaStateRoleEntries(roleKeys, usages, moveSets, limit);
+    return this.dataSource.battlingService.buildMetaStateRoleEntries(format, roleKeys, usages, moveSets, limit);
   }
 
   protected getMetaStatePreviewPokemon(entries: MetaStateRoleEntry[]): Pokemon | undefined {

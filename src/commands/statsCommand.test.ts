@@ -405,34 +405,93 @@ const tests: TestCase[] = [
           const payload = getEditReplyPayload(interaction);
           const fields = getEmbedFields(interaction);
           const embed = payload.embeds?.[0].toJSON() as { title?: string } | undefined;
-          const strongAttackersField = fields.find(field => field.name === 'Strong Attackers');
+          const strongAttackersField = fields.find(field => field.name === 'High Atk Stats');
           const fastField = fields.find(field => field.name === 'Fast');
-          const weatherField = fields.find(field => field.name === 'Weather setters');
-          const strongDefendersField = fields.find(field => field.name === 'Strong Defenders');
+          const weatherField = fields.find(field => field.name === 'Weather Setters');
+          const strongDefendersField = fields.find(field => field.name === 'High Defs Stats');
+          const stallField = fields.find(field => field.name === 'Stall');
 
           assert.strictEqual(payload.content, '**__Meta State:__** OU (Gen 9)');
           assert.strictEqual(embed?.title, undefined);
           assert.deepStrictEqual(fields.map(field => field.name), [
-            'Strong Attackers',
+            'High Atk Stats',
             'Set-uppers',
-            'Priorities',
+            'Priority Users',
             'Fast',
             'Pivot',
-            'Speed Control',
+            'Weather Setters',
+            'Redirection',
             'Hazards Control',
-            'Strong Defenders',
+            'Stats Reducing',
+            'Status Inflicting',
+            'High Defs Stats',
             'Stall',
-            'Weather setters',
           ]);
           assert.strictEqual(strongAttackersField?.value, '<:lando:123> Landorus-Therian\nDragonite\nScizor\nVolcarona\nDragapult');
           assert.strictEqual(fastField?.value, 'Dragapult\nWhimsicott\nVolcarona\n<:lando:123> Landorus-Therian\nGlimmora');
           assert.strictEqual(strongDefendersField?.value, 'Toxapex\nBlissey\nCorviknight\n<:pelipper:123> Pelipper\n<:lando:123> Landorus-Therian');
           assert.strictEqual(weatherField?.value, '<:pelipper:123> Pelipper');
+          assert.strictEqual(stallField?.value, '<:pelipper:123> Pelipper\n<:lando:123> Landorus-Therian\nGlimmora\nToxapex\nBlissey');
         },
         {
           Pelipper: '<:pelipper:123>',
           'Landorus-Therian': '<:lando:123>',
         }
+      );
+    }
+  },
+  {
+    name: 'meta-state uses vgc role order when the selected meta is vgc',
+    run: async () => {
+      await withStubbedMetaStateData(
+        [
+          createUsage('Whimsicott', 1, 24),
+          createUsage('Pelipper', 2, 22),
+          createUsage('Farigiraf', 3, 20),
+          createUsage('Talonflame', 4, 18),
+          createUsage('Hatterene', 5, 16),
+          createUsage('Amoonguss', 6, 14),
+        ],
+        [
+          createMoveSetUsage('Whimsicott', undefined, { moves: ['Tailwind', 'Encore', 'Helping Hand'] }),
+          createMoveSetUsage('Pelipper', undefined, { abilities: ['Drizzle'] }),
+          createMoveSetUsage('Farigiraf', undefined, { moves: ['Trick Room'] }),
+          createMoveSetUsage('Talonflame', undefined, { moves: ['Tailwind'] }),
+          createMoveSetUsage('Hatterene', undefined, { moves: ['Trick Room'] }),
+          createMoveSetUsage('Amoonguss', undefined, { moves: ['Spore', 'Pollen Puff', 'Rage Powder'] }),
+        ],
+        {
+          Whimsicott: createPokemon('Whimsicott', { spe: 116, spA: 77, def: 85, spD: 75 }),
+          Pelipper: createPokemon('Pelipper', { spA: 95, def: 100, spD: 70, spe: 65 }),
+          Farigiraf: createPokemon('Farigiraf', { spA: 120, def: 70, spD: 70, spe: 60 }),
+          Talonflame: createPokemon('Talonflame', { atk: 81, spe: 126, def: 71, spD: 69 }),
+          Hatterene: createPokemon('Hatterene', { spA: 136, def: 95, spD: 103, spe: 29 }),
+          Amoonguss: createPokemon('Amoonguss', { def: 70, spD: 80, spe: 30 }),
+        },
+        async (command) => {
+          const interaction = createInteraction('meta-state', { generation: '9', meta: 'vgc2026regi' });
+
+          await command.execute(interaction as never);
+
+          const payload = getEditReplyPayload(interaction);
+          const fields = getEmbedFields(interaction);
+
+          assert.strictEqual(payload.content, '**__Meta State:__** VGC 2026 Reg. I (Gen 9)');
+          assert.deepStrictEqual(fields.map(field => field.name), [
+            'High Atk Stats',
+            'Set-uppers',
+            'Priority Users',
+            'Supporters',
+            'Weather Setters',
+            'Redirection',
+            'Stats Reducing',
+            'Status Inflicting',
+            'High Defs Stats',
+            'Speed Control',
+            'Trick Room',
+            'Tailwind',
+          ]);
+        },
       );
     }
   },
