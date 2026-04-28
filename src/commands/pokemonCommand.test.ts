@@ -87,6 +87,14 @@ function createEmptyMoveSet(pokemonName: string): MoveSetUsage {
   };
 }
 
+function createSearchMoveSet(pokemonName: string, moves: string[], abilities: string[] = []): MoveSetUsage {
+  return {
+    ...createEmptyMoveSet(pokemonName),
+    moves: moves.map((move, index) => ({ name: move, percentage: 100 - index })),
+    abilities: abilities.map((ability, index) => ({ name: ability, percentage: 100 - index })),
+  };
+}
+
 function createUsage(name: string, rank: number, usageRaw: number): PokemonUsage {
   return {
     name,
@@ -186,7 +194,11 @@ async function withStubbedMoveLookup(
 }
 
 async function withStubbedSearch(
-  implementation: (format: SmogonFormat, search: PokemonMoveSetSearch) => Promise<PokemonUsage[]>,
+  implementation: (
+    format: SmogonFormat,
+    search: PokemonMoveSetSearch,
+    moveSetFilter?: (moveSet: MoveSetUsage) => Promise<boolean>,
+  ) => Promise<PokemonUsage[]>,
   runTest: (command: InstanceType<typeof PokemonCommand>) => Promise<void>
 ): Promise<void> {
   const originalSearchPokemon = dataSource.smogonStats.searchPokemon.bind(dataSource.smogonStats);
@@ -252,7 +264,7 @@ const tests: TestCase[] = [
       const search = options.find(option => option.name === 'search');
 
       assert.ok(search);
-      assert.deepStrictEqual(search?.options?.map(option => option.name), ['move1', 'move2', 'ability', 'meta', 'generation']);
+      assert.deepStrictEqual(search?.options?.map(option => option.name), ['move1', 'move2', 'ability', 'role1', 'role2', 'meta', 'generation']);
     }
   },
   {
@@ -376,7 +388,7 @@ const tests: TestCase[] = [
       await command.execute(interaction as never);
 
       assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'reply' ]);
-      assert.strictEqual(getReplyPayload(interaction).content, 'Provide at least one of move1, move2, or ability for /pokemon search.');
+      assert.strictEqual(getReplyPayload(interaction).content, 'Provide at least one of move1, move2, ability, role1, or role2 for /pokemon search.');
       assert.strictEqual(getReplyPayload(interaction).flags, MessageFlags.Ephemeral);
     }
   },
@@ -472,6 +484,58 @@ const tests: TestCase[] = [
           );
         }
       );
+    }
+  },
+  {
+    name: 'search accepts role-only filters and applies them through the role matcher callback',
+    run: async () => {
+      const originalGetRoleFitStatus = dataSource.battlingService.getRoleFitStatus.bind(dataSource.battlingService);
+      dataSource.battlingService.getRoleFitStatus = async (role, _format, pokemonName) => {
+        if (pokemonName === 'Whimsicott' && (role === 'Tailwind' || role === 'Supporters')) {
+          return BattleRoleFitStatus.Yes;
+        }
+
+        return BattleRoleFitStatus.No;
+      };
+
+      try {
+        await withStubbedSearch(
+          async (format, search, moveSetFilter) => {
+            assert.deepStrictEqual(format, { generation: 'gen9', meta: 'vgc2026regi' });
+            assert.deepStrictEqual(search, { role1: 'Tailwind', role2: 'Supporters' });
+            assert.ok(moveSetFilter, 'Expected a battle-role matcher callback.');
+
+            const whimsicottMatches = await moveSetFilter?.(createSearchMoveSet('Whimsicott', ['Tailwind', 'Encore', 'Protect'], ['Prankster']));
+            const dragoniteMatches = await moveSetFilter?.(createSearchMoveSet('Dragonite', ['Extreme Speed', 'Protect'], ['Inner Focus']));
+
+            assert.strictEqual(whimsicottMatches, true);
+            assert.strictEqual(dragoniteMatches, false);
+
+            return [createUsage('Whimsicott', 2, 29.4)];
+          },
+          async (command) => {
+            const interaction = createInteraction('search', {
+              role1: 'Tailwind',
+              role2: 'Supporters',
+              generation: '9',
+              meta: 'vgc2026regi',
+            });
+
+            await command.execute(interaction as never);
+
+            const payload = getEditReplyPayload(interaction);
+            const embed = getEditReplyEmbed(interaction);
+
+            assert.deepStrictEqual(interaction.calls.map(call => call.name), [ 'deferReply', 'editReply' ]);
+            assert.strictEqual(payload.content, '**__Search:__** Top 1 matching Pokemon of VGC 2026 Reg. I (Gen 9)');
+            assert.strictEqual(embed.title, "Pokemon matching role 'Tailwind' and role 'Supporters'");
+            assert.deepStrictEqual(getFieldNames(interaction), ['#1 Whimsicott']);
+          }
+        );
+      }
+      finally {
+        dataSource.battlingService.getRoleFitStatus = originalGetRoleFitStatus;
+      }
     }
   },
   {

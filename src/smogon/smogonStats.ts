@@ -71,13 +71,32 @@ export class SmogonStats {
       .slice(0, 15);
   }
 
-  public async searchPokemon(format: SmogonFormat, search: PokemonMoveSetSearch): Promise<PokemonUsage[]> {
+  public async searchPokemon(
+    format: SmogonFormat,
+    search: PokemonMoveSetSearch,
+    moveSetFilter?: (moveSet: MoveSetUsage) => Promise<boolean>,
+  ): Promise<PokemonUsage[]> {
     const matchedMoveSets = await this.getMoveSets(format, (moveSet) => this.matchesSearch(moveSet, search));
     if (!matchedMoveSets.length) {
       return [];
     }
 
-    const matchedNames = new Set(matchedMoveSets.map(moveSet => moveSet.name.toLowerCase()));
+    const filteredMoveSets = moveSetFilter
+      ? (await Promise.all(
+        matchedMoveSets.map(async moveSet => ({
+          moveSet,
+          matches: await moveSetFilter(moveSet),
+        }))
+      ))
+        .filter(result => result.matches)
+        .map(result => result.moveSet)
+      : matchedMoveSets;
+
+    if (!filteredMoveSets.length) {
+      return [];
+    }
+
+    const matchedNames = new Set(filteredMoveSets.map(moveSet => moveSet.name.toLowerCase()));
     return (await this.getUsages(format, false))
       .filter(usage => matchedNames.has(usage.name.toLowerCase()))
       .sort((left, right) => {

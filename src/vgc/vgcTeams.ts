@@ -1,11 +1,13 @@
 import { readdirSync } from 'fs';
 import { FileHelper } from '../common/fileHelper';
 import { PokemonDb } from '../pokemon/pokemonDb';
+import { BattlingService } from '../pokemon/battlingService';
 import { PokemonSet } from '../models/smogonSets';
 import { FormatCatalog } from '../smogon/formatCatalog';
 import { FormatHelper } from '../smogon/formatHelper';
-import { SmogonFormat } from '../models/smogonUsage';
+import { MoveSetUsage, SmogonFormat } from '../models/smogonUsage';
 import { VgcResolvedTeam, VgcTeam } from '../models/vgc';
+import { BattleRoleFitStatus, BattleRoleKey } from '../models/battling';
 
 type VgcTeamsDb = Map<string, VgcTeam[]>;           // meta to teams map
 type PokemonTeamsMap = Map<string, VgcTeam[]>;      // pokemon to teams map
@@ -20,36 +22,47 @@ export class VgcTeams {
   private readonly teamMemberKeys = new Map<VgcTeam, Set<string>>();
   private readonly teamIdDb: TeamIdDb = new Map();
 
-  constructor(private readonly pokemonDb: PokemonDb) {
+  constructor(
+    private readonly pokemonDb: PokemonDb,
+    private readonly battlingService?: BattlingService,
+  ) {
     this.loadFileData();
   }
 
-  public getTeams(format: SmogonFormat): VgcTeam[] {
+  public async getTeams(format: SmogonFormat, role1?: BattleRoleKey, role2?: BattleRoleKey): Promise<VgcTeam[]> {
     if (!FormatCatalog.isVgcMeta(format.meta)) {
       return [];
     }
 
-    return this.teamsDb.get(format.meta) ?? [];
+    const teams = this.teamsDb.get(format.meta) ?? [];
+    return this.filterTeamsByRoles(format, teams, role1, role2);
   }
 
-  public getTeamsByPokemon(format: SmogonFormat, pokemon1: string, pokemon2?: string): VgcTeam[] {
+  public getTeamsByPokemon(
+    format: SmogonFormat,
+    pokemon1: string,
+    pokemon2?: string,
+    role1?: BattleRoleKey,
+    role2?: BattleRoleKey,
+  ): Promise<VgcTeam[]> {
     if (!FormatCatalog.isVgcMeta(format.meta)) {
-      return [];
+      return Promise.resolve([]);
     }
 
     const pokemonTeamsMap = this.pokemonTeamsDb.get(format.meta);
     if (!pokemonTeamsMap) {
-      return [];
+      return Promise.resolve([]);
     }
 
     const primaryPokemonKey = this.getPokemonKey(pokemon1);
     const primaryTeams = pokemonTeamsMap.get(primaryPokemonKey) ?? [];
     if (!pokemon2) {
-      return primaryTeams;
+      return this.filterTeamsByRoles(format, primaryTeams, role1, role2);
     }
 
     const secondaryPokemonKey = this.getPokemonKey(pokemon2);
-    return primaryTeams.filter(team => this.teamMemberKeys.get(team)?.has(secondaryPokemonKey));
+    const matchedTeams = primaryTeams.filter(team => this.teamMemberKeys.get(team)?.has(secondaryPokemonKey));
+    return this.filterTeamsByRoles(format, matchedTeams, role1, role2);
   }
 
   public getTeamById(teamId: string): VgcResolvedTeam | undefined {
@@ -202,5 +215,50 @@ export class VgcTeams {
     return Number.isNaN(parsedDate)
       ? 0
       : parsedDate;
+  }
+
+  private async filterTeamsByRoles(
+    format: SmogonFormat,
+    teams: VgcTeam[],
+    role1?: BattleRoleKey,
+    role2?: BattleRoleKey,
+  ): Promise<VgcTeam[]> {
+    const requiredRoles = [role1, role2].filter((role): role is BattleRoleKey => !!role);
+    if (!requiredRoles.length) return teams;
+    if (!this.battlingService) return [];
+
+    const matchResults = await Promise.all(
+      teams.map(async team => ({
+        team,
+        matches: (await Promise.all(requiredRoles.map(role => this.teamHasRole(format, team, role))))
+          .every(result => result),
+      }))
+    );
+
+    return matchResults.filter(result => result.matches).map(result => result.team);
+  }
+
+  private async teamHasRole(format: SmogonFormat, team: VgcTeam, role: BattleRoleKey): Promise<boolean> {
+    const matchResults = await Promise.all(team.members.map(member => this.memberHasRole(format, member, role)));
+    return matchResults.some(result => result);
+  }
+
+  private async memberHasRole(format: SmogonFormat, member: PokemonSet, role: BattleRoleKey): Promise<boolean> {
+    const moveSet = this.getMemberMoveSet(member);
+    const status = await this.battlingService!.getRoleFitStatus(role, format, member.name, moveSet);
+    return status !== BattleRoleFitStatus.No;
+  }
+
+  private getMemberMoveSet(member: PokemonSet): MoveSetUsage {
+    return {
+      name: member.name,
+      abilities: member.ability ? [{ name: member.ability, percentage: 100 }] : [],
+      items: member.item ? [{ name: member.item, percentage: 100 }] : [],
+      spreads: [],
+      moves: (member.moves ?? []).map(name => ({ name, percentage: 100 })),
+      teraTypes: member.teraType ? [{ name: member.teraType, percentage: 100 }] : [],
+      teamMates: [],
+      checksAndCounters: [],
+    };
   }
 }

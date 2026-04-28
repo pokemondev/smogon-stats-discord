@@ -117,14 +117,14 @@ Subcommands:
 
 - `summary` — full competitive overview
 - `info` — detailed usage data by category
-- `search` — filter format usage results by one or two moves and an optional ability
+- `search` — filter format usage results by moves, ability, and battle roles
 - `sets` — curated Smogon sets
 
 Arguments:
 
 - `summary`: `name` required, `meta` optional, `generation` optional
 - `info`: `name` required, `category` required, `meta` optional, `generation` optional
-- `search`: `move1` optional, `move2` optional, `ability` optional, `meta` optional, `generation` optional
+- `search`: `move1` optional, `move2` optional, `ability` optional, `role1` optional, `role2` optional, `meta` optional, `generation` optional
 - `sets`: `name` required, `meta` optional, `generation` optional
 
 `info` categories:
@@ -142,14 +142,16 @@ Examples:
 /pokemon summary name:dragonite
 /pokemon info name:gholdengo category:items meta:OU
 /pokemon search move1:protect ability:cursed-body meta:OU
+/pokemon search role1:Tailwind role2:Supporters generation:"Gen 9" meta:"VGC 2026 Reg. I"
 /pokemon sets name:landorus-therian meta:OU generation:"Gen 8"
 ```
 
 `search` notes:
 
-- at least one of `move1`, `move2`, or `ability` must be provided
+- at least one of `move1`, `move2`, `ability`, `role1`, or `role2` must be provided
 - move inputs use the same fuzzy move matching as the movedex lookup
 - ability input is resolved fuzzily from known Pokemon possible abilities
+- role inputs use the predefined battle-role list from the bot command choices
 - all provided filters use AND semantics
 - results are ranked by overall format usage and capped at 15 entries
 
@@ -208,7 +210,7 @@ Subcommands:
 Arguments:
 
 - `meta-state`: `regulation` optional
-- `teams`: `regulation` optional, `pokemon1` optional, `pokemon2` optional
+- `teams`: `regulation` optional, `pokemon1` optional, `pokemon2` optional, `role1` optional, `role2` optional
 - `team-details`: `team-id` required
 
 Notes:
@@ -217,6 +219,7 @@ Notes:
 - VGC `meta-state` fields currently use this order: `Strong Attackers`, `Set-uppers`, `Priorities`, `Supporters`, `Weather setters`, `Strong Defenders`, `Speed Control`, `Trick Room`, `Tailwind`
 - `regulation` uses VGC season choices such as `VGC 2026 Reg. I`
 - if only `pokemon2` is provided, it is treated as `pokemon1`
+- `role1` and `role2` require at least one team member to fit each selected battle role
 - team list output is capped at the top 6 matching teams
 - `team-details` resolves the regulation automatically from the team id
 - team details use the most used Pokemon on that team for the embed color and sprite when usage data is available
@@ -229,6 +232,7 @@ Examples:
 /vgc teams
 /vgc teams regulation:"VGC 2026 Reg. I"
 /vgc teams pokemon1:charizard
+/vgc teams regulation:"VGC 2026 Reg. I" role1:Tailwind role2:Supporters
 /vgc teams regulation:"VGC 2026 Reg. I" pokemon1:zamazenta pokemon2:calyrex-shadow
 /vgc team-details team-id:I1280
 ```

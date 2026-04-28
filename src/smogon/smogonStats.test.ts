@@ -322,6 +322,31 @@ const tests: TestCase[] = [
     }
   },
   {
+    name: 'searchPokemon applies the optional moveSet filter before capping results',
+    run: async () => {
+      const format = { generation: 'gen9', meta: 'ou' } as SmogonFormat;
+      const usageRows = Array.from({ length: 20 }, (_, index) => [index + 1, `Pokemon-${index + 1}`, 100 - index]);
+      const moveSets = Array.from({ length: 20 }, (_, index) => createMoveSet(`Pokemon-${index + 1}`, ['Protect'], ['Pressure']));
+
+      await withStubbedPayloads(
+        {
+          usage: { data: { rows: usageRows } },
+          moveset: moveSets,
+        },
+        async () => {
+          const stats = new SmogonStats();
+          const results = await stats.searchPokemon(
+            format,
+            { move1: 'Protect' },
+            async moveSet => moveSet.name === 'Pokemon-20',
+          );
+
+          assert.deepStrictEqual(results.map(result => result.name), ['Pokemon-20']);
+        }
+      );
+    }
+  },
+  {
     name: 'searchPokemon caps results at top 15 matches',
     run: async () => {
       const format = { generation: 'gen9', meta: 'ou' } as SmogonFormat;
