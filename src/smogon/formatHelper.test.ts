@@ -1,5 +1,6 @@
 import assert = require('assert');
 import { FormatHelper } from './formatHelper';
+import { FormatCatalog } from './formatCatalog';
 import { PokemonSet } from '../models/smogonSets';
 import { SmogonFormat } from '../models/smogonUsage';
 
@@ -27,7 +28,7 @@ const formatCases: FormatCase[] = [
   },
   {
     args: [ 'gen8' ],
-    expected: { generation: 'gen8', meta: 'vgc2022' }
+    expected: { generation: 'gen9', meta: 'vgc2026regf' }
   },
   {
     args: [ 'gen8', 'uu' ],
@@ -51,7 +52,7 @@ const formatCases: FormatCase[] = [
   },
   {
     args: [ 'vgc', '2022' ],
-    expected: { generation: 'gen8', meta: 'vgc2022' }
+    expected: { generation: 'gen9', meta: 'vgc2026regf' }
   },
   {
     args: [ 'charizard', 'vgc2026' ],
@@ -113,11 +114,19 @@ const tests: TestCase[] = [
     }
   },
   {
+    name: 'disables legacy vgc seasons from support and fallback resolution',
+    run: () => {
+      assert.strictEqual(FormatCatalog.isValidMeta('vgc2022'), false);
+      assert.strictEqual(FormatCatalog.isSupportedFormat({ generation: 'gen8', meta: 'vgc2022' }), false);
+      assert.deepStrictEqual(FormatCatalog.getGenerationDefaultVgcFormat('gen8'), { generation: 'gen9', meta: 'vgc2026regf' });
+    }
+  },
+  {
     name: 'resolves supported set metas and analysis links',
     run: () => {
       assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen9', 'OU Defensive Pivot'), 'ou');
       assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen9', 'VGC 2025 Reg I Bulky Support'), 'vgc2026regi');
-      assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen8', 'VGC 2022 Utility'), 'vgc2022');
+      assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen8', 'VGC 2022 Utility'), undefined);
       assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen8', 'VGC 2023 Support'), undefined);
       assert.strictEqual(FormatHelper.tryResolveSupportedSetMeta('gen8', 'National Dex RU Showdown Usage'), undefined);
 

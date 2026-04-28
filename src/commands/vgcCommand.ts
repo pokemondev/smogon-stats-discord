@@ -323,7 +323,7 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
 function getRegulationChoices() {
   const defaultFormat = getDefaultVgcFormat();
 
-  return FormatCatalog.VgcSeasons.map(season => ({
+  return FormatCatalog.EnabledVgcSeasons.map(season => ({
     name: season.meta === defaultFormat.meta
       ? `${FormatHelper.getMetaDisplayName(season.meta)} (Default)`
       : FormatHelper.getMetaDisplayName(season.meta),

@@ -256,11 +256,13 @@ const tests: TestCase[] = [
     name: 'stats command data includes the meta-state subcommand with format filters',
     run: async () => {
       const commandData = createStatsCommandData().toJSON();
-      const options = (commandData.options ?? []) as Array<{ name: string; options?: Array<{ name: string }> }>;
+      const options = (commandData.options ?? []) as Array<{ name: string; options?: Array<{ name: string; choices?: Array<{ value: string }> }> }>;
       const metaState = options.find(option => option.name === 'meta-state');
+      const metaChoices = metaState?.options?.find(option => option.name === 'meta')?.choices?.map(choice => choice.value);
 
       assert.ok(metaState);
       assert.deepStrictEqual(metaState?.options?.map(option => option.name), ['meta', 'generation']);
+      assert.deepStrictEqual(metaChoices, ['vgc2026regf', 'vgc2026regi', 'ubers', 'ou', 'uu', 'ru', 'nu']);
     }
   },
   {

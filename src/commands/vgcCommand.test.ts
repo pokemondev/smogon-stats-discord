@@ -153,7 +153,7 @@ const tests: TestCase[] = [
       const command = new VgcCommand({ pokemonDb } as never);
       const json = command.data.toJSON();
       const subcommand = json.options?.find(option => option.name === 'meta-state') as {
-        options?: Array<{ name: string; required?: boolean; description?: string; type?: number }>;
+        options?: Array<{ name: string; required?: boolean; description?: string; type?: number; choices?: Array<{ value: string }> }>;
       } | undefined;
       const regulationOption = subcommand?.options?.find(option => option.name === 'regulation');
 
@@ -162,6 +162,7 @@ const tests: TestCase[] = [
       assert.strictEqual(regulationOption?.description, 'VGC regulation');
       assert.strictEqual(regulationOption?.type, 3);
       assert.strictEqual(regulationOption?.required, false);
+      assert.deepStrictEqual(regulationOption?.choices?.map(choice => choice.value), ['vgc2026regf', 'vgc2026regi']);
     },
   },
   {

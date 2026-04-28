@@ -7,6 +7,7 @@ interface VgcSeason {
   aliases: string[];
   regulation?: string;
   isDefault?: boolean;
+  enabled?: boolean;
 }
 
 export class FormatCatalog {
@@ -24,11 +25,12 @@ export class FormatCatalog {
   public static readonly VgcSeasons: readonly VgcSeason[] = [
     { gen: 'gen9', year: '2026', regulation: 'regf', meta: 'vgc2026regf', aliases: [ 'vgc2026', 'vgc2026regf' ], isDefault: true },
     { gen: 'gen9', year: '2026', regulation: 'regi', meta: 'vgc2026regi', aliases: [ 'vgc2026regi' ] },
-    { gen: 'gen8', year: '2022', meta: 'vgc2022', aliases: [ 'vgc2022' ], isDefault: true },
-    { gen: 'gen7', year: '2019', meta: 'vgc2019', aliases: [ 'vgc2019' ], isDefault: true },
+    { gen: 'gen8', year: '2022', meta: 'vgc2022', aliases: [ 'vgc2022' ], isDefault: true, enabled: false },
+    { gen: 'gen7', year: '2019', meta: 'vgc2019', aliases: [ 'vgc2019' ], isDefault: true, enabled: false },
   ];
-  public static readonly MetaValues = [ ...FormatCatalog.StandardMetaValues, ...FormatCatalog.VgcSeasons.map(season => season.meta) ];
-  public static readonly MetaAliases = [ ...FormatCatalog.StandardMetaValues, 'uber', 'vgc', ...FormatCatalog.VgcSeasons.map(season => season.meta) ];
+  public static readonly EnabledVgcSeasons = FormatCatalog.VgcSeasons.filter(season => season.enabled !== false);
+  public static readonly MetaValues = [ ...FormatCatalog.StandardMetaValues, ...FormatCatalog.EnabledVgcSeasons.map(season => season.meta) ];
+  public static readonly MetaAliases = [ ...FormatCatalog.StandardMetaValues, 'uber', 'vgc', ...FormatCatalog.EnabledVgcSeasons.map(season => season.meta) ];
 
   public static normalizeGeneration(gen?: string): string {
     if (!gen) {
@@ -89,7 +91,7 @@ export class FormatCatalog {
 
   public static isKnownVgcAlias(meta: string): boolean {
     const normalizedMeta = FormatCatalog.normalizeMeta(meta);
-    return FormatCatalog.VgcSeasons.some(season => season.meta === normalizedMeta || season.aliases.some(alias => alias === normalizedMeta));
+    return FormatCatalog.EnabledVgcSeasons.some(season => season.meta === normalizedMeta || season.aliases.some(alias => alias === normalizedMeta));
   }
 
   public static isVgcMeta(meta?: string): boolean {
@@ -140,8 +142,8 @@ export class FormatCatalog {
   }
 
   public static getDefaultVgcSeason(predicate: (season: VgcSeason) => boolean = () => true): VgcSeason {
-    return FormatCatalog.VgcSeasons.find(season => season.isDefault && predicate(season))
-      || FormatCatalog.VgcSeasons.find(predicate)
+    return FormatCatalog.EnabledVgcSeasons.find(season => season.isDefault && predicate(season))
+      || FormatCatalog.EnabledVgcSeasons.find(predicate)
       || FormatCatalog.VgcSeasons[0];
   }
 
@@ -155,16 +157,17 @@ export class FormatCatalog {
     const normalizedGen = gen ? FormatCatalog.normalizeGeneration(gen) : '';
     const normalizedYear = year ? year.toLowerCase() : FormatCatalog.getVgcYearFromMeta(normalizedMeta);
     const normalizedRegulation = regulation ? regulation.toLowerCase() : FormatCatalog.getVgcRegulationFromMeta(normalizedMeta);
+    const enabledVgcSeasons = FormatCatalog.EnabledVgcSeasons;
 
     const seasonByMeta = normalizedMeta
-      ? FormatCatalog.VgcSeasons.find(season => season.meta === normalizedMeta || season.aliases.some(alias => alias === normalizedMeta))
+      ? enabledVgcSeasons.find(season => season.meta === normalizedMeta || season.aliases.some(alias => alias === normalizedMeta))
       : undefined;
     if (seasonByMeta) {
       return seasonByMeta;
     }
 
     const seasonByYearAndRegulation = normalizedYear && normalizedRegulation
-      ? FormatCatalog.VgcSeasons.find(season => season.year === normalizedYear && season.regulation === normalizedRegulation)
+      ? enabledVgcSeasons.find(season => season.year === normalizedYear && season.regulation === normalizedRegulation)
       : undefined;
     if (seasonByYearAndRegulation) {
       return seasonByYearAndRegulation;
@@ -178,7 +181,7 @@ export class FormatCatalog {
     }
 
     const seasonByGenAndRegulation = normalizedGen && normalizedRegulation
-      ? FormatCatalog.VgcSeasons.find(season => season.gen === normalizedGen && season.regulation === normalizedRegulation)
+      ? enabledVgcSeasons.find(season => season.gen === normalizedGen && season.regulation === normalizedRegulation)
       : undefined;
     if (seasonByGenAndRegulation) {
       return seasonByGenAndRegulation;
@@ -209,7 +212,7 @@ export class FormatCatalog {
       return true;
     }
 
-    return FormatCatalog.VgcSeasons.some(season => season.gen === generation && season.meta === meta);
+    return FormatCatalog.EnabledVgcSeasons.some(season => season.gen === generation && season.meta === meta);
   }
 
   private static tryResolveSupportedStandardSetMeta(setName: string): string | undefined {
@@ -225,7 +228,7 @@ export class FormatCatalog {
 
     const year = match[1].toLowerCase();
     const regulation = match[2] ? `reg${match[2].toLowerCase()}` : '';
-    const generationSeasons = FormatCatalog.VgcSeasons.filter(season => season.gen === generation);
+    const generationSeasons = FormatCatalog.EnabledVgcSeasons.filter(season => season.gen === generation);
 
     if (regulation) {
       return generationSeasons.find(season => season.regulation === regulation)?.meta;

@@ -293,7 +293,7 @@ function buildMetaOption(option: SlashCommandStringOption): SlashCommandStringOp
 
 function getMetaChoices() {
   const defaultFormat = FormatConfig.getDefaultFormat();
-  const vgcChoices = FormatCatalog.VgcSeasons.map(season => ({
+  const vgcChoices = FormatCatalog.EnabledVgcSeasons.map(season => ({
     name: FormatHelper.getMetaDisplayName(season.meta),
     value: season.meta,
   }));

@@ -64,6 +64,12 @@ const tests: TestCase[] = [
     run: () => withEnv({ DEFAULT_GENERATION: 'gen8', DEFAULT_META: 'vgc2026regf' }, () => {
       assert.throws(() => FormatConfig.getDefaultFormat(), /do not form a supported format/);
     })
+  },
+  {
+    name: 'rejects disabled configured vgc defaults',
+    run: () => withEnv({ DEFAULT_GENERATION: 'gen8', DEFAULT_META: 'vgc2022' }, () => {
+      assert.throws(() => FormatConfig.getDefaultFormat(), /supported concrete metagame/);
+    })
   }
 ];
 
