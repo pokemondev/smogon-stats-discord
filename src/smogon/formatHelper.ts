@@ -13,7 +13,7 @@ export class FormatHelper {
   public static Generations = FormatCatalog.Generations;
   public static VgcSeasons = FormatCatalog.VgcSeasons;
   public static MetaValues = FormatCatalog.MetaValues;
-  public static MetaAliases = FormatCatalog.MetaAliases;
+  public static MetaAliases = FormatCatalog.MetaNames;
   
   public static getFormat(args: string[]): SmogonFormat {
     const normalizedArgs = args.map(a => this.normalizeValue(a));

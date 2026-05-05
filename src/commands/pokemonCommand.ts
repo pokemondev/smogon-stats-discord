@@ -477,8 +477,11 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
   private async getGeneralInfoData(cmd: MovesetCommandData) {
     const usage = await this.dataSource.smogonStats.getUsage(cmd.pokemon.name, cmd.format);
     const usageInfo = usage ? `${usage.rank}º (${usage.usageRaw.toFixed(2)}%)` : 'N/A';
-    
-    const info1 = `Meta: \`${cmd.format.meta.toUpperCase()}\``;
+    const vgcSeason = FormatCatalog.getVgcSeason(cmd.format.meta);
+    const isChampions = vgcSeason ? vgcSeason.isChampions : false;
+    const metaDisplay = isChampions ? 'Champions' : cmd.format.meta.toUpperCase();
+
+    const info1 = `Meta: \`${metaDisplay}\``;
     const info2 = `Generation: \`Gen ${cmd.format.generation.replace(/^gen/i, '')}\``;
     const typeDisplay = cmd.pokemon.type2
       ? `${this.formatTypeDisplay(cmd.pokemon.type1)} / ${this.formatTypeDisplay(cmd.pokemon.type2)}`

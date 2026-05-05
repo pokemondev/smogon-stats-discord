@@ -262,7 +262,7 @@ const tests: TestCase[] = [
 
       assert.ok(metaState);
       assert.deepStrictEqual(metaState?.options?.map(option => option.name), ['meta', 'generation']);
-      assert.deepStrictEqual(metaChoices, ['vgc2026regf', 'vgc2026regi', 'ubers', 'ou', 'uu', 'ru', 'nu']);
+      assert.deepStrictEqual(metaChoices, ['championsvgc2026regma', 'vgc2026regf', 'vgc2026regi', 'ubers', 'ou', 'uu', 'ru', 'nu']);
     }
   },
   {
