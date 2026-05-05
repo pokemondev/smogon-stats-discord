@@ -1,3 +1,5 @@
+import { BattleRoleKey } from './battling';
+
 export interface UsageData {
     name: string;
     percentage: number;
@@ -25,6 +27,8 @@ export interface PokemonMoveSetSearch {
     move1?: string;
     move2?: string;
     ability?: string;
+    role1?: BattleRoleKey;
+    role2?: BattleRoleKey;
 }
 
 export interface PokemonUsage {

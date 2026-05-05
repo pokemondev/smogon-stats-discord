@@ -6,8 +6,9 @@ import { FormatCatalog } from '../smogon/formatCatalog';
 import { FormatHelper } from '../smogon/formatHelper';
 import { PokemonUsage, SmogonFormat } from '../models/smogonUsage';
 import { VgcResolvedTeam, VgcTeam } from '../models/vgc';
-import { CommandBase, CommandHelpTopic, SlashCommandData, SlashCommandHandler } from './command';
+import { CommandBase, CommandHelpTopic, SlashCommandData, SlashCommandHandler, getBattleRoleChoices } from './command';
 import { BattleRolesHelper } from '../pokemon/battleRolesHelper';
+import { BattleRoleKey } from '../models/battling';
 
 const MaxDisplayedTeams = 6;
 const TeamLinksFooterText = 'Check more details at x.com/VGCPastes and limitlessvgc.com';
@@ -21,6 +22,8 @@ export const vgcHelpTopic: CommandHelpTopic = {
     'teams regulation: Optional VGC regulation filter. Uses the configured default generation\'s default VGC season when omitted.',
     'teams pokemon1: Optional Pokemon that must appear on the team.',
     'teams pokemon2: Optional second Pokemon that must appear on the team. If pokemon1 is omitted, pokemon2 is treated as pokemon1.',
+    'teams role1: Optional first battle role filter that at least one team member must fit.',
+    'teams role2: Optional second battle role filter that at least one team member must fit.',
     'team-details team-id: Required VGC team id. The service resolves the regulation automatically.',
   ],
   examples: [
@@ -29,6 +32,7 @@ export const vgcHelpTopic: CommandHelpTopic = {
     '/vgc teams',
     '/vgc teams pokemon1:charizard',
     '/vgc teams regulation:"VGC 2026 Reg. I"',
+    '/vgc teams regulation:"VGC 2026 Reg. I" role1:Tailwind role2:Supporters',
     '/vgc teams regulation:"VGC 2026 Reg. I" pokemon1:zamazenta pokemon2:calyrex-shadow',
     '/vgc team-details team-id:I1280',
   ],
@@ -68,6 +72,18 @@ export function createVgcCommandData(): SlashCommandData {
           option
             .setName('pokemon2')
             .setDescription('Second Pokemon that must be on the team')
+        )
+        .addStringOption(option =>
+          option
+            .setName('role1')
+            .setDescription('First battle role filter')
+            .addChoices(...getBattleRoleChoices(BattleRolesHelper.getMetaRoleOrder(true)))
+        )
+        .addStringOption(option =>
+          option
+            .setName('role2')
+            .setDescription('Second battle role filter')
+            .addChoices(...getBattleRoleChoices(BattleRolesHelper.getMetaRoleOrder(true)))
         )
     )
     .addSubcommand(subcommand =>
@@ -159,23 +175,30 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     await DiscordHelper.deferCommandReply(interaction);
 
     const teams = primaryPokemon
-      ? this.dataSource.vgcTeams.getTeamsByPokemon(format, primaryPokemon.name, secondaryPokemon?.name)
-      : this.dataSource.vgcTeams.getTeams(format);
+      ? this.dataSource.vgcTeams.getTeamsByPokemon(
+        format,
+        primaryPokemon.name,
+        secondaryPokemon?.name,
+        requestedFilters.role1,
+        requestedFilters.role2,
+      )
+      : this.dataSource.vgcTeams.getTeams(format, requestedFilters.role1, requestedFilters.role2);
+    const resolvedTeams = await teams;
 
-    if (!teams.length) {
-      await this.replyNoData(interaction, this.buildNoTeamsMessage(format, primaryPokemon, secondaryPokemon));
+    if (!resolvedTeams.length) {
+      await this.replyNoData(interaction, this.buildNoTeamsMessage(format, primaryPokemon, secondaryPokemon, requestedFilters.role1, requestedFilters.role2));
       return;
     }
 
-    const displayedTeams = teams.slice(0, MaxDisplayedTeams);
+    const displayedTeams = resolvedTeams.slice(0, MaxDisplayedTeams);
     const previewPokemon = primaryPokemon ?? this.dataSource.pokemonDb.getPokemon(displayedTeams[0].members[0].name);
     const embed = previewPokemon
       ? this.createPokemonEmbed(previewPokemon, { footer: TeamLinksFooterText, thumbnail: true })
       : new EmbedBuilder();
 
     embed
-      .setTitle(this.buildEmbedTitle(primaryPokemon, secondaryPokemon))
-      .setDescription(`Showing ${displayedTeams.length} of ${teams.length} matching teams.`);
+      .setTitle(this.buildEmbedTitle(primaryPokemon, secondaryPokemon, requestedFilters.role1, requestedFilters.role2))
+      .setDescription(`Showing ${displayedTeams.length} of ${resolvedTeams.length} matching teams.`);
 
     const teamMemberDisplays = displayedTeams.map(team => this.buildTeamMembersList(team));
 
@@ -238,9 +261,13 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
   }
 
   // helper methods
-  private getRequestedPokemonFilters(interaction: ChatInputCommandInteraction): { pokemon1?: string; pokemon2?: string } {
+  private getRequestedPokemonFilters(
+    interaction: ChatInputCommandInteraction,
+  ): { pokemon1?: string; pokemon2?: string; role1?: BattleRoleKey; role2?: BattleRoleKey } {
     let pokemon1 = interaction.options.getString('pokemon1')?.trim();
     let pokemon2 = interaction.options.getString('pokemon2')?.trim();
+    const role1 = this.getBattleRoleFilter(interaction, 'role1');
+    const role2 = this.getBattleRoleFilter(interaction, 'role2');
 
     if (!pokemon1 && pokemon2) {
       pokemon1 = pokemon2;
@@ -250,7 +277,19 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     return {
       pokemon1: pokemon1 || undefined,
       pokemon2: pokemon2 || undefined,
+      role1,
+      role2,
     };
+  }
+
+  private getBattleRoleFilter(interaction: ChatInputCommandInteraction, optionName: 'role1' | 'role2'): BattleRoleKey | undefined {
+    const requestedRole = interaction.options.getString(optionName)?.trim();
+    if (!requestedRole) {
+      return undefined;
+    }
+
+    const roleDefinition = BattleRolesHelper.getRoleDefinition(requestedRole as BattleRoleKey);
+    return roleDefinition?.key;
   }
 
   private getVgcFormat(interaction: ChatInputCommandInteraction): SmogonFormat {
@@ -280,13 +319,17 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     }
   }
 
-  private buildEmbedTitle(pokemon1?: Pokemon, pokemon2?: Pokemon): string {
-    if (!pokemon1)
+  private buildEmbedTitle(
+    pokemon1?: Pokemon,
+    pokemon2?: Pokemon,
+    role1?: BattleRoleKey,
+    role2?: BattleRoleKey,
+  ): string {
+    const filters = this.getTeamFilterLabels(pokemon1, pokemon2, role1, role2);
+    if (!filters.length)
       return 'Recent VGC Teams';
 
-    return ((pokemon1 && pokemon2)
-      ? `${pokemon1.name} + ${pokemon2.name} Teams`
-      : `${pokemon1.name} Teams`);  
+    return `${filters.join(' + ')} Teams`;
   }
 
   private buildTeamDetailsDescription(resolvedTeam: VgcResolvedTeam): string {
@@ -302,21 +345,42 @@ export class VgcCommand extends CommandBase implements SlashCommandHandler {
     return detailLines.join('\n');
   }
 
-  private buildNoTeamsMessage(format: SmogonFormat, pokemon1?: Pokemon, pokemon2?: Pokemon): string {
-    if (pokemon1 && pokemon2) {
-      return `No VGC teams available for ${FormatHelper.getMetaDisplayName(format.meta)} with ${pokemon1.name} and ${pokemon2.name}.`;
+  private buildNoTeamsMessage(
+    format: SmogonFormat,
+    pokemon1?: Pokemon,
+    pokemon2?: Pokemon,
+    role1?: BattleRoleKey,
+    role2?: BattleRoleKey,
+  ): string {
+    const filters = this.getTeamFilterLabels(pokemon1, pokemon2, role1, role2);
+    if (!filters.length) {
+      return `No VGC teams available for ${FormatHelper.getMetaDisplayName(format.meta)}.`;
     }
 
-    if (pokemon1) {
-      return `No VGC teams available for ${FormatHelper.getMetaDisplayName(format.meta)} with ${pokemon1.name}.`;
-    }
-
-    return `No VGC teams available for ${FormatHelper.getMetaDisplayName(format.meta)}.`;
+    return `No VGC teams available for ${FormatHelper.getMetaDisplayName(format.meta)} with ${filters.join(' and ')}.`;
   }
 
   private buildTeamMembersList(team: VgcTeam): string {
     const displayNames = team.members.map(member => this.formatPokemonWithItemDisplay(member.name, member.item));
     return displayNames.join('\n');
+  }
+
+  private getTeamFilterLabels(
+    pokemon1?: Pokemon,
+    pokemon2?: Pokemon,
+    role1?: BattleRoleKey,
+    role2?: BattleRoleKey,
+  ): string[] {
+    const labels = [pokemon1?.name, pokemon2?.name].filter((label): label is string => !!label);
+
+    [role1, role2]
+      .filter((role): role is BattleRoleKey => !!role)
+      .forEach(role => {
+        const displayName = BattleRolesHelper.getRoleDefinition(role)?.displayName ?? role;
+        labels.push(`${displayName} role`);
+      });
+
+    return labels;
   }
 }
 

@@ -16,7 +16,7 @@ export class AppDataSource {
   public readonly formatStats = new FormatStats(this.smogonStats, this.pokemonDb);
   public readonly battlingService = new BattlingService(this.pokemonDb, this.movedex, this.formatStats);
   public readonly smogonSets = new SmogonSets(this.pokemonDb);
-  public readonly vgcTeams = new VgcTeams(this.pokemonDb);
+  public readonly vgcTeams = new VgcTeams(this.pokemonDb, this.battlingService);
   public readonly emojiService = new EmojiService();
   public readonly analytics: AnalyticsService;
 

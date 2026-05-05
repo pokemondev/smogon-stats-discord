@@ -131,6 +131,19 @@ const pokemonDb = new PokemonDb();
 
 const tests: TestCase[] = [
   {
+    name: 'command data includes role filters on the teams subcommand',
+    run: async () => {
+      const command = new VgcCommand({ pokemonDb } as never);
+      const json = command.data.toJSON();
+      const subcommand = json.options?.find(option => option.name === 'teams') as {
+        options?: Array<{ name: string }>;
+      } | undefined;
+
+      assert.ok(subcommand, 'Expected teams subcommand to be registered.');
+      assert.deepStrictEqual(subcommand?.options?.map(option => option.name), ['regulation', 'pokemon1', 'pokemon2', 'role1', 'role2']);
+    },
+  },
+  {
     name: 'command data includes the team-details subcommand with a required team-id option',
     run: async () => {
       const command = new VgcCommand({ pokemonDb } as never);
@@ -249,17 +262,53 @@ const tests: TestCase[] = [
     },
   },
   {
+    name: 'teams forwards role filters to the VGC teams service',
+    run: async () => {
+      const calls: Array<{ format: { generation: string; meta: string }; role1?: string; role2?: string }> = [];
+      const command = new VgcCommand({
+        pokemonDb,
+        vgcTeams: {
+          getTeams: async (format: { generation: string; meta: string }, role1?: string, role2?: string) => {
+            calls.push({ format, role1, role2 });
+            return [createSampleTeam('I1280', 'Sample Team')];
+          },
+          getTeamsByPokemon: async () => [],
+          getTeamById: () => undefined,
+        },
+      } as never);
+      const interaction = new FakeChatInputCommandInteraction({
+        regulation: 'vgc2026regi',
+        role1: 'Tailwind',
+        role2: 'Supporters',
+      });
+
+      await command.execute(interaction as never);
+
+      assert.deepStrictEqual(interaction.calls.map(call => call.name), ['deferReply', 'editReply']);
+      assert.deepStrictEqual(calls, [{
+        format: { generation: 'gen9', meta: 'vgc2026regi' },
+        role1: 'Tailwind',
+        role2: 'Supporters',
+      }]);
+
+      const editReplyCall = interaction.calls.find(call => call.name === 'editReply');
+      const payload = editReplyCall?.payload as { embeds: Array<{ toJSON?: () => any }> };
+      const embed = payload.embeds[0].toJSON ? payload.embeds[0].toJSON() : payload.embeds[0];
+      assert.strictEqual(embed.title, 'Tailwind role + Supporters role Teams');
+    },
+  },
+  {
     name: 'teams renders member lists, ID labels, two-column separators, and footer links',
     run: async () => {
       const command = new VgcCommand({
         pokemonDb,
         vgcTeams: {
-          getTeams: () => [
+          getTeams: async () => [
             createSampleTeam('I1280', 'Sample Team 1'),
             createSampleTeam('I1279', 'Sample Team 2'),
             createSampleTeam('I1278', 'Sample Team 3'),
           ],
-          getTeamsByPokemon: () => [],
+          getTeamsByPokemon: async () => [],
           getTeamById: () => undefined,
         },
       } as never);
@@ -290,10 +339,10 @@ const tests: TestCase[] = [
           getItemEmoji: () => undefined,
         },
         vgcTeams: {
-          getTeams: () => [
+          getTeams: async () => [
             createSampleTeam('I1280', 'Sample Team 1'),
           ],
-          getTeamsByPokemon: () => [],
+          getTeamsByPokemon: async () => [],
           getTeamById: () => undefined,
         },
       } as never);
@@ -315,8 +364,8 @@ const tests: TestCase[] = [
       const command = new VgcCommand({
         pokemonDb,
         vgcTeams: {
-          getTeams: () => [],
-          getTeamsByPokemon: (_format: { generation: string; meta: string }, pokemon1: string, pokemon2?: string) => {
+          getTeams: async () => [],
+          getTeamsByPokemon: async (_format: { generation: string; meta: string }, pokemon1: string, pokemon2?: string) => {
             calls.push({ pokemon1, pokemon2 });
             return [
               createSampleTeam('I1280', 'Sample Team'),
@@ -344,8 +393,8 @@ const tests: TestCase[] = [
       const command = new VgcCommand({
         pokemonDb,
         vgcTeams: {
-          getTeams: () => [],
-          getTeamsByPokemon: (format: { generation: string; meta: string }, pokemon1: string, pokemon2?: string) => {
+          getTeams: async () => [],
+          getTeamsByPokemon: async (format: { generation: string; meta: string }, pokemon1: string, pokemon2?: string) => {
             calls.push({ format, pokemon1, pokemon2 });
             return [
               createSampleTeam('I1280', 'Sample Team'),
@@ -373,8 +422,8 @@ const tests: TestCase[] = [
       const command = new VgcCommand({
         pokemonDb,
         vgcTeams: {
-          getTeams: () => [],
-          getTeamsByPokemon: () => [],
+          getTeams: async () => [],
+          getTeamsByPokemon: async () => [],
           getTeamById: () => undefined,
         },
       } as never);
@@ -400,8 +449,8 @@ const tests: TestCase[] = [
           ],
         },
         vgcTeams: {
-          getTeams: () => [],
-          getTeamsByPokemon: () => [],
+          getTeams: async () => [],
+          getTeamsByPokemon: async () => [],
           getTeamById: () => createResolvedTeam('I1280'),
         },
       } as never);
@@ -444,8 +493,8 @@ const tests: TestCase[] = [
           },
         },
         vgcTeams: {
-          getTeams: () => [],
-          getTeamsByPokemon: () => [],
+          getTeams: async () => [],
+          getTeamsByPokemon: async () => [],
           getTeamById: () => createResolvedTeam('I1280'),
         },
       } as never);
@@ -472,8 +521,8 @@ const tests: TestCase[] = [
           getUsages: async () => [],
         },
         vgcTeams: {
-          getTeams: () => [],
-          getTeamsByPokemon: () => [],
+          getTeams: async () => [],
+          getTeamsByPokemon: async () => [],
           getTeamById: () => undefined,
         },
       } as never);

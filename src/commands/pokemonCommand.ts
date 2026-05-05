@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { CommandBase, CommandHelpTopic, MovesetCommandData, SlashCommandData, SlashCommandHandler, withFormatOptions, withNameOption, withPokemonInfoCategoryOption } from './command';
+import { CommandBase, CommandHelpTopic, MovesetCommandData, SlashCommandData, SlashCommandHandler, getBattleRoleChoices, withFormatOptions, withNameOption, withPokemonInfoCategoryOption } from './command';
 import { AppDataSource } from "../appDataSource";
 import { DiscordHelper } from '../common/discordHelper';
 import { FormatHelper } from '../smogon/formatHelper';
@@ -7,7 +7,7 @@ import { FormatCatalog } from '../smogon/formatCatalog';
 import { TypeService } from '../pokemon/typeService';
 import { EffectivenessType } from '../models/pokemon';
 import { ChecksAndCountersUsageData, MoveSetUsage, PokemonMoveSetSearch, PokemonUsage, SmogonFormat, UsageData } from '../models/smogonUsage';
-import { BattleRoleCategory, BattleRoleFitStatus } from '../models/battling';
+import { BattleRoleCategory, BattleRoleFitStatus, BattleRoleKey } from '../models/battling';
 import { BattleRolesHelper } from '../pokemon/battleRolesHelper';
 
 const pokemonInfoHandlers = {
@@ -52,6 +52,8 @@ export const pokemonHelpTopic: CommandHelpTopic = {
     'move1: Optional for /pokemon search. First move filter.',
     'move2: Optional for /pokemon search. Second move filter.',
     'ability: Optional for /pokemon search. Ability filter.',
+    'role1: Optional for /pokemon search. First battle role filter.',
+    'role2: Optional for /pokemon search. Second battle role filter.',
     'meta: Optional competitive metagame / (VGC) regulation filter. Uses the configured default when omitted.',
     'generation: Optional generation filter. Uses the configured default when omitted. If only generation is provided, that generation uses its default VGC format.',
   ],
@@ -60,6 +62,7 @@ export const pokemonHelpTopic: CommandHelpTopic = {
     '/pokemon battle-roles name:incineroar meta:OU generation:"Gen 9"',
     '/pokemon info name:gholdengo category:items meta:OU',
     '/pokemon search move1:protect ability:cursed body meta:OU',
+    '/pokemon search role1:Tailwind role2:Supporters generation:"Gen 9" meta:"VGC 2026 Reg. I"',
     '/pokemon sets name:landorus-therian meta:OU generation:"Gen 8"',
   ],
 };
@@ -110,6 +113,18 @@ export function createPokemonCommandData(): SlashCommandData {
           option
             .setName('ability')
             .setDescription('Ability filter')
+        )
+        .addStringOption(option =>
+          option
+            .setName('role1')
+            .setDescription('First battle role filter')
+            .addChoices(...getBattleRoleChoices())
+        )
+        .addStringOption(option =>
+          option
+            .setName('role2')
+            .setDescription('Second battle role filter')
+            .addChoices(...getBattleRoleChoices())
         )
       ));
 }
@@ -306,7 +321,11 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const format = this.getFormat(interaction);
     await DiscordHelper.deferCommandReply(interaction);
 
-    const usages = await this.dataSource.smogonStats.searchPokemon(format, search);
+    const usages = await this.dataSource.smogonStats.searchPokemon(
+      format,
+      search,
+      moveSet => this.matchesBattleRoles(format, moveSet, search),
+    );
     if (!usages.length) {
       await this.replyNoData(interaction, `No Pokemon found for ${this.getSearchDescription(search)} in ${FormatHelper.toUserString(format)}.`);
       return;
@@ -341,9 +360,18 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     const move1 = interaction.options.getString('move1')?.trim();
     const move2 = interaction.options.getString('move2')?.trim();
     const ability = interaction.options.getString('ability')?.trim();
+    const role1 = this.getBattleRoleFilter(interaction, 'role1');
+    if (interaction.options.getString('role1') && !role1) {
+      return undefined;
+    }
 
-    if (!move1 && !move2 && !ability) {
-      void this.replyNoData(interaction, 'Provide at least one of move1, move2, or ability for /pokemon search.');
+    const role2 = this.getBattleRoleFilter(interaction, 'role2');
+    if (interaction.options.getString('role2') && !role2) {
+      return undefined;
+    }
+
+    if (!move1 && !move2 && !ability && !role1 && !role2) {
+      void this.replyNoData(interaction, 'Provide at least one of move1, move2, ability, role1, or role2 for /pokemon search.');
       return undefined;
     }
 
@@ -369,7 +397,39 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
       ...(resolvedMove1 ? { move1: resolvedMove1 } : {}),
       ...(resolvedMove2 ? { move2: resolvedMove2 } : {}),
       ...(resolvedAbility ? { ability: resolvedAbility } : {}),
+      ...(role1 ? { role1 } : {}),
+      ...(role2 ? { role2 } : {}),
     };
+  }
+
+  private getBattleRoleFilter(interaction: ChatInputCommandInteraction, optionName: 'role1' | 'role2'): BattleRoleKey | undefined {
+    const requestedRole = interaction.options.getString(optionName)?.trim();
+    if (!requestedRole)
+      return undefined;    
+
+    const roleDefinition = BattleRolesHelper.getRoleDefinition(requestedRole as BattleRoleKey);
+    if (!roleDefinition) {
+      void this.replyNoData(interaction, `Could not find the provided role: '${requestedRole}'.`);
+      return undefined;
+    }
+
+    return roleDefinition.key;
+  }
+
+  private async matchesBattleRoles(
+    format: SmogonFormat,
+    moveSet: MoveSetUsage,
+    search: PokemonMoveSetSearch,
+  ): Promise<boolean> {
+    const requiredRoles = [search.role1, search.role2].filter((role): role is BattleRoleKey => !!role);
+    if (!requiredRoles.length)
+      return true;
+
+    const matchResults = await Promise.all(
+      requiredRoles.map(role => this.dataSource.battlingService.getRoleFitStatus(role, format, moveSet.name, moveSet))
+    );
+
+    return matchResults.every(status => status !== BattleRoleFitStatus.No);
   }
 
   private async processUsageData(
@@ -498,6 +558,10 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
   }
 
   private getSearchTitle(search: PokemonMoveSetSearch): string {
+    if (search.role1 || search.role2) {
+      return `Pokemon matching ${this.getSearchDescription(search)}`;
+    }
+
     return `Pokemon using ${this.getSearchDescription(search)}`;
   }
 
@@ -535,6 +599,13 @@ export class PokemonCommand extends CommandBase implements SlashCommandHandler {
     if (search.ability) {
       parts.push(`'${search.ability}' ability`);
     }
+
+    [search.role1, search.role2]
+      .filter((role): role is BattleRoleKey => !!role)
+      .forEach(role => {
+        const displayName = BattleRolesHelper.getRoleDefinition(role)?.displayName ?? role;
+        parts.push(`role '${displayName}'`);
+      });
 
     if (parts.length === 1) {
       return parts[0];

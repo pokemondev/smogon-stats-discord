@@ -16,6 +16,7 @@ import { FormatConfig } from '../config/formatConfig';
 import { FormatCatalog } from '../smogon/formatCatalog';
 import { EmojiService } from '../emoji/emojiService';
 import { BattleRoleKey, MetaStateRoleEntry } from '../models/battling';
+import { BattleRolesHelper } from '../pokemon/battleRolesHelper';
 
 const generationChoices = [
   { name: 'Gen 9', value: '9' },
@@ -86,6 +87,18 @@ export function withFormatOptions(subcommand: SlashCommandSubcommandBuilder): Sl
   return subcommand
     .addStringOption(option => buildMetaOption(option))
     .addStringOption(option => buildGenerationOption(option));
+}
+
+export function getBattleRoleChoices(roleKeys?: BattleRoleKey[]) {
+  const orderedKeys = roleKeys ?? BattleRolesHelper.getRoleDefinitions().map(role => role.key);
+
+  return orderedKeys
+    .map(key => BattleRolesHelper.getRoleDefinition(key))
+    .filter((role): role is NonNullable<typeof role> => !!role)
+    .map(role => ({
+      name: role.displayName,
+      value: role.key,
+    }));
 }
 
 export class CommandBase {

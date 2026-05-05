@@ -1,4 +1,5 @@
 import assert = require('assert');
+import { BattlingService } from '../pokemon/battlingService';
 import { PokemonDb } from '../pokemon/pokemonDb';
 import { VgcTeams } from './vgcTeams';
 
@@ -39,8 +40,8 @@ const vgcTeams = new VgcTeams(pokemonDb);
 const tests: TestCase[] = [
   {
     name: 'returns teams for a requested regulation without filters',
-    run: () => {
-      const teams = vgcTeams.getTeams({ generation: 'gen9', meta: 'vgc2026regi' });
+    run: async () => {
+      const teams = await vgcTeams.getTeams({ generation: 'gen9', meta: 'vgc2026regi' });
 
       assert.ok(teams.length > 0, 'Expected local VGC teams for VGC 2026 Reg. I.');
       assert.strictEqual(teams[0].date, '7 Apr 2026');
@@ -51,8 +52,8 @@ const tests: TestCase[] = [
   },
   {
     name: 'sorts teams by newest date and then by best rank',
-    run: () => {
-      const teams = vgcTeams.getTeams({ generation: 'gen9', meta: 'vgc2026regi' });
+    run: async () => {
+      const teams = await vgcTeams.getTeams({ generation: 'gen9', meta: 'vgc2026regi' });
 
       assert.strictEqual(teams[0].date, '7 Apr 2026');
       assert.strictEqual(teams[0].rank, 4);
@@ -66,17 +67,42 @@ const tests: TestCase[] = [
   },
   {
     name: 'returns teams filtered by one or two pokemon using the startup index',
-    run: () => {
+    run: async () => {
       const format = { generation: 'gen9', meta: 'vgc2026regi' };
-      const zamazentaTeams = vgcTeams.getTeamsByPokemon(format, 'Zamazenta');
-      const duoTeams = vgcTeams.getTeamsByPokemon(format, 'Zamazenta', 'Calyrex-Shadow');
-      const missingTeams = vgcTeams.getTeamsByPokemon(format, 'DefinitelyNotAPokemon');
+      const zamazentaTeams = await vgcTeams.getTeamsByPokemon(format, 'Zamazenta');
+      const duoTeams = await vgcTeams.getTeamsByPokemon(format, 'Zamazenta', 'Calyrex-Shadow');
+      const missingTeams = await vgcTeams.getTeamsByPokemon(format, 'DefinitelyNotAPokemon');
 
       assert.ok(zamazentaTeams.length > 0, 'Expected Zamazenta to appear in local Reg. I teams.');
       assert.ok(duoTeams.length > 0, 'Expected Zamazenta + Calyrex-Shadow to appear together in local Reg. I teams.');
       assert.ok(duoTeams.every(team => team.members.some(member => member.name === 'Zamazenta')));
       assert.ok(duoTeams.every(team => team.members.some(member => member.name === 'Calyrex-Shadow')));
       assert.deepStrictEqual(missingTeams, []);
+    },
+  },
+  {
+    name: 'filters teams by battle roles using team member sets',
+    run: async () => {
+      const service = new VgcTeams(pokemonDb, new BattlingService()) as never as {
+        teamsDb: Map<string, Array<ReturnType<typeof createSampleTeam>>>;
+        getTeams: (format: { generation: string; meta: string }, role1?: 'Tailwind', role2?: 'Supporters') => Promise<Array<ReturnType<typeof createSampleTeam>>>;
+      };
+
+      service.teamsDb.set('vgc2026regi', [
+        createSampleTeam('tailwind-support', 'Tailwind Support Team'),
+        {
+          ...createSampleTeam('offense-only', 'Offense Only Team'),
+          members: createSampleTeam('offense-only', 'Offense Only Team').members.map(member =>
+            member.name === 'Whimsicott'
+              ? { ...member, moves: ['Moonblast', 'Encore', 'Protect', 'Taunt'] }
+              : member
+          ),
+        },
+      ]);
+
+      const results = await service.getTeams({ generation: 'gen9', meta: 'vgc2026regi' }, 'Tailwind', 'Supporters');
+
+      assert.deepStrictEqual(results.map(team => team.teamId), ['tailwind-support']);
     },
   },
   {
@@ -121,16 +147,16 @@ const tests: TestCase[] = [
 ];
 
 function run(): void {
-  tests.forEach(test => {
-    test.run();
-    console.log(`PASS ${test.name}`);
+  tests.reduce(
+    (promise, test) => promise.then(async () => {
+      await test.run();
+      console.log(`PASS ${test.name}`);
+    }),
+    Promise.resolve()
+  ).catch((error) => {
+    console.error(error);
+    process.exit(1);
   });
 }
 
-try {
-  run();
-}
-catch (error) {
-  console.error(error);
-  process.exit(1);
-}
+run();
