@@ -8,6 +8,7 @@ interface VgcSeason {
   regulation?: string;
   isDefault?: boolean;
   enabled?: boolean;
+  isChampions?: boolean;
 }
 
 export class FormatCatalog {
@@ -23,14 +24,15 @@ export class FormatCatalog {
     vgc2026regi: 'https://www.smogon.com/dex/sv/formats/vgc25-regulation-i/',
   };
   public static readonly VgcSeasons: readonly VgcSeason[] = [
-    { gen: 'gen9', year: '2026', regulation: 'regf', meta: 'vgc2026regf', aliases: [ 'vgc2026', 'vgc2026regf' ], isDefault: true },
+    { gen: 'gen9', year: '2026', regulation: 'regma', meta: 'championsvgc2026regma', aliases: [ 'champions', 'vgc2026' ], isDefault: true, isChampions: true },
+    { gen: 'gen9', year: '2026', regulation: 'regf', meta: 'vgc2026regf', aliases: [ 'vgc2026regf' ] },
     { gen: 'gen9', year: '2026', regulation: 'regi', meta: 'vgc2026regi', aliases: [ 'vgc2026regi' ] },
     { gen: 'gen8', year: '2022', meta: 'vgc2022', aliases: [ 'vgc2022' ], isDefault: true, enabled: false },
     { gen: 'gen7', year: '2019', meta: 'vgc2019', aliases: [ 'vgc2019' ], isDefault: true, enabled: false },
   ];
   public static readonly EnabledVgcSeasons = FormatCatalog.VgcSeasons.filter(season => season.enabled !== false);
   public static readonly MetaValues = [ ...FormatCatalog.StandardMetaValues, ...FormatCatalog.EnabledVgcSeasons.map(season => season.meta) ];
-  public static readonly MetaAliases = [ ...FormatCatalog.StandardMetaValues, 'uber', 'vgc', ...FormatCatalog.EnabledVgcSeasons.map(season => season.meta) ];
+  public static readonly MetaNames = [ ...FormatCatalog.StandardMetaValues, 'uber', 'vgc', ...FormatCatalog.EnabledVgcSeasons.map(season => season.meta) ];
 
   public static normalizeGeneration(gen?: string): string {
     if (!gen) {
@@ -95,12 +97,12 @@ export class FormatCatalog {
   }
 
   public static isVgcMeta(meta?: string): boolean {
-    return !!meta && meta.toLowerCase().startsWith('vgc');
+    return !!meta && meta.toLowerCase().includes('vgc');
   }
 
   public static isValidMeta(meta: string): boolean {
     const normalizedMeta = FormatCatalog.normalizeMeta(meta);
-    return FormatCatalog.MetaAliases.some(value => value === normalizedMeta) || FormatCatalog.isKnownVgcAlias(normalizedMeta);
+    return FormatCatalog.MetaNames.some(value => value === normalizedMeta) || FormatCatalog.isKnownVgcAlias(normalizedMeta);
   }
 
   public static isConcreteMetaValue(meta: string): boolean {
@@ -108,14 +110,21 @@ export class FormatCatalog {
     return FormatCatalog.MetaValues.some(value => value === normalizedMeta);
   }
 
+  public static getVgcSeason(meta: string): VgcSeason | undefined {
+    const normalizedMeta = FormatCatalog.normalizeMeta(meta);
+    const vgcSeason = FormatCatalog.VgcSeasons.find(season => season.meta === normalizedMeta);
+    return vgcSeason;
+  }
+
   public static getMetaDisplayName(meta: string): string {
     const normalizedMeta = FormatCatalog.normalizeMeta(meta);
     const vgcSeason = FormatCatalog.VgcSeasons.find(season => season.meta === normalizedMeta);
     if (vgcSeason) {
+      const suffix = vgcSeason.isChampions ? ' [Champions]' : '';
       const regulation = vgcSeason.regulation
         ? ` Reg. ${vgcSeason.regulation.replace(/^reg/i, '').toUpperCase()}`
         : '';
-      return `VGC ${vgcSeason.year}${regulation}`;
+      return `VGC ${vgcSeason.year}${regulation}${suffix}`;
     }
 
     return normalizedMeta.toUpperCase();

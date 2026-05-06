@@ -175,7 +175,7 @@ const tests: TestCase[] = [
       assert.strictEqual(regulationOption?.description, 'VGC regulation');
       assert.strictEqual(regulationOption?.type, 3);
       assert.strictEqual(regulationOption?.required, false);
-      assert.deepStrictEqual(regulationOption?.choices?.map(choice => choice.value), ['vgc2026regf', 'vgc2026regi']);
+      assert.deepStrictEqual(regulationOption?.choices?.map(choice => choice.value), ['championsvgc2026regma', 'vgc2026regf', 'vgc2026regi']);
     },
   },
   {
