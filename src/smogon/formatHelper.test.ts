@@ -4,8 +4,10 @@ import { FormatCatalog } from './formatCatalog';
 import { PokemonSet } from '../models/smogonSets';
 import { SmogonFormat } from '../models/smogonUsage';
 
+const defaultVgcFormat = FormatCatalog.getGenerationDefaultVgcFormat('gen9');
+
 process.env.DEFAULT_GENERATION = 'gen9';
-process.env.DEFAULT_META = 'vgc2026regf';
+process.env.DEFAULT_META = defaultVgcFormat.meta;
 
 interface TestCase {
   name: string;
@@ -20,15 +22,15 @@ interface FormatCase {
 const formatCases: FormatCase[] = [
   {
     args: [],
-    expected: { generation: 'gen9', meta: 'vgc2026regf' }
+    expected: defaultVgcFormat,
   },
   {
     args: [ 'pikachu' ],
-    expected: { generation: 'gen9', meta: 'vgc2026regf' }
+    expected: defaultVgcFormat,
   },
   {
     args: [ 'gen8' ],
-    expected: { generation: 'gen9', meta: 'vgc2026regf' }
+    expected: defaultVgcFormat,
   },
   {
     args: [ 'gen8', 'uu' ],
@@ -44,23 +46,23 @@ const formatCases: FormatCase[] = [
   },
   {
     args: [ 'vgc' ],
-    expected: { generation: 'gen9', meta: 'vgc2026regf' }
+    expected: defaultVgcFormat,
   },
   {
     args: [ 'gen8', 'vgc' ], // ensures vgc meta always return correct generation (from VgcSeasons def.)
-    expected: { generation: 'gen9', meta: 'vgc2026regf' }
+    expected: defaultVgcFormat,
   },
   {
     args: [ 'vgc', '2022' ],
-    expected: { generation: 'gen9', meta: 'vgc2026regf' }
+    expected: defaultVgcFormat,
   },
   {
     args: [ 'charizard', 'vgc2026' ],
-    expected: { generation: 'gen9', meta: 'vgc2026regf' }
+    expected: defaultVgcFormat,
   },
   {
     args: [ 'vgc', '2026' ],
-    expected: { generation: 'gen9', meta: 'vgc2026regf' }
+    expected: defaultVgcFormat,
   },
   {
     args: [ 'charizard', 'vgc2026regi' ],
@@ -98,10 +100,10 @@ const tests: TestCase[] = [
 
       assert.deepStrictEqual(FormatHelper.getFormat([]), { generation: 'gen8', meta: 'ou' });
       assert.deepStrictEqual(FormatHelper.getFormat([ 'uu' ]), { generation: 'gen8', meta: 'uu' });
-      assert.deepStrictEqual(FormatHelper.getFormat([ 'gen9' ]), { generation: 'gen9', meta: 'vgc2026regf' });
+      assert.deepStrictEqual(FormatHelper.getFormat([ 'gen9' ]), defaultVgcFormat);
 
       process.env.DEFAULT_GENERATION = 'gen9';
-      process.env.DEFAULT_META = 'vgc2026regf';
+      process.env.DEFAULT_META = defaultVgcFormat.meta;
     }
   },
   {
@@ -118,7 +120,7 @@ const tests: TestCase[] = [
     run: () => {
       assert.strictEqual(FormatCatalog.isValidMeta('vgc2022'), false);
       assert.strictEqual(FormatCatalog.isSupportedFormat({ generation: 'gen8', meta: 'vgc2022' }), false);
-      assert.deepStrictEqual(FormatCatalog.getGenerationDefaultVgcFormat('gen8'), { generation: 'gen9', meta: 'vgc2026regf' });
+      assert.deepStrictEqual(FormatCatalog.getGenerationDefaultVgcFormat('gen8'), defaultVgcFormat);
     }
   },
   {

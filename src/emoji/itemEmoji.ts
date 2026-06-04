@@ -18,7 +18,8 @@ export class ItemEmoji {
   public static readonly Prefix = 'item';
   public static readonly SmogonItemSpriteBaseUrl = 'https://www.smogon.com/forums/media/minisprites';
 
-  private static readonly IgnoredItemNames = new Set(['Other', 'Others', 'nothing', 'Nothing']);
+  private static readonly IgnoredItemNames = ['Other', 'Others', 'nothing', 'Nothing', 'silverpowder', 'deep-sea-tooth'] as const;
+  private static readonly IgnoredItemTokens = new Set(ItemEmoji.IgnoredItemNames.map(name => ItemEmoji.toIgnoreToken(name)));
 
   public static async buildList(stats: StatsLike): Promise<ItemEmojiRosterResult> {
     const sources = PokemonEmoji.buildRosterSources();
@@ -29,7 +30,7 @@ export class ItemEmoji {
 
       for (const moveSet of moveSets) {
         for (const item of moveSet.items ?? []) {
-          if (ItemEmoji.IgnoredItemNames.has(item.name)) {
+          if (ItemEmoji.shouldIgnore(item.name)) {
             continue;
           }
 
@@ -82,11 +83,21 @@ export class ItemEmoji {
     return `${ItemEmoji.SmogonItemSpriteBaseUrl}/${ItemEmoji.toMinispriteKey(name)}.png`;
   }
 
+  public static shouldIgnore(name: string): boolean {
+    return ItemEmoji.IgnoredItemTokens.has(ItemEmoji.toIgnoreToken(name));
+  }
+
   private static normalizeName(name: string): string {
     return name
       .trim()
       .normalize('NFKD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[\u2019'.]/g, '');
+  }
+
+  private static toIgnoreToken(name: string): string {
+    return ItemEmoji.normalizeName(name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '');
   }
 }

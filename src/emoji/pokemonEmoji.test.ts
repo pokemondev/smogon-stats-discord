@@ -101,11 +101,11 @@ const tests: TestCase[] = [
     name: 'buildRoster deduplicates overlaps and records unresolved names',
     run: async () => {
       const stats = new FakeSmogonStats({
-        'gen9/vgc2026regf': [
+        'gen9/championsvgc2026regma': [
           createUsage('Urshifu-Rapid-Strike', 1, 40.1),
           createUsage('Rillaboom', 2, 32.5),
         ],
-        'gen9/vgc2026regi': [
+        'gen9/vgc2026regf': [
           createUsage('Rillaboom', 1, 38.4),
           createUsage('Incineroar', 2, 30.2),
         ],
@@ -124,10 +124,32 @@ const tests: TestCase[] = [
 
       assert.deepStrictEqual(
         roster.entries.map(entry => entry.emojiName),
-        ['pkm_urshifu_rapid_strike', 'pkm_rillaboom', 'pkm_incineroar', 'pkm_unknown_form'],
+        ['pkm_urshifu_rapid_strike', 'pkm_rillaboom', 'pkm_incineroar', 'pkm_unknown_form', 'pkm_pikachu', 'pkm_charizard', 'pkm_mewtwo'],
       );
       assert.deepStrictEqual(roster.unresolvedNames, ['Unknown Form']);
-      assert.deepStrictEqual(roster.entries[1].sourceFormats, ['gen9vgc2026regf', 'gen9vgc2026regi']);
+      assert.deepStrictEqual(roster.entries[1].sourceFormats, ['gen9championsvgc2026regma', 'gen9vgc2026regf']);
+    },
+  },
+  {
+    name: 'buildRoster always includes configured pokemon when they are absent from usage data',
+    run: async () => {
+      const stats = new FakeSmogonStats({});
+      const pokemonDb = new FakePokemonDb({
+        Pikachu: createPokemon('Pikachu'),
+        pikachu: createPokemon('Pikachu'),
+        Charizard: createPokemon('Charizard'),
+        charizard: createPokemon('Charizard'),
+        Mewtwo: createPokemon('Mewtwo'),
+        mewtwo: createPokemon('Mewtwo'),
+      });
+
+      const roster = await PokemonEmoji.buildList(stats as never, pokemonDb as never);
+
+      assert.deepStrictEqual(
+        roster.entries.map(entry => entry.emojiName),
+        ['pkm_pikachu', 'pkm_charizard', 'pkm_mewtwo'],
+      );
+      assert.deepStrictEqual(roster.unresolvedNames, []);
     },
   },
 ];
