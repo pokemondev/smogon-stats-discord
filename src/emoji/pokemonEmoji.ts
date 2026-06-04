@@ -31,6 +31,7 @@ export class PokemonEmoji {
   public static readonly Prefix = 'pkm';
   public static readonly ImportBatchSize = 8;
   public static readonly SmogonMiniSpriteBaseUrl = 'https://www.smogon.com/dex/media/sprites/xyicons';
+  public static readonly AlwaysIncludedPokemonNames = ['Pikachu', 'Charizard', 'Mewtwo'] as const;
 
   public static buildRosterSources(): PokemonEmojiSource[] {
     const latestGen = FormatCatalog.Generations[0];
@@ -89,6 +90,23 @@ export class PokemonEmoji {
           sourceFormats: [sourceKey],
         });
       }
+    }
+
+    for (const pokemonName of PokemonEmoji.AlwaysIncludedPokemonNames) {
+      const canonicalName = pokemonDb.getPokemon(pokemonName)?.name ?? pokemonName.trim();
+      const emojiKey = PokemonEmoji.toEmojiKey(canonicalName);
+      if (entriesByKey.has(emojiKey)) {
+        continue;
+      }
+
+      entriesByKey.set(emojiKey, {
+        pokemonName: canonicalName,
+        emojiKey,
+        emojiName: PokemonEmoji.toEmojiNameFromKey(emojiKey),
+        minispriteKey: PokemonEmoji.toMinispriteKey(canonicalName),
+        minispriteUrl: PokemonEmoji.toMinispriteUrl(canonicalName),
+        sourceFormats: [],
+      });
     }
 
     return {

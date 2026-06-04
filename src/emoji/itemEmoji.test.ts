@@ -58,7 +58,7 @@ const tests: TestCase[] = [
     },
   },
   {
-    name: 'buildRoster deduplicates items across formats and ignores Other and Others',
+    name: 'buildRoster deduplicates items across formats and ignores configured item names',
     run: async () => {
       const stats = new FakeSmogonStats({
         'gen9/vgc2026regf': [
@@ -72,15 +72,17 @@ const tests: TestCase[] = [
             { name: 'Others', percentage: 40.0 },
           ]),
         ],
-        'gen9/vgc2026regi': [
+        'gen9/championsvgc2026regma': [
           createMoveSet('Incineroar', [
             { name: 'Sitrus Berry', percentage: 50.0 },
             { name: 'Assault Vest', percentage: 30.0 },
+            { name: 'Silver Powder', percentage: 20.0 },
           ]),
         ],
         'gen9/ubers': [
           createMoveSet('Koraidon', [
             { name: 'Choice Scarf', percentage: 55.0 },
+            { name: 'Deep Sea Tooth', percentage: 45.0 },
           ]),
         ],
         'gen9/ou': [
@@ -105,9 +107,21 @@ const tests: TestCase[] = [
 
       assert.ok(!emojiNames.includes('item_other'), 'Expected Other to be ignored');
       assert.ok(!emojiNames.includes('item_others'), 'Expected Others to be ignored');
+      assert.ok(!emojiNames.includes('item_silver_powder'), 'Expected Silver Powder to be ignored');
+      assert.ok(!emojiNames.includes('item_deep_sea_tooth'), 'Expected Deep Sea Tooth to be ignored');
 
       const uniqueKeys = new Set(roster.entries.map(e => e.emojiKey));
       assert.strictEqual(uniqueKeys.size, roster.entries.length, 'Expected no duplicate emoji keys');
+    },
+  },
+  {
+    name: 'configured ignores match item variants with and without separators',
+    run: () => {
+      assert.strictEqual(ItemEmoji.shouldIgnore('SilverPowder'), true);
+      assert.strictEqual(ItemEmoji.shouldIgnore('Silver Powder'), true);
+      assert.strictEqual(ItemEmoji.shouldIgnore('Deep Sea Tooth'), true);
+      assert.strictEqual(ItemEmoji.shouldIgnore('deep-sea-tooth'), true);
+      assert.strictEqual(ItemEmoji.shouldIgnore('Choice Specs'), false);
     },
   },
   {
