@@ -24,7 +24,8 @@ export class FormatCatalog {
     vgc2026regi: 'https://www.smogon.com/dex/sv/formats/vgc25-regulation-i/',
   };
   public static readonly VgcSeasons: readonly VgcSeason[] = [
-    { gen: 'gen9', year: '2026', regulation: 'regma', meta: 'championsvgc2026regma', aliases: [ 'champions', 'vgc2026' ], isDefault: true, isChampions: true },
+    { gen: 'gen9', year: '2026', regulation: 'regmb', meta: 'championsvgc2026regmb', aliases: [ 'regmb', 'champions', 'vgc2026' ], isDefault: true, isChampions: true },
+    { gen: 'gen9', year: '2026', regulation: 'regma', meta: 'championsvgc2026regma', aliases: [ 'regma' ], isDefault: false, isChampions: true },
     { gen: 'gen9', year: '2026', regulation: 'regf', meta: 'vgc2026regf', aliases: [ 'vgc2026regf' ] },
     { gen: 'gen9', year: '2026', regulation: 'regi', meta: 'vgc2026regi', aliases: [ 'vgc2026regi' ] },
     { gen: 'gen8', year: '2022', meta: 'vgc2022', aliases: [ 'vgc2022' ], isDefault: true, enabled: false },
@@ -136,7 +137,7 @@ export class FormatCatalog {
       return '';
     }
 
-    const match = /^vgc(\d{4})/.exec(normalizedMeta);
+    const match = /^(?:champions)?vgc(\d{4})/.exec(normalizedMeta);
     return match ? match[1] : '';
   }
 
@@ -146,8 +147,8 @@ export class FormatCatalog {
       return '';
     }
 
-    const match = /^vgc\d{4}(reg[a-z0-9]+)$/.exec(normalizedMeta);
-    return match ? match[1] : '';
+    const match = /^(?:champions)?vgc\d{4}(reg[a-z0-9]+)?$/i.exec(normalizedMeta);
+    return match?.[1] ? match[1].toLowerCase() : '';
   }
 
   public static getDefaultVgcSeason(predicate: (season: VgcSeason) => boolean = () => true): VgcSeason {
