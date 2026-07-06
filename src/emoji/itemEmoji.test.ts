@@ -30,6 +30,57 @@ function createMoveSet(name: string, items: Array<{ name: string; percentage: nu
   };
 }
 
+function createMoveSetLookup(): Record<string, MoveSetUsage[]> {
+  const sourceFormats = PokemonEmoji.buildRosterSources()
+    .map(source => `${source.format.generation}/${source.format.meta}`);
+  const moveSetsByFormat = Object.fromEntries(sourceFormats.map(formatKey => [formatKey, [] as MoveSetUsage[]]));
+  const vgcFormatKeys = sourceFormats.filter(formatKey => (formatKey.split('/').pop() ?? '').includes('vgc'));
+  const [firstVgcFormatKey, secondVgcFormatKey] = vgcFormatKeys;
+
+  if (firstVgcFormatKey) {
+    moveSetsByFormat[firstVgcFormatKey] = [
+      createMoveSet('Incineroar', [
+        { name: 'Sitrus Berry', percentage: 45.0 },
+        { name: 'Safety Goggles', percentage: 30.0 },
+        { name: 'Other', percentage: 25.0 },
+      ]),
+      createMoveSet('Rillaboom', [
+        { name: 'Choice Band', percentage: 60.0 },
+        { name: 'Others', percentage: 40.0 },
+      ]),
+    ];
+  }
+
+  if (secondVgcFormatKey) {
+    moveSetsByFormat[secondVgcFormatKey] = [
+      createMoveSet('Incineroar', [
+        { name: 'Sitrus Berry', percentage: 50.0 },
+        { name: 'Assault Vest', percentage: 30.0 },
+      ]),
+    ];
+  }
+
+  const gen9UbersKey = sourceFormats.find(formatKey => formatKey === 'gen9/ubers');
+  if (gen9UbersKey) {
+    moveSetsByFormat[gen9UbersKey] = [
+      createMoveSet('Koraidon', [
+        { name: 'Choice Scarf', percentage: 55.0 },
+      ]),
+    ];
+  }
+
+  const gen9OuKey = sourceFormats.find(formatKey => formatKey === 'gen9/ou');
+  if (gen9OuKey) {
+    moveSetsByFormat[gen9OuKey] = [
+      createMoveSet('Gholdengo', [
+        { name: 'Choice Specs', percentage: 70.0 },
+      ]),
+    ];
+  }
+
+  return moveSetsByFormat;
+}
+
 const tests: TestCase[] = [
   {
     name: 'item emoji keys match the requested discord naming format',
@@ -127,20 +178,20 @@ const tests: TestCase[] = [
   {
     name: 'item roster entries use correct structure',
     run: async () => {
-      const stats = new FakeSmogonStats({
-        'gen9/vgc2026regf': [
+      const sourceFormats = PokemonEmoji.buildRosterSources()
+        .map(source => `${source.format.generation}/${source.format.meta}`);
+      const moveSetsByFormat = Object.fromEntries(sourceFormats.map(formatKey => [formatKey, [] as MoveSetUsage[]]));
+      const firstVgcFormatKey = sourceFormats.find(formatKey => (formatKey.split('/').pop() ?? '').includes('vgc'));
+
+      if (firstVgcFormatKey) {
+        moveSetsByFormat[firstVgcFormatKey] = [
           createMoveSet('Incineroar', [
             { name: 'Choice Scarf', percentage: 50.0 },
           ]),
-        ],
-        'gen9/vgc2026regi': [],
-        'gen9/ubers': [],
-        'gen9/ou': [],
-        'gen9/uu': [],
-        'gen9/ru': [],
-        'gen9/nu': [],
-      });
+        ];
+      }
 
+      const stats = new FakeSmogonStats(moveSetsByFormat);
       const roster = await ItemEmoji.buildList(stats as never);
 
       assert.strictEqual(roster.entries.length, 1);
