@@ -37,7 +37,7 @@ export class PokemonEmoji {
     const latestGen = FormatCatalog.Generations[0];
     const prevGen = FormatCatalog.Generations[1];
     const prevPrevGen = FormatCatalog.Generations[2];
-    const latestVgcFormats = FormatCatalog.VgcSeasons
+    const latestVgcFormats = FormatCatalog.EnabledVgcSeasons
       .filter(season => season.gen === latestGen)
       .slice(0, 2)
       .map(season => ({ format: { generation: season.gen, meta: season.meta }, limit: 100 }));

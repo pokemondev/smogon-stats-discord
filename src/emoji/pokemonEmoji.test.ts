@@ -60,6 +60,38 @@ function createUsage(name: string, rank: number, usageRaw: number): PokemonUsage
   };
 }
 
+function createUsageLookup(): Record<string, PokemonUsage[]> {
+  const sourceFormats = PokemonEmoji.buildRosterSources()
+    .map(source => `${source.format.generation}/${source.format.meta}`);
+  const usageByFormat = Object.fromEntries(sourceFormats.map(formatKey => [formatKey, [] as PokemonUsage[]]));
+  const vgcFormatKeys = sourceFormats.filter(formatKey => (formatKey.split('/').pop() ?? '').includes('vgc'));
+  const [firstVgcFormatKey, secondVgcFormatKey] = vgcFormatKeys;
+
+  if (firstVgcFormatKey) {
+    usageByFormat[firstVgcFormatKey] = [
+      createUsage('Urshifu-Rapid-Strike', 1, 40.1),
+      createUsage('Rillaboom', 2, 32.5),
+    ];
+  }
+
+  if (secondVgcFormatKey) {
+    usageByFormat[secondVgcFormatKey] = [
+      createUsage('Rillaboom', 1, 38.4),
+      createUsage('Incineroar', 2, 30.2),
+    ];
+  }
+
+  const gen9UbersKey = sourceFormats.find(formatKey => formatKey === 'gen9/ubers');
+  if (gen9UbersKey) {
+    usageByFormat[gen9UbersKey] = [
+      createUsage('Incineroar', 50, 5.2),
+      createUsage('Unknown Form', 51, 4.8),
+    ];
+  }
+
+  return usageByFormat;
+}
+
 const tests: TestCase[] = [
   {
     name: 'emoji keys match the requested discord naming format',
@@ -127,7 +159,7 @@ const tests: TestCase[] = [
         ['pkm_urshifu_rapid_strike', 'pkm_rillaboom', 'pkm_incineroar', 'pkm_unknown_form', 'pkm_pikachu', 'pkm_charizard', 'pkm_mewtwo'],
       );
       assert.deepStrictEqual(roster.unresolvedNames, ['Unknown Form']);
-      assert.deepStrictEqual(roster.entries[1].sourceFormats, ['gen9championsvgc2026regma', 'gen9vgc2026regf']);
+      assert.deepStrictEqual(roster.entries[1].sourceFormats, ['gen9championsvgc2026regmb', 'gen9championsvgc2026regma']);
     },
   },
   {
