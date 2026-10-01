@@ -159,7 +159,7 @@ const tests: TestCase[] = [
         ['pkm_urshifu_rapid_strike', 'pkm_rillaboom', 'pkm_incineroar', 'pkm_unknown_form', 'pkm_pikachu', 'pkm_charizard', 'pkm_mewtwo'],
       );
       assert.deepStrictEqual(roster.unresolvedNames, ['Unknown Form']);
-      assert.deepStrictEqual(roster.entries[1].sourceFormats, ['gen9championsvgc2026regmb', 'gen9championsvgc2026regma']);
+      assert.deepStrictEqual(roster.entries[1].sourceFormats, ['gen9championsvgc2026regmc', 'gen9championsvgc2026regmb', 'gen9championsvgc2026regma']);
     },
   },
   {

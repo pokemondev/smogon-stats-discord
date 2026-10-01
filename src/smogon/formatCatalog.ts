@@ -24,7 +24,8 @@ export class FormatCatalog {
     vgc2026regi: 'https://www.smogon.com/dex/sv/formats/vgc25-regulation-i/',
   };
   public static readonly VgcSeasons: readonly VgcSeason[] = [
-    { gen: 'gen9', year: '2026', regulation: 'regmb', meta: 'championsvgc2026regmb', aliases: [ 'regmb', 'champions', 'vgc2026' ], isDefault: true, isChampions: true },
+    { gen: 'gen9', year: '2026', regulation: 'regmc', meta: 'championsvgc2026regmc', aliases: [ 'regmc', 'champions', 'vgc2026' ], isDefault: true, isChampions: true },
+    { gen: 'gen9', year: '2026', regulation: 'regmb', meta: 'championsvgc2026regmb', aliases: [ 'regmb' ], isDefault: false, isChampions: true },
     { gen: 'gen9', year: '2026', regulation: 'regma', meta: 'championsvgc2026regma', aliases: [ 'regma' ], isDefault: false, isChampions: true },
     { gen: 'gen9', year: '2026', regulation: 'regf', meta: 'vgc2026regf', aliases: [ 'vgc2026regf' ] },
     { gen: 'gen9', year: '2026', regulation: 'regi', meta: 'vgc2026regi', aliases: [ 'vgc2026regi' ] },
