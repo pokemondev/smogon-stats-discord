@@ -132,12 +132,19 @@ const tests: TestCase[] = [
   {
     name: 'buildRoster deduplicates overlaps and records unresolved names',
     run: async () => {
+      const vgcFormatKeys = PokemonEmoji.buildRosterSources()
+        .map(source => `${source.format.generation}/${source.format.meta}`)
+        .filter(formatKey => (formatKey.split('/').pop() ?? '').includes('vgc'));
+      const [firstVgcFormatKey, secondVgcFormatKey] = vgcFormatKeys;
+      assert.ok(firstVgcFormatKey);
+      assert.ok(secondVgcFormatKey);
+
       const stats = new FakeSmogonStats({
-        'gen9/championsvgc2026regma': [
+        [firstVgcFormatKey]: [
           createUsage('Urshifu-Rapid-Strike', 1, 40.1),
           createUsage('Rillaboom', 2, 32.5),
         ],
-        'gen9/vgc2026regf': [
+        [secondVgcFormatKey]: [
           createUsage('Rillaboom', 1, 38.4),
           createUsage('Incineroar', 2, 30.2),
         ],
@@ -159,7 +166,10 @@ const tests: TestCase[] = [
         ['pkm_urshifu_rapid_strike', 'pkm_rillaboom', 'pkm_incineroar', 'pkm_unknown_form', 'pkm_pikachu', 'pkm_charizard', 'pkm_mewtwo'],
       );
       assert.deepStrictEqual(roster.unresolvedNames, ['Unknown Form']);
-      assert.deepStrictEqual(roster.entries[1].sourceFormats, ['gen9championsvgc2026regmc', 'gen9championsvgc2026regmb', 'gen9championsvgc2026regma']);
+      assert.deepStrictEqual(
+        roster.entries[1].sourceFormats,
+        [firstVgcFormatKey.replace('/', ''), secondVgcFormatKey.replace('/', '')],
+      );
     },
   },
   {

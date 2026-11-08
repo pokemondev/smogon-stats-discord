@@ -111,8 +111,15 @@ const tests: TestCase[] = [
   {
     name: 'buildRoster deduplicates items across formats and ignores configured item names',
     run: async () => {
+      const vgcFormatKeys = PokemonEmoji.buildRosterSources()
+        .map(source => `${source.format.generation}/${source.format.meta}`)
+        .filter(formatKey => (formatKey.split('/').pop() ?? '').includes('vgc'));
+      const [firstVgcFormatKey, secondVgcFormatKey] = vgcFormatKeys;
+      assert.ok(firstVgcFormatKey);
+      assert.ok(secondVgcFormatKey);
+
       const stats = new FakeSmogonStats({
-        'gen9/vgc2026regf': [
+        [firstVgcFormatKey]: [
           createMoveSet('Incineroar', [
             { name: 'Sitrus Berry', percentage: 45.0 },
             { name: 'Safety Goggles', percentage: 30.0 },
@@ -123,7 +130,7 @@ const tests: TestCase[] = [
             { name: 'Others', percentage: 40.0 },
           ]),
         ],
-        'gen9/championsvgc2026regma': [
+        [secondVgcFormatKey]: [
           createMoveSet('Incineroar', [
             { name: 'Sitrus Berry', percentage: 50.0 },
             { name: 'Assault Vest', percentage: 30.0 },
